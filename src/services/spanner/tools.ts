@@ -8,6 +8,7 @@ import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { getSpannerSchema } from "./schema.js";
 import { stateManager } from "../../utils/state-manager.js";
 import { logger } from "../../utils/logger.js";
+import { assertReadOnlySpannerQuery } from "./query-safety.js";
 import {
   buildStructuredTextBlock,
   previewList,
@@ -132,6 +133,7 @@ export function registerSpannerTools(server: McpServer): void {
     },
     async ({ sql, instanceId, databaseId, params }, _extra) => {
       try {
+        assertReadOnlySpannerQuery(sql);
         const projectId = await getProjectId();
         const config = await getSpannerConfig(
           Array.isArray(instanceId) ? instanceId[0] : instanceId,
@@ -630,7 +632,14 @@ export function registerSpannerTools(server: McpServer): void {
         }
 
         // Execute the generated SQL query
-        // Execute the generated SQL query
+        if (!generatedSql.trim()) {
+          throw new Error(
+            "Natural language query generation returned an empty SQL statement.",
+          );
+        }
+
+        assertReadOnlySpannerQuery(generatedSql);
+
         const [result] = await database.run({
           sql: generatedSql,
         });

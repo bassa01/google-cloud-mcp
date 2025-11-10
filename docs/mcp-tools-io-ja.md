@@ -167,7 +167,7 @@ Entries: 7
 ### gcp-spanner-execute-query — SQL を直接実行
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
-| sql | string | はい |  | 実行したい SQL。DDL/DML どちらも可。 |
+| sql | string | はい |  | SELECT / WITH / EXPLAIN / SHOW / DESCRIBE といった読み取り専用 SQL のみ許可。 |
 | instanceId | string | いいえ | `SPANNER_INSTANCE` env/state | 対象インスタンス。省略時は環境変数もしくは state-manager。 |
 | databaseId | string | いいえ | `SPANNER_DATABASE` env/state | 対象データベース。 |
 | params | record<string, any> | いいえ | `{}` | 名前付きパラメータ。JSON 互換値を渡します。 |
@@ -182,6 +182,8 @@ Entries: 7
   }
 }
 ```
+
+⚠️ INSERT/UPDATE/DELETE や DDL、トランザクション制御、複数ステートメントを含む SQL は送信前にブロックされます。
 
 **戻り値例**
 ```text
@@ -299,7 +301,7 @@ projectId=prod-data | instance=main-instance
 ### gcp-spanner-query-natural-language — 自然言語→SQL 補助
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
-| query | string | はい |  | 「orders テーブルの件数を知りたい」など NL で要件を記述。 |
+| query | string | はい |  | 「orders テーブルの件数を知りたい」など、読み取り専用の要件を自然文で記述。 |
 | instanceId | string | いいえ | state/env | 対象インスタンス。 |
 | databaseId | string | いいえ | state/env | 対象 DB。 |
 
@@ -312,6 +314,8 @@ projectId=prod-data | instance=main-instance
   }
 }
 ```
+
+⚠️ 生成される SQL も `gcp-spanner-execute-query` と同じ読み取り専用ガードを通過します。DML/DDL や複数ステートメントが検出された場合は Spanner へ送信される前にブロックされます。
 
 **戻り値例**
 ```text

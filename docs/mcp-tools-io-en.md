@@ -167,7 +167,7 @@ Entries: 7
 ### gcp-spanner-execute-query — Run SQL directly
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
-| sql | string | yes |  | SQL statement (DDL/DML). |
+| sql | string | yes |  | Read-only SQL statement (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE). |
 | instanceId | string | no | `SPANNER_INSTANCE` env or state | Target instance. |
 | databaseId | string | no | `SPANNER_DATABASE` env or state | Target database. |
 | params | record<string, any> | no | `{}` | Named parameters (JSON-compatible). |
@@ -182,6 +182,8 @@ Entries: 7
   }
 }
 ```
+
+⚠️ This tool blocks any DML/DDL, transaction control statements, or multi-statement payloads before they reach Spanner.
 
 **Response example**
 ```text
@@ -299,7 +301,7 @@ projectId=prod-data | instance=main-instance
 ### gcp-spanner-query-natural-language — NL helper
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
-| query | string | yes |  | Describe the desired result (“List top 20 orders over $100”). |
+| query | string | yes |  | Describe the desired read-only result (“List top 20 orders over $100”). |
 | instanceId | string | no | env/state | Target instance. |
 | databaseId | string | no | env/state | Target database. |
 
@@ -312,6 +314,8 @@ projectId=prod-data | instance=main-instance
   }
 }
 ```
+
+⚠️ Generated SQL is validated with the same read-only guard as `gcp-spanner-execute-query`; any DML/DDL or multi-statement output is blocked before hitting Spanner.
 
 **Response example**
 ```text
