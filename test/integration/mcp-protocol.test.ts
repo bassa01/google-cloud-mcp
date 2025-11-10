@@ -57,18 +57,6 @@ describe('MCP Protocol Compliance', () => {
 
         expect(typeof name).toBe('string');
         expect(name).toMatch(/^gcp-billing-/);
-    it('should register IAM tools with proper schema', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
-      // Verify tools are registered with required fields
-      const toolCalls = mockMcpServer.registerTool.mock.calls;
-      
-      toolCalls.forEach(call => {
-        const [name, schema, handler] = call;
-        
-        expect(typeof name).toBe('string');
         expect(schema).toHaveProperty('title');
         expect(schema).toHaveProperty('description');
         expect(schema).toHaveProperty('inputSchema');
@@ -82,11 +70,6 @@ describe('MCP Protocol Compliance', () => {
 
       registerLoggingTools(mockMcpServer as any);
 
-    it('should validate tool input schemas', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
         call => call[0] === 'gcp-logging-query-logs'
       );
@@ -115,21 +98,15 @@ describe('MCP Protocol Compliance', () => {
       const { registerBillingResources } = await import('../../src/services/billing/resources.js');
 
       registerBillingResources(mockMcpServer as any);
-      
+
       // Verify billing resources are registered with MCP compliant structure
-    it('should register IAM resources with proper templates', async () => {
-      const { registerIamResources } = await import('../../src/services/iam/resources.js');
-      
-      registerIamResources(mockMcpServer as any);
-      
-      // Verify resources are registered with MCP compliant structure
       expect(mockMcpServer.resource).toHaveBeenCalled();
-      
+
       const resourceCalls = mockMcpServer.resource.mock.calls;
-      
+
       resourceCalls.forEach(call => {
         const [name, template, handler] = call;
-        
+
         expect(typeof name).toBe('string');
         expect(template).toBeDefined();
         expect(typeof handler).toBe('function');
@@ -151,29 +128,14 @@ describe('MCP Protocol Compliance', () => {
       const { registerBillingTools } = await import('../../src/services/billing/tools.js');
       
       registerBillingTools(mockMcpServer as any);
-      
+
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
         call => call[0] === 'gcp-billing-list-accounts'
       );
-      
+
       const toolHandler = toolCall[2];
       const result = await toolHandler({ pageSize: 10 });
 
-  });
-
-  describe('Response Format Compliance', () => {
-    it('should return MCP-compliant IAM tool responses', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
-      const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-test-project-permissions'
-      );
-      
-      const toolHandler = toolCall[2];
-      const result = await toolHandler({ permissions: ['test.permission'] });
-      
       // Verify MCP response structure
       expect(result).toHaveProperty('content');
       expect(Array.isArray(result.content)).toBe(true);
@@ -189,15 +151,6 @@ describe('MCP Protocol Compliance', () => {
 
       registerLoggingTools(mockMcpServer as any);
 
-    it('should handle errors in MCP-compliant format', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      // Mock error condition
-      const { mockResourceManagerClient } = await import('../mocks/google-cloud-mocks.js');
-      mockResourceManagerClient.testIamPermissions.mockRejectedValue(new Error('Test error'));
-      
-      registerIamTools(mockMcpServer as any);
-      
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
         call => call[0] === 'gcp-logging-query-logs'
       );
