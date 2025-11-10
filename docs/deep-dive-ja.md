@@ -1,15 +1,134 @@
 # Google Cloud MCP 詳細ガイド
 
+## オンボーディングチェックリスト
+
+1. **開発ツールを確認** – Node.js 18.20+ と pnpm 9+ が利用可能か確認します。
+   ```bash
+   node -v
+   corepack enable pnpm && pnpm -v
+   ```
+2. **Google Cloud CLI をセットアップ** – `gcloud components update` を実行し、少なくとも 1 プロジェクトに Viewer 権限を持つアカウントでログインします。
+3. **リポジトリを取得して依存関係を導入** – `git clone` → `pnpm install` を実行し、`pnpm lint` と `pnpm test` が通ることを確認してからブランチを切ります。
+4. **認証方式を決める** – サービスアカウント キーファイルか環境変数かを選び、後述の手順で `.env` を作成します。
+5. **ADC を用意** – `gcloud auth application-default login` を実行しておくと、`.env` が未設定でもフォールバックできます。
+6. **開発サーバーを起動** – `pnpm dev` で `ts-node --esm src/index.ts` が立ち上がるので、Claude Desktop や MCP Inspector から接続できることを確認します。
+7. **本ガイドをざっと読む** – リポジトリ構成、アーキテクチャ、テスト方針を把握し、新卒メンバーでも迷わず開発できるようにします。
+8. **CI と同じパイプラインを実行** – `pnpm ci` は lint → format:check → coverage テストをまとめて実行します。PR 前に必ず通しておきましょう。
+
+## ローカル環境セットアップ
+
+### 1. 必要なソフトウェア
+
+- **Node.js 18.20 以上** – `package.json` の `engines.node` と合わせます。
+- **pnpm 9 以上** – `corepack enable pnpm` でリポジトリの `packageManager` バージョンと同期します。
+- **Google Cloud CLI** – `gcloud init` で認証・プロジェクト切り替えを行います。
+- **Google Cloud プロジェクト** – Logging / Monitoring / Spanner / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
+
+バージョン確認例:
+
+```bash
+node -v
+pnpm -v
+gcloud version
+```
+
+### 2. Google Cloud への認証
+
+1. `gcloud auth application-default login`
+2. `gcloud config set project <PROJECT_ID>`
+3. `gcloud auth application-default print-access-token` (ADC が有効かを確認)
+
+`GOOGLE_APPLICATION_CREDENTIALS` が未設定でも ADC を利用するため、定期的に更新して 401 エラーを防ぎます。
+
+### 3. 認証情報の決め方
+
+- **サービスアカウント キーファイル (ローカル開発向け推奨)**  
+  1. 最小権限のロール (例: `roles/logging.viewer`, `roles/monitoring.viewer`, `roles/spanner.databaseUser`, `roles/cloudsupport.viewer`) を付与したサービスアカウントを作成します。  
+  2. 次のコマンドでキーを生成します:
+     ```bash
+     gcloud iam service-accounts keys create ~/.config/gcloud/google-cloud-mcp.json \
+       --iam-account <SERVICE_ACCOUNT_EMAIL>
+     ```  
+  3. `GOOGLE_APPLICATION_CREDENTIALS` にその JSON のパスを指定します。
+
+- **環境変数 (CI / ホストランタイム向け)**  
+  `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY` (改行は `\n` でエスケープ), `GOOGLE_CLOUD_PROJECT` を環境変数で渡します。ファイルを置きたくないランナーで便利です。
+
+いずれの方法でも `LAZY_AUTH=true` (デフォルト) で初回リクエストまで認証を遅延できます。詳細ログが欲しいときは `DEBUG=1` を設定してください。
+
+### 4. ローカル `.env` の作成
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/Users/<you>/.config/gcloud/google-cloud-mcp.json
+GOOGLE_CLOUD_PROJECT=my-sandbox-project
+LAZY_AUTH=true
+DEBUG=0
+MCP_SERVER_PORT=8082
+```
+
+`.gitignore` ですでに除外済みです。`direnv` や `dotenvx` などで自動読込すると便利です。
+
+### 5. 初回ビルドとスモークテスト
+
+```bash
+pnpm install            # 依存関係
+pnpm lint               # ESLint
+pnpm test               # Vitest
+pnpm dev                # ts-node ホットリロード
+pnpm build && pnpm start  # トランスパイル後に Inspector などで使用
+```
+
+UI で挙動を確認したい場合は下記を実行します:
+
+```bash
+npx -y @modelcontextprotocol/inspector node dist/index.js
+```
+
+## リポジトリツアー
+
+| パス | 役割 |
+| --- | --- |
+| `src/index.ts` | ロギング・認証・プロンプト・リソースディスカバリ・各サービス登録をまとめるエントリポイント。 |
+| `src/services/<service>/tools.ts` | 各サービス (Logging / Monitoring / Profiler / Error Reporting / Spanner / Trace / Support) のツール登録と Zod スキーマ。 |
+| `src/services/<service>/resources.ts` | ログやメトリクスなどを MCP リソースとして公開する登録処理。 |
+| `src/services/<service>/types.ts` | DTO、フォーマッタ、ユーティリティをまとめて結果を整形。 |
+| `src/services/support/client.ts` | Cloud Support API 向けの軽量 REST クライアント。 |
+| `src/prompts/index.ts` | ログ解析・モニタリング・Spanner NL などの再利用プロンプト。 |
+| `src/utils/auth.ts` | Google 認証とプロジェクト解決ロジック。 |
+| `src/utils/logger.ts` | Winston ベースの構造化ロガー。`console.log` は使わずこれを利用します。 |
+| `src/utils/resource-discovery.ts` / `project-tools.ts` | プロジェクトやリージョン、メトリクス記述子を一覧化する共通ツール。 |
+| `src/utils/security-validator.ts` / `session-manager.ts` / `time.ts` | 入力サニタイズ、セッション状態、時間ユーティリティ。 |
+| `test/unit/**` | `src/**` と 1:1 対応する高速 Vitest。 |
+| `test/integration/**` | プロンプトやリソースを跨ぐ統合テスト。 |
+| `test/mocks/**` | Google Cloud クライアントのモックとフィクスチャ。 |
+| `test/setup.ts` | Vitest のグローバルフック/モック登録。 |
+| `docs/**` | 本ガイドを含むドキュメント。コード変更時は必ず更新します。 |
+| `dist/` | ビルド成果物 (直接編集禁止)。 |
+| `smithery.yaml` | Smithery で MCP Server をホストするためのテンプレート。 |
+| `Dockerfile` | 再現性のあるビルド用コンテナイメージ。 |
+
+## 日々の開発フロー
+
+- **最新化とブランチ切り替え** – `git pull origin main && git switch -c feature/<slug>`。
+- **ロックファイル更新時だけインストール** – `pnpm install` は `pnpm-lock.yaml` を基準にします。
+- **ホットリロードで反復** – `pnpm dev` (必要なら `-- --inspect` で DevTools 接続)。
+- **MCP Inspector で実際の挙動を確認** – `npx -y @modelcontextprotocol/inspector node dist/index.js`。
+- **早めに整形/静的解析** – `pnpm format:check && pnpm lint`、自動修正は `pnpm lint:fix`。 
+- **集中的なテスト** – `pnpm test:watch` で継続実行、単体ファイルは `pnpm test --runInBand test/unit/services/logging.test.ts`。
+- **成果物共有前にビルド** – `pnpm build` は TypeScript をトランスパイルし、Monitoring の Markdown 資産を `dist/services/monitoring/` へコピーします。
+- **ドキュメントを並行更新** – 新しいツール/サービスを追加したら `docs/` と `README.md` も更新します。
+
 ## 概要
 
 Google Cloud MCP サーバーは Google Cloud Platform (GCP) の操作を Model Context Protocol を通じて公開し、クライアントが構造化ツールを呼び出したり、ナレッジを参照したり、自動化ワークフローを実行できるようにします。本ガイドではサーバーの構成、リクエスト処理の流れ、各サービスを最大限に活用する方法を解説します。アーキテクチャの背景や高度な利用パターンが必要な場合は、上位レベルの [README](../README.md) と合わせて参照してください。
 
 ### 主要な機能
 
-- Error Reporting、Logging、Monitoring、Profiler、Spanner、Trace を単一の MCP エンドポイントで提供します。
-- サービス アカウントの認証情報と環境変数による秘密情報を統一的に扱います。
+- Error Reporting / Logging / Monitoring / Profiler / Spanner / Support / Trace を単一の MCP エンドポイントで提供。
+- サービスアカウント認証と環境変数ベースのシークレットを統一的に扱います。
 - 会話型エージェント向けに最適化されたプロンプト、フィルター、結果整形を備えています。
 - プロジェクト範囲、期間デフォルト、ページネーション補助などのガードレールで信頼性を高めます。
+- `project-tools` / `resource-discovery` などの補助ツールでメタデータを即座に参照できます。
 
 ## アーキテクチャ
 
@@ -18,41 +137,54 @@ Google Cloud MCP サーバーは Google Cloud Platform (GCP) の操作を Model 
 | コンポーネント | 説明 |
 | --- | --- |
 | `src/index.ts` | MCP サーバーを起動し、サービス登録やロギングなど共通基盤を初期化します。 |
-| `src/services/*` | サービス固有のツール定義、データ変換、ドメインロジック（例: Monitoring の指標クエリ）を実装します。 |
+| `src/services/*` | サービス固有のツール定義、データ変換、ドメインロジック (例: Monitoring の指標クエリ) を実装します。 |
 | `src/prompts/*` | Spanner の自然言語検索など生成的ヘルパー向けの再利用可能なプロンプトテンプレートを格納します。 |
 | `src/utils/*` | 認証、リクエスト整形、共通のページネーション処理を行うユーティリティ群です。 |
+| `test/*` | ランタイムコードと 1:1 に対応する Vitest スイートです。 |
+
+### 共有ユーティリティ
+
+| モジュール | 役割 |
+| --- | --- |
+| `utils/auth.ts` | `google-auth-library` を初期化し、`getProjectId()` などのヘルパーを提供。 |
+| `utils/logger.ts` | Winston 構成を集約し、すべてのログ出力をここに集めます。 |
+| `utils/resource-discovery.ts` | プロジェクト/リージョン/メトリクス記述子を MCP リソースとして公開。 |
+| `utils/project-tools.ts` | プロジェクト一覧など、サービス非依存の便利ツール。 |
+| `utils/security-validator.ts` | プロジェクト ID やテーブル名などユーザー入力をサニタイズ。 |
+| `utils/session-manager.ts` | セッションごとの状態を保持し、Lazy Auth やキャッシュを支援。 |
+| `utils/time.ts` | 期間指定やタイムレンジの共通フォーマットを担います。 |
 
 ### リクエストライフサイクル
 
-1. **クライアント リクエスト** – MCP クライアントがユーザー入力やプロンプト テンプレートを基にツール呼び出しを送信します。
-2. **バリデーション** – 必須フィールドや形式を確認するため Zod スキーマでペイロードを検証します。
-3. **認証コンテキスト** – 認証ヘルパーがプロジェクト ID、サービス アカウント トークン、リージョン デフォルトを解決します。
-4. **サービス実行** – 該当する Google Cloud SDK を呼び出し、レスポンスを正規化し、エラーを行動可能なメッセージに変換します。
-5. **レスポンス返却** – 構造化データと読みやすい要約を MCP クライアントに返します。
+1. **クライアントリクエスト** – MCP クライアントがユーザー入力またはプロンプトを基にツール呼び出しを送信。
+2. **バリデーション** – Zod スキーマで必須フィールドや形式を検証。
+3. **認証コンテキスト** – 認証ヘルパーがプロジェクト ID やトークン、リージョンデフォルトを解決。
+4. **サービス実行** – 対応する Google Cloud SDK を呼び出し、レスポンスを正規化してエラーを行動可能なメッセージに変換。
+5. **レスポンス返却** – 構造化データと要約を MCP クライアントへ返します。
 
 ### エラーハンドリング方針
 
-- SDK の例外をラップし、権限不足、リソース欠如、スロットリングを個別に提示します。
-- 一時的なエラーにはリトライのヒントを、恒久的な失敗には IAM や設定の修正案を提示します。
-- Winston を介してロギングすることで、本番環境でもテレメトリーを一元化できます。
+- SDK の例外をラップし、権限不足・リソース欠如・スロットリングを個別に提示します。
+- 一時的なエラーにはリトライ指針を、永続的な失敗には IAM や設定の修正案を示します。
+- ログは Winston 経由で出力し、本番環境でも一元管理できます。
 
 ## 対応サービス
 
 ### Error Reporting
 
-Cloud Error Reporting からエラー グループのメタデータやトレンド分析を取得し、複数サービスの本番障害を素早く把握できます。
+Cloud Error Reporting からエラーグループのメタデータやトレンド分析を取得し、複数サービスの本番障害を素早く把握できます。
 
 **主要ツール**
 
-- `gcp-error-reporting-list-groups` – 期間やサービス コンテキストでフィルタリングしたエラー グループ一覧を取得します。
-- `gcp-error-reporting-get-group-details` – 特定グループのスタックトレース、発生回数、影響サービスを返します。
-- `gcp-error-reporting-analyse-trends` – 発生頻度の変化を要約し、再発や兆候を把握します。
+- `gcp-error-reporting-list-groups` – 期間やサービスコンテキストで絞り込んだエラーグループ一覧。
+- `gcp-error-reporting-get-group-details` – スタックトレース、発生回数、影響サービスを取得。
+- `gcp-error-reporting-analyse-trends` – 発生頻度の変化を要約し、再発や兆候を把握。
 
 **利用手順例**
 
-1. 対象プロジェクトとサービスでグループを絞り込みます。
-2. 詳細情報を取得してスタックトレースを確認します。
-3. トレンド分析でインシデントが拡大しているか判断します。
+1. 対象プロジェクトとサービスでグループを選別。
+2. 詳細情報でスタックトレースを確認。
+3. トレンド分析でインシデントの拡大有無を判断。
 
 ### Logging
 
@@ -60,14 +192,14 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 
 **主要ツール**
 
-- `gcp-logging-query-logs` – 深いフィルターや重大度、リソース条件を指定して検索します。
-- `gcp-logging-query-time-range` – 時間範囲に特化したクエリのショートカットです。
-- `gcp-logging-search-comprehensive` – 複数フィールドを横断して関連イベントを探します。
+- `gcp-logging-query-logs` – 重大度やリソース条件を含む高度なフィルターを実行。
+- `gcp-logging-query-time-range` – 時間範囲に特化したショートカットクエリ。
+- `gcp-logging-search-comprehensive` – 複数フィールドを横断して関連イベントを捜索。
 
-**運用のヒント**
+**運用ヒント**
 
-- クエリは範囲を限定し、クォータ超過を避けましょう。
-- 重大度フィルターとリソース種別を組み合わせてノイズを抑えます。
+- クエリは範囲を絞り、クォータ超過を防止。
+- 重大度フィルターとリソース種別を組み合わせてノイズを削減。
 - 取得結果は追跡質問で要約やクラスタリングを依頼すると効率的です。
 
 ### Monitoring
@@ -76,92 +208,212 @@ Cloud Monitoring 指標を簡潔に取得し、CPU・メモリ・カスタム指
 
 **主要ツール**
 
-- `gcp-monitoring-query-metrics` – パラメータ化された MQL を実行します。
-- `gcp-monitoring-list-metric-types` – Compute Engine や Cloud Run などのメトリック種別 URI を調べます。
-- `gcp-monitoring-query-natural-language` – 自然言語プロンプトを MQL に変換して実行します。
+- `gcp-monitoring-query-metrics` – パラメータ化された MQL を実行。
+- `gcp-monitoring-list-metric-types` – Compute Engine や Cloud Run などのメトリクスタイプを調査。
+- `gcp-monitoring-query-natural-language` – 自然文プロンプトを MQL に変換して実行。
 
-**運用のヒント**
+**運用ヒント**
 
-- 自然言語クエリの前に `list-metric-types` で利用可能なメトリックを確認します。
-- ダッシュボードと整合する整列ウィンドウ（例: 5m、1h）を指定します。
-- `mean`、`max`、`percentile` などの集約を指定して結果量を抑えます。
+- 先に `list-metric-types` を実行して利用可能なメトリクスを確認。
+- 5m / 1h などのアライメントウィンドウを指定し、ダッシュボードと揃えます。
+- `mean` / `max` / `percentile` などの集計を付与して結果を圧縮。
 
 ### Profiler
 
-Cloud Profiler のデータを分析し、CPU・ヒープ・ウォールタイムのホットスポットを特定します。
+Cloud Profiler のデータを解析し、CPU / ヒープ / 実行時間のホットスポットを特定できます。
 
 **主要ツール**
 
-- `gcp-profiler-list-profiles` – プロファイル種別、デプロイ対象、期間で一覧表示します。
-- `gcp-profiler-analyse-performance` – 支配的なコールスタックや性能退行を強調します。
-- `gcp-profiler-compare-trends` – 2 つのプロファイル群を比較して改善・悪化を把握します。
+- `gcp-profiler-list-profiles` – プロファイル種別・デプロイ先・期間で一覧化。
+- `gcp-profiler-analyse-performance` – 支配的なコールスタックや性能退行を抽出。
+- `gcp-profiler-compare-trends` – 2 つの期間を比較して改善/退行を可視化。
 
-**運用のヒント**
+**運用ヒント**
 
-- 小さめの期間から開始し、大量のプロファイル処理を避けましょう。
-- 新リリースや設定変更の検証には比較ツールが有効です。
+- まずは短い期間でサーベイし、大量データを避けます。
+- バージョン間の比較でリリース検証を効率化。
 
 ### Spanner
 
-分散データベースでのスキーマ探索や SQL 実行を支援します。
+Spanner のスキーマ調査や SQL 実行を支援します。
 
 **主要ツール**
 
-- `gcp-spanner-list-instances`、`gcp-spanner-list-databases`、`gcp-spanner-list-tables` でトポロジーを把握します。
-- `gcp-spanner-execute-query` はパラメータバインド付きで SQL を安全に実行します。
-- `gcp-spanner-query-natural-language` と `gcp-spanner-query-count` は会話的な要約クエリを生成します。
+- `gcp-spanner-list-instances` / `list-databases` / `list-tables` – インフラ全体をカタログ化。
+- `gcp-spanner-execute-query` – プレースホルダー付きで安全に SQL を実行。
+- `gcp-spanner-query-natural-language` / `query-count` – 会話的に集計やクエリ生成を実施。
 
-**運用のヒント**
+**運用ヒント**
 
-- 本番とステージングのインスタンスを明確に分けて指定しましょう。
-- 自然言語ヘルパーで草案を作り、必要に応じて手動で調整します。
+- 本番とステージングを明示的に分けて実行し、環境混在を避ける。
+- 自然言語ヘルパーでたたき台を作り、必要に応じて手動で調整。
 
 ### Trace
 
-分散トレーシング診断に特化し、可能な場合はログと相互参照します。
+分散トレース診断に特化し、可能な限りログとの往復も支援します。
 
 **主要ツール**
 
-- `gcp-trace-list-traces` – レイテンシ、スパン数、期間でトレース一覧を取得します。
-- `gcp-trace-get-trace` – ルート原因分析のために完全なタイムラインを取得します。
-- `gcp-trace-find-from-logs` – ログから関連トレースを見つけます。
-- `gcp-trace-query-natural-language` – 記述的なプロンプトから高度なフィルターを生成します。
+- `gcp-trace-list-traces` – 遅延・スパン数・期間でトレースを一覧。
+- `gcp-trace-get-trace` – トレース全体を取得して原因分析。
+- `gcp-trace-find-from-logs` – ログとトレースをクロスリファレンス。
+- `gcp-trace-query-natural-language` – 自然文から高度なフィルターを構築。
 
-**運用のヒント**
+**運用ヒント**
 
-- Logging の結果と `find-from-logs` を組み合わせるとトレースとログの往復が速くなります。
-- 95/99 パーセンタイルのレイテンシに注目し、性能退行を監視します。
+- Logging の結果と `find-from-logs` を組み合わせ、トレース⇔ログの往復を高速化。
+- 95/99 パーセンタイルのレイテンシを追い、性能退行を監視。
+
+### Support
+
+Cloud Support API と連携し、MCP 上からサポートケースの管理・コミュニケーションを行えます。
+
+**主要ツール**
+
+- `gcp-support-list-cases` / `gcp-support-search-cases` – プロジェクト/組織単位でケースを一覧・検索。
+- `gcp-support-get-case` – 単一ケースのメタデータ、分類、SLA を取得。
+- `gcp-support-create-case` / `update-case` / `close-case` – ケースライフサイクルを管理。
+- `gcp-support-list-comments` / `create-comment` / `list-attachments` – コメントや添付を MCP から直接操作。
+- `gcp-support-search-classifications` – ケース作成前に適切な製品/コンポーネント分類を探索。
+
+**運用ヒント**
+
+- `parent` (`projects/<id>` or `organizations/<id>`) を指定して結果をスコープ。省略時はアクティブプロジェクトになります。
+- サポートエンタイトルメントと課金プロジェクトの整合性に注意。`tools.ts` で自動解決しますが、認証情報を統一してください。
+- 添付ファイルに機微情報が含まれる場合はマスキングのうえアップロードしましょう。
+
+## プロンプトパターンと作成のコツ
+
+### 基本方針
+
+- プロジェクト ID / サービス名 / リソース種別 / 期間など具体的な文脈から始める。
+- まず広く情報を集め、追加質問で徐々に絞り込む。
+- 生データが多い場合は要約や比較を指示して負荷を下げる。
+
+### サービス別プロンプト例
+
+- **Logging** – 「`prod-app-123` の Cloud Run サービス `checkout` で過去 2 時間の ERROR ログを要約して」。
+- **Monitoring** – 「`my-network-prod` の HTTPS LB `lb-frontend` の過去 1 日の p95 レイテンシを表示して」。
+- **Profiler** – 「`payments-api` の v1.4.0 と v1.5.0 の CPU プロファイルを比較して」。
+- **Spanner** – 「`orders` テーブルで注文数が多い顧客トップ 5 を出す SQL を作成して」。
+- **Trace** – 「スパン `CheckoutService/ProcessPayment` を含み 5 秒超のトレースを探して」。
+- **Support** – 「`projects/payments-prod` の今週作成された P1 ケースを列挙して」。
+
+### プロンプトを追加/変更するときの手順
+
+1. `src/prompts/index.ts` を更新し、サービスごとにヘルパー関数へまとめます。
+2. Zod で引数スキーマを定義し、MCP クライアントがバリデーションつきフォームを描画できるようにします。
+3. `logging://` や `monitoring://` のようなリソース URI を使い、LLM が構造化データにアクセスできるようにします。
+4. 冪等性を保ち、副作用のある処理やランダム性は入れないようにします。
+5. 新規プロンプトは `docs/` にも追記し、利用用途を周知します。
+
+## サーバー拡張の手引き
+
+### 既存サービスにツールを追加する
+
+1. `src/services/<service>/` を開き、`tools.ts` に `server.registerTool` を追加 (命名は `gcp-<service>-<action>` に統一)。
+2. Zod で入力スキーマを定義し、`utils/security-validator.ts` のヘルパーを再利用します。
+3. 出力はフォーマッタ (`types.ts` のヘルパー) を通じて整形し、MCP クライアントに読みやすいテキスト/リソースを返します。
+4. ブラウズ可能なデータを扱う場合は `resources.ts` に MCP リソースも登録します。
+5. `test/unit/services/<service>.test.ts` でハッピーパス/エラーケースをモック付きで検証します (`test/mocks/` を活用)。
+6. README とドキュメント (`docs/deep-dive-*.md`) に新ツールを明記し、利用例を追加します。
+
+### 新しいサービス自体を追加する
+
+1. `src/services/<new-service>/{index,tools,resources,types}.ts` を作成。
+2. `index.ts` から `register<Service>Tools` / `register<Service>Resources` をエクスポート。
+3. ルートの `src/index.ts` で該当サービスを `try/catch` 包含の形で `register` します。
+4. `test/mocks/<service>.ts` を追加し、`test/unit` と `test/integration` にテストを用意します。
+5. ドキュメントやツール一覧 (`README`, `docs/*`) を更新し、サポートサービスとして明記します。
+
+### ドキュメントとサンプルを同期する
+
+- ツール追加時は `README.md` の「Services」も更新。
+- `docs/deep-dive-en.md` / `docs/deep-dive-ja.md` を同時に拡充し、次の新人が手順を辿れるようにします。
+- ユーザー向け変更では PR にプロンプト例や Inspector のスクリーンショットを添付するとレビュアーが助かります。
+
+## テストと品質ゲート
+
+| コマンド | 目的 |
+| --- | --- |
+| `pnpm test` | 全 Vitest スイートを CI モードで実行。 |
+| `pnpm test:watch` | 開発中の高速フィードバック用ウォッチモード。 |
+| `pnpm test:coverage` | V8 カバレッジレポートを生成。リリース前に実行。 |
+| `pnpm lint` / `pnpm lint:fix` | `src/**/*.ts` の ESLint。 |
+| `pnpm format:check` | `src/**/*.ts` への Prettier チェック。`pnpm format` で自動整形。 |
+| `pnpm build` | TypeScript をコンパイルし、Monitoring の Markdown 資産を `dist/` にコピー。 |
+| `pnpm ci` | lint → format:check → coverage をまとめて実行 (CI 同等)。 |
+
+テストのヒント:
+
+- `test/setup.ts` でグローバルモックを登録し、個々のテストで重複を減らします。
+- `test/mocks/` のフィクスチャで Google Cloud レスポンスを再現し、クォータを消費しないようにします。
+- サービスを跨ぐフロー (例: Logging から Trace を引く) は統合テストで担保します。
+- バグ修正前に必ず再現テストを書き、回 regressions を防ぎます。
+
+## トラブルシューティングプレイブック
+
+### 認証エラー
+
+- 認証情報が対象プロジェクトと一致しているか確認。
+- 環境変数の秘密鍵は改行を `\n` でエスケープ。
+- `invalid_grant` や `malformed token` が出たらキーを再生成。
+- `DEBUG=1` でどのパスの認証情報を読んでいるかログ出力。
+
+### 権限不足
+
+- 閲覧系は Viewer ロール、Spanner への書き込みは `roles/spanner.databaseUser` など適切な権限を付与。
+- `gcloud projects get-iam-policy <project>` でバインド状況を確認。
+- Support API はサポートエンタイトルメントが必須である点に注意。
+
+### タイムアウト / クォータ超過
+
+- 期間やフィルターを絞り、レスポンス量を減らす。
+- Monitoring ではアライメント期間を短く設定。
+- 429 が続く場合は指数バックオフを推奨。
+
+### データが返らない
+
+- そもそも対象リソースでメトリクス/トレースが出力されているか確認。
+- Profiler などサンプリングサービスでは短時間ウィンドウで結果が空になることもあります。
+- アクティブプロジェクトとクエリ対象プロジェクトが一致しているか再確認。
+
+### ローカル開発特有の問題
+
+- Inspector で古いコードが出る場合は `rm -rf dist && pnpm build`。
+- TypeScript の挙動が不安定なら `.tsbuildinfo` を削除。
+- 環境変数を変えたら `pnpm dev` を再起動 (ts-node は自動リロードしません)。
 
 ## 認証と権限
 
-### 認証情報の選択肢
+### 認証の選択肢
 
-1. **サービス アカウント キーファイル** – `GOOGLE_APPLICATION_CREDENTIALS` に JSON キーのパスを指定します。CLI やデスクトップ MCP クライアントで最も扱いやすい方法です。
-2. **環境変数** – `GOOGLE_CLIENT_EMAIL` と `GOOGLE_PRIVATE_KEY` を直接設定します。シークレット マネージャーやマネージド環境に適しています。
+1. **サービスアカウント キーファイル** – `GOOGLE_APPLICATION_CREDENTIALS` で JSON を指定する標準的な方法。
+2. **環境変数** – `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY` を直接渡す。シークレットマネージャーや CI に適しています。
 
-### プロジェクトの解決
+### プロジェクト解決
 
-- `GOOGLE_CLOUD_PROJECT` が設定されていれば、すべてのツールのデフォルト プロジェクトになります。
-- 設定されていない場合、サーバーはサービス アカウントのメタデータからプロジェクトを推測します。
-- 各ツールは必要に応じてプロジェクトやリソース パスを上書きできます。
+- `GOOGLE_CLOUD_PROJECT` が設定されていればデフォルトのプロジェクトになります。
+- 未設定の場合はサービスアカウントのメタデータから推測します。
+- 各ツールは個別にプロジェクトやリソースパスを上書き可能です。
 
-### 権限のベストプラクティス
+### 権限ガイドライン
 
-- サービス アカウントには最小権限のロール（例: `roles/logging.viewer`、`roles/monitoring.viewer`）を付与します。
-- Spanner で書き込みを行う場合は `roles/spanner.databaseUser` など適切な権限が必要です。
-- Logging や Monitoring はリージョン別エンドポイントが関与する場合がありますが、サーバー側で吸収します。
+- Viewer ロールを最小限で付与し、書込み系 (Spanner など) は必要なロールを別途追加。
+- ログ/モニタリングはリージョン別エンドポイントを使う場合がありますが、サーバー側で吸収済みです。
 
-## 設定とデプロイ
+## 構成とデプロイ
 
-### 環境変数
+### 環境変数一覧
 
 | 変数 | 目的 |
 | --- | --- |
-| `GOOGLE_APPLICATION_CREDENTIALS` | サービス アカウント JSON キーのパス。 |
-| `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY` | キーファイルを使わない場合の代替認証情報。 |
+| `GOOGLE_APPLICATION_CREDENTIALS` | サービスアカウント JSON キーのパス。 |
+| `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY` | キーファイルを使わない場合の代替認証。 |
 | `GOOGLE_CLOUD_PROJECT` | 個別リクエストにプロジェクト ID がない場合のデフォルト。 |
-| `DEBUG` | `true` で詳細ログを有効化します。 |
-| `MCP_SERVER_PORT` | プロキシやコンテナ配下でホストする際のポート指定。 |
+| `DEBUG` | `true` で詳細ログを有効化。 |
+| `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
+| `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
 
 ### クライアント設定例
 
@@ -186,90 +438,57 @@ Cloud Profiler のデータを分析し、CPU・ヒープ・ウォールタイ�
 
 ### デプロイのヒント
 
-- クライアントが対応していれば `lazyAuth` を有効にし、起動遅延を抑えます。
-- コンテナ デプロイでは認証情報ファイルを読み取り専用でマウントし、定期的にローテーションします。
-- チーム全体の可観測性を高めるため Cloud Logging エクスポートや SIEM 連携と組み合わせましょう。
+- クライアントが対応していれば `lazyAuth` を有効化し、起動遅延を抑えます。
+- コンテナでは認証情報ファイルを読み取り専用でマウントし、定期的にローテーション。
+- Cloud Logging エクスポートや SIEM 連携と組み合わせ、チーム全体の可観測性を向上させます。
 
 ## ツール早見表
 
 | サービス | ツール | 目的 |
 | --- | --- | --- |
-| Error Reporting | `gcp-error-reporting-list-groups` | 期間内にアクティブなエラー グループを把握します。 |
-| Error Reporting | `gcp-error-reporting-get-group-details` | スタックトレースや発生状況を確認します。 |
-| Error Reporting | `gcp-error-reporting-analyse-trends` | サービスやバージョン間のトレンドを分析します。 |
-| Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリを実行します。 |
-| Logging | `gcp-logging-query-time-range` | 時間範囲に特化した検索を行います。 |
-| Logging | `gcp-logging-search-comprehensive` | ペイロードやメタデータを横断的に検索します。 |
-| Monitoring | `gcp-monitoring-query-metrics` | 集約ヒント付きで MQL を実行します。 |
-| Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリック記述子を列挙します。 |
-| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語を MQL に変換します。 |
-| Profiler | `gcp-profiler-list-profiles` | CPU・ヒープ・ウォールタイムのプロファイルを検索します。 |
-| Profiler | `gcp-profiler-analyse-performance` | ボトルネックとなるホットスポットを要約します。 |
-| Profiler | `gcp-profiler-compare-trends` | リリース間でプロファイルを比較します。 |
-| Spanner | `gcp-spanner-list-instances` | Spanner インスタンスを列挙します。 |
-| Spanner | `gcp-spanner-list-databases` | インスタンス内のデータベースを一覧表示します。 |
-| Spanner | `gcp-spanner-list-tables` | テーブル構造を確認します。 |
-| Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行します。 |
-| Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成します。 |
-| Spanner | `gcp-spanner-query-count` | 行数を素早く集計します。 |
-| Trace | `gcp-trace-list-traces` | 遅延やエラーを含むトレースを検出します。 |
-| Trace | `gcp-trace-get-trace` | トレース全体のタイムラインを調査します。 |
-| Trace | `gcp-trace-find-from-logs` | ログから関連トレースへピボットします。 |
-| Trace | `gcp-trace-query-natural-language` | 会話的にトレース フィルターを構築します。 |
-
-## プロンプト パターン
-
-### 基本指針
-
-- プロジェクト ID、サービス名、リソース種別、期間など具体的な文脈から開始します。
-- まず広いクエリを実行し、その結果をもとに絞り込むと効率的です。
-- データ量が多い場合は要約や比較をリクエストしましょう。
-
-### サービス別プロンプト例
-
-- **Logging** – 「プロジェクト `prod-app-123` の Cloud Run サービス `checkout` における直近 2 時間の ERROR ログを要約して」
-- **Monitoring** – 「HTTPS ロードバランサ `lb-frontend` の 95 パーセンタイル レイテンシを過去 1 日分表示して」
-- **Profiler** – 「サービス `payments-api` のバージョン `v1.4.0` と `v1.5.0` の CPU プロファイルを比較して」
-- **Spanner** – 「`orders` テーブルで注文数が多い上位 5 名の顧客を求める SQL を作成して」
-- **Trace** – 「スパン `CheckoutService/ProcessPayment` を含み 5 秒超のトレースを探して」
-
-## トラブルシューティング
-
-### 認証エラー
-
-- 認証情報が対象プロジェクトに対応しているか確認します。
-- 環境変数で秘密鍵を設定する場合は改行を正しくエスケープします。
-- `invalid_grant` や `malformed token` が出る場合はキーを再発行します。
-
-### 権限不足
-
-- 閲覧系操作にはビューア ロールを、Spanner など書き込みを行う操作には適切なロールを付与します。
-- `gcloud projects get-iam-policy` でロールの付与状況を迅速に確認できます。
-
-### タイムアウト・クォータ超過
-
-- 時間範囲やリソース フィルターを絞り込みます。
-- Monitoring では整列期間を短くしてレスポンス量を抑えます。
-- 429 が頻発する場合はバックオフを含むリトライ戦略が必要です。
-
-### データ欠損がある場合
-
-- 対象リソースでメトリックやトレースがエクスポートされているか確認します。
-- Profiler などサンプリング収集のサービスでは短時間ウィンドウだと結果がないことがあります。
+| Error Reporting | `gcp-error-reporting-list-groups` | 指定期間内のアクティブなエラーグループ。 |
+| Error Reporting | `gcp-error-reporting-get-group-details` | グループのスタックトレース/発生状況確認。 |
+| Error Reporting | `gcp-error-reporting-analyse-trends` | サービス/バージョン間のトレンド分析。 |
+| Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
+| Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
+| Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
+| Monitoring | `gcp-monitoring-query-metrics` | 集計付き MQL 実行。 |
+| Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
+| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語から MQL を生成。 |
+| Profiler | `gcp-profiler-list-profiles` | CPU/Heap/Wall-time プロファイル一覧。 |
+| Profiler | `gcp-profiler-analyse-performance` | ホットスポットの要約。 |
+| Profiler | `gcp-profiler-compare-trends` | リリース間の比較。 |
+| Spanner | `gcp-spanner-list-instances` | インスタンス一覧。 |
+| Spanner | `gcp-spanner-list-databases` | データベース一覧。 |
+| Spanner | `gcp-spanner-list-tables` | テーブルスキーマ表示。 |
+| Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行。 |
+| Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成。 |
+| Spanner | `gcp-spanner-query-count` | 行数を即座に集計。 |
+| Trace | `gcp-trace-list-traces` | 遅い/失敗トレースを一覧。 |
+| Trace | `gcp-trace-get-trace` | トレース全体を取得。 |
+| Trace | `gcp-trace-find-from-logs` | ログからトレースへピボット。 |
+| Trace | `gcp-trace-query-natural-language` | 会話的にトレースフィルターを構築。 |
+| Support | `gcp-support-list-cases` | 対象プロジェクトのケース一覧。 |
+| Support | `gcp-support-search-cases` | フリーテキスト検索。 |
+| Support | `gcp-support-get-case` | 単一ケース詳細。 |
+| Support | `gcp-support-create-case` / `update-case` / `close-case` | ケースライフサイクル管理。 |
+| Support | `gcp-support-list-comments` / `create-comment` | コメントの閲覧/投稿。 |
+| Support | `gcp-support-search-classifications` | ケース分類 (製品/コンポーネント) の検索。 |
 
 ## 付録
 
 ### 便利な gcloud コマンド
 
-- `gcloud auth application-default login` – ローカルの ADC 認証情報を初期化します。
-- `gcloud projects list` – 現在のアイデンティティでアクセス可能なプロジェクトを確認します。
-- `gcloud logging read` – MCP 外でフィルターを検証する際に活用できます。
+- `gcloud auth application-default login` – ADC を初期化。
+- `gcloud projects list` – 現在のアイデンティティでアクセス可能なプロジェクトを確認。
+- `gcloud logging read` – MCP 外でフィルターを検証したいときの補助。
 
-### 追加リソース
+### 参考リンク
 
 - [Google Cloud Error Reporting ドキュメント](https://cloud.google.com/error-reporting/docs)
 - [Cloud Logging クエリ言語リファレンス](https://cloud.google.com/logging/docs/view/logging-query-language)
-- [Cloud Monitoring メトリクス ガイド](https://cloud.google.com/monitoring)
-- [Cloud Profiler の概要](https://cloud.google.com/profiler)
+- [Cloud Monitoring ガイド](https://cloud.google.com/monitoring)
+- [Cloud Profiler Overview](https://cloud.google.com/profiler)
 - [Cloud Spanner SQL リファレンス](https://cloud.google.com/spanner/docs/reference/standard-sql)
 - [Cloud Trace ドキュメント](https://cloud.google.com/trace/docs)
+- [Cloud Support API リファレンス](https://cloud.google.com/support/docs/reference/rest)
