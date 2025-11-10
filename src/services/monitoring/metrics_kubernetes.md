@@ -3,7 +3,7 @@ This document lists the metrics available in Cloud Monitoring when Google Kubern
 
 *   For a general explanation of the entries in the tables, including information about values like `DELTA` and `GAUGE`, see [Metric types](https://cloud.google.com/monitoring/api/v3/kinds-and-types).
     
-    To chart or monitor metric types with values of type `STRING`, you must use Monitoring Query Language (MQL), and you must convert the value into a numeric value. For information about MQL string-conversion methods, see [`String`](about:/monitoring/mql/reference#string-group).
+    To chart or monitor metric types with values of type `STRING`, convert them into numeric-friendly signals at ingest time or expose the state as labels that PromQL can evaluate. Legacy MQL string-conversion functions are being retired, so avoid adding new dependencies on [`String`](about:/monitoring/mql/reference#string-group).
     
 *   For information about the units used in the metric lists, see the [`unit` field](about:/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor.FIELDS.unit) in the `MetricDescriptor` reference.
     

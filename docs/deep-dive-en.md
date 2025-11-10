@@ -205,19 +205,20 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 
 ### Monitoring
 
-Monitoring tools query Cloud Monitoring metrics, making it easy to fetch CPU, memory, or custom metrics without memorising MQL.
+Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, or custom signals while migrating dashboards and alerts to PromQL.
 
 **Key tools**
 
-- `gcp-monitoring-query-metrics` – Executes parameterised MQL expressions.
+- `gcp-monitoring-query-metrics` – Executes Cloud Monitoring metric filters and returns label/value pairs ready to port into PromQL.
 - `gcp-monitoring-list-metric-types` – Discovers metric type URIs for services such as Compute Engine or Cloud Run.
-- `gcp-monitoring-query-natural-language` – Converts plain-language prompts into MQL before execution.
+- `gcp-monitoring-query-natural-language` – Converts plain-language prompts into metric filters you can refine into PromQL selectors.
 
 **Operational tips**
 
 - Use `list-metric-types` before natural-language queries to confirm metric availability.
 - Provide alignment windows (e.g., 5m, 1h) to match dashboard expectations.
 - Request aggregations (`mean`, `max`, `percentile`) to reduce result volume.
+- When you need full PromQL expressions, pair these discovery tools with Managed Service for Prometheus or the `projects.timeSeries.query` API.
 
 ### Profiler
 
@@ -454,9 +455,9 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
-| Monitoring | `gcp-monitoring-query-metrics` | Run MQL queries with aggregation hints. |
+| Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
-| Monitoring | `gcp-monitoring-query-natural-language` | Translate natural language into MQL. |
+| Monitoring | `gcp-monitoring-query-natural-language` | Translate natural language into metric filters for PromQL-ready selectors. |
 | Profiler | `gcp-profiler-list-profiles` | Locate CPU, heap, or wall-time profiles. |
 | Profiler | `gcp-profiler-analyse-performance` | Summarise profiler hotspots. |
 | Profiler | `gcp-profiler-compare-trends` | Compare profile sets across releases. |
