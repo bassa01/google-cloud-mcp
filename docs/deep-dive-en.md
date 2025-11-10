@@ -422,6 +422,7 @@ Testing tips:
 | `DEBUG` | Enable verbose logging when set to `true`. |
 | `LAZY_AUTH` | `true` (default) delays auth initialisation until the first request. Set to `false` to fail fast. |
 | `MCP_SERVER_PORT` | Custom port when self-hosting behind a proxy or container. |
+| `MCP_ENABLED_SERVICES` | Comma-separated whitelist of Google Cloud services to register (e.g., `spanner,trace`). Defaults to all services when unset or when set to `all` / `*`. |
 
 ### Client configuration snippet
 

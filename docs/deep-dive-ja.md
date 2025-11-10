@@ -421,6 +421,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | `DEBUG` | `true` で詳細ログを有効化。 |
 | `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
 | `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
+| `MCP_ENABLED_SERVICES` | 有効化したいサービスをカンマ区切りで指定（例: `spanner,trace`）。未設定や `all` / `*` の場合は全サービス。 |
 
 ### クライアント設定例
 
