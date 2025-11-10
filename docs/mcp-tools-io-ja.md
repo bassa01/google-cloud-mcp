@@ -389,6 +389,48 @@ Showing 2 of 6 time series.
 ]
 ```
 
+### gcp-spanner-query-plan（リソース） — EXPLAIN / EXPLAIN ANALYZE を確認
+| パラメータ | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| projectId | string | いいえ | 現在のプロジェクト | URI パス `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan` の一部。 |
+| instanceId | string | いいえ | env/state | 省略時は `SPANNER_INSTANCE` や state manager から補完。 |
+| databaseId | string | いいえ | env/state | 省略時は `SPANNER_DATABASE` や state manager から補完。 |
+| sql | string (query param) | はい | URL エンコード必須 | EXPLAIN / EXPLAIN ANALYZE で評価する SELECT 文。DML/DDL はブロック。 |
+| mode | enum[`explain`,`analyze`] | いいえ | `explain` | EXPLAIN (プランのみ) と EXPLAIN ANALYZE (実行あり) を切り替え。 |
+| analyze | string/bool (query param) | いいえ | false | `mode` の代替。`?analyze=1` のように指定可能。 |
+
+MCP では `read_resource` で呼び出します:
+```jsonc
+{
+  "type": "read_resource",
+  "uri": "gcp-spanner://my-sre-prod/main-instance/ledger/query-plan?sql=SELECT+user_id%2C+status+FROM+accounts&mode=analyze"
+}
+```
+
+**戻り値例**
+```text
+# Spanner Query Plan
+Project: my-sre-prod
+Instance: main-instance
+Database: ledger
+Mode: EXPLAIN ANALYZE
+
+Original SQL:
+SELECT user_id, status FROM accounts LIMIT 25
+
+_EXPLAIN ANALYZE で実行し、タイミング情報を取得しています。_
+
+## Plan Insights
+- 現在のプランとスキーマでは分散 JOIN やインデックス不足は確認されませんでした。
+参照テーブル: accounts
+
+## Plan Nodes
+| ID | Type | Rows | Executions | Description |
+|----|------|------|------------|-------------|
+| 1 | Distributed Union | 1200 | 1 | ...
+```
+
+
 ## Monitoring
 
 ### gcp-monitoring-query-metrics — 任意フィルタでメトリクス取得
@@ -1454,3 +1496,50 @@ Current project ID: `my-sre-prod`
 - `my-sre-prod` (current)
 - `analytics-playground`
 ```
+
+## リソースリファレンス
+
+MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-utils-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
+
+### ロギング リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-logging-recent-logs` | `gcp-logs://{projectId}/recent` | `projectId` は省略可。 | `LOG_FILTER` (設定されていれば) を使って最新 50 件のログを要約し、マスク情報を付与。 |
+| `gcp-logging-filtered-logs` | `gcp-logs://{projectId}/filter/{filter}` | `filter` は URL エンコードした Cloud Logging フィルタ。 | 条件に合致した最大 50 件をシビアリティ／リソース情報付きで返却。 |
+
+### Monitoring リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-monitoring-recent-metrics` | `gcp-monitoring://{projectId}/recent` | `MONITORING_FILTER` がなければ CPU メトリクスを使用。 | 直近 1 時間の時系列データを `buildStructuredTextBlock` 形式で要約。 |
+| `gcp-monitoring-filtered-metrics` | `gcp-monitoring://{projectId}/filter/{filter}` | `filter` は URL エンコード済み。取得範囲は常に直近 1 時間。 | 指定フィルタの時系列を同じ構造化フォーマットで返却。 |
+
+### Spanner リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | インスタンス／DB を指定、または既定値に依存。 | テーブル・カラム・インデックス・外部キーまで含む Markdown スキーマ。 |
+| `gcp-spanner-table-preview` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables/{tableName}/preview` | `tableName` は `[A-Za-z][A-Za-z0-9_]*`。件数は `SPANNER_ROW_PREVIEW_LIMIT` に従う。 | プレビュー行と省略メモを含むテーブルダンプ。 |
+| `gcp-spanner-database-tables` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables` | ↑と同じ。 | テーブル名とカラム数の一覧、さらに schema/preview へのリンクが付く。 |
+| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain\|analyze` | `sql` クエリパラメータ必須。`mode=analyze` もしくは `analyze=1` で EXPLAIN ANALYZE。 | 実行/非実行の注記つきでプラン表と分散 JOIN・インデックスの指摘を返却。 |
+| `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | 既定のインスタンス／DB を使用。 | `buildQueryStatsJson` が生成するレイテンシ・オプティマイザ情報などの JSON。 |
+
+### Trace リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` は 16 進文字列。 | 階層化されたスパン構造を Markdown で表示。 |
+| `gcp-trace-related-logs` | `gcp-trace://{projectId}/traces/{traceId}/logs` | `traceId` でログを突き合わせ。 | トレース ID を含む最大 50 件のログとリソース／ラベル情報。 |
+| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO\|1h\|6h\|30m>` | `startTime` は ISO 形式または `1h`,`2d` などの相対表記。 | 指定期間内でエラーになったトレースの表を表示し、各行にリンクを付与。 |
+
+### Error Reporting リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-error-reporting-recent-errors` | `gcp-error-reporting://{projectId}/recent` | 直近 1 時間を解析。 | 優勢なエラーグループの要約と推奨アクションを Markdown で返却。 |
+| `gcp-error-reporting-error-analysis` | `gcp-error-reporting://{projectId}/analysis/{timeRange}` | `timeRange` は `1h`,`6h`,`24h`,`7d`,`30d` など。既定は `1h`。 | 指定期間のエラー統計とリメディエーション提案。 |
+| `gcp-error-reporting-service-errors` | `gcp-error-reporting://{projectId}/service/{serviceName}` | `serviceName` で `serviceFilter.service` を指定。 | 過去 24 時間のサービス単位エラーダイジェスト。 |
+
+### Profiler リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-profiler-all-profiles` | `gcp-profiler://{projectId}/profiles` | Cloud Profiler API への認証が必要。最大 100 件。 | 収集済みプロファイルの Markdown ダイジェストと個別サマリ。 |
+| `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | 同上。 | CPU プロファイルのみを抽出し、ホットスポット分析と改善提案を記載。 |
+| `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | HEAP / HEAP_ALLOC / PEAK_HEAP に限定。 | メモリ使用状況とリーク検知のためのインサイトを提供。 |
+| `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | 最大 200 件のプロファイルを収集。 | 直近のプロファイルから導いた短期・中期・長期のパフォーマンス施策。 |

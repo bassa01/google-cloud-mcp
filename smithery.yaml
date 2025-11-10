@@ -44,6 +44,10 @@ startCommand:
           - type: string
             description: "Path to Google Cloud service account key file (JSON) - direct string format"
         description: "Google Cloud service account credentials (optional)"
+      standalone:
+        type: boolean
+        description: "Run the MCP server in standalone mode so it exits after each client session"
+        default: false
     additionalProperties: false
   commandFunction:
     # A function that produces the CLI command to start the MCP on stdio
@@ -64,6 +68,10 @@ startCommand:
       // Set authentication mode (lazy loading)
       if (config.lazyAuth !== false) { // Default to true if not specified
         env.LAZY_AUTH = "true";
+      }
+
+      if (config.standalone) {
+        env.MCP_SERVER_MODE = "standalone";
       }
       
       // Add Google Cloud credentials if provided
