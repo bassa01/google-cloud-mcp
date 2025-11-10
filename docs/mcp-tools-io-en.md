@@ -1191,7 +1191,7 @@ MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted 
 | `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | Provide instance/database or rely on env/state defaults. | Markdown schema with tables, columns, indexes, and foreign keys for SQL generation. |
 | `gcp-spanner-table-preview` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables/{tableName}/preview` | `tableName` must match `[A-Za-z][A-Za-z0-9_]*`; preview row limit governed by `SPANNER_ROW_PREVIEW_LIMIT`. | Tabular preview (up to limit) plus notes when zero rows or truncation occurs. |
 | `gcp-spanner-database-tables` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables` | Same defaults as above. | Markdown table of table names + column counts plus quick links to schema/preview URIs. |
-| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain|analyze` | `sql` query parameter required; use `mode=analyze` or `analyze=1` for EXPLAIN ANALYZE. | Returns plan markdown, distributed-join/index insights, and notes about whether the query was executed. |
+| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain\|analyze` | `sql` query parameter required; use `mode=analyze` or `analyze=1` for EXPLAIN ANALYZE. | Returns plan markdown, distributed-join/index insights, and notes about whether the query was executed. |
 | `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | Inherits instance/database defaults. | Raw JSON from `buildQueryStatsJson` summarising latencies, optimizer versions, and top queries. |
 
 ### Trace Resources
@@ -1199,7 +1199,7 @@ MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted 
 | --- | --- | --- | --- |
 | `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` must be hex. | Hierarchical span breakdown rendered as markdown with timing metadata. |
 | `gcp-trace-related-logs` | `gcp-trace://{projectId}/traces/{traceId}/logs` | `traceId` hex; reuses Logging API to expand related entries. | Up to 50 log entries that reference the trace ID, including resource/label breakdowns. |
-| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO|1h|6h|30m>` | Optional `startTime` query accepts ISO timestamp or relative tokens (`1h`, `2d`, etc.). | Table of non-zero status traces between `startTime` and now with duration, error message, and deep links. |
+| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO\|1h\|6h\|30m>` | Optional `startTime` query accepts ISO timestamp or relative tokens (`1h`, `2d`, etc.). | Table of non-zero status traces between `startTime` and now with duration, error message, and deep links. |
 
 ### Error Reporting Resources
 | Resource | URI template | Parameters | Response |

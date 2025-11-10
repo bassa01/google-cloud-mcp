@@ -1192,7 +1192,7 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | インスタンス／DB を指定、または既定値に依存。 | テーブル・カラム・インデックス・外部キーまで含む Markdown スキーマ。 |
 | `gcp-spanner-table-preview` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables/{tableName}/preview` | `tableName` は `[A-Za-z][A-Za-z0-9_]*`。件数は `SPANNER_ROW_PREVIEW_LIMIT` に従う。 | プレビュー行と省略メモを含むテーブルダンプ。 |
 | `gcp-spanner-database-tables` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables` | ↑と同じ。 | テーブル名とカラム数の一覧、さらに schema/preview へのリンクが付く。 |
-| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain|analyze` | `sql` クエリパラメータ必須。`mode=analyze` もしくは `analyze=1` で EXPLAIN ANALYZE。 | 実行/非実行の注記つきでプラン表と分散 JOIN・インデックスの指摘を返却。 |
+| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain\|analyze` | `sql` クエリパラメータ必須。`mode=analyze` もしくは `analyze=1` で EXPLAIN ANALYZE。 | 実行/非実行の注記つきでプラン表と分散 JOIN・インデックスの指摘を返却。 |
 | `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | 既定のインスタンス／DB を使用。 | `buildQueryStatsJson` が生成するレイテンシ・オプティマイザ情報などの JSON。 |
 
 ### Trace リソース
@@ -1200,7 +1200,7 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | --- | --- | --- | --- |
 | `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` は 16 進文字列。 | 階層化されたスパン構造を Markdown で表示。 |
 | `gcp-trace-related-logs` | `gcp-trace://{projectId}/traces/{traceId}/logs` | `traceId` でログを突き合わせ。 | トレース ID を含む最大 50 件のログとリソース／ラベル情報。 |
-| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO|1h|6h|30m>` | `startTime` は ISO 形式または `1h`,`2d` などの相対表記。 | 指定期間内でエラーになったトレースの表を表示し、各行にリンクを付与。 |
+| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO\|1h\|6h\|30m>` | `startTime` は ISO 形式または `1h`,`2d` などの相対表記。 | 指定期間内でエラーになったトレースの表を表示し、各行にリンクを付与。 |
 
 ### Error Reporting リソース
 | リソース | URI テンプレート | パラメータ | レスポンス |
