@@ -4,7 +4,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getProjectId } from "../../utils/auth.js";
-import { getLoggingClient, LogEntry } from "./types.js";
+import { getLoggingClient, LogEntryLike } from "./types.js";
 import {
   canViewFullLogPayloads,
   buildRedactionNotice,
@@ -69,7 +69,7 @@ export function registerLoggingTools(server: McpServer): void {
             filter,
             limit,
           },
-          entries: (entries as unknown as LogEntry[]) ?? [],
+          entries: (entries as LogEntryLike[]) ?? [],
           allowFullPayload,
           footnote: redactionNotice,
         });
@@ -170,7 +170,7 @@ Please check your filter syntax and try again. For filter syntax help, see: http
             filter: filter || "none",
             limit,
           },
-          entries: (entries as unknown as LogEntry[]) ?? [],
+          entries: (entries as LogEntryLike[]) ?? [],
           allowFullPayload,
           footnote: redactionNotice,
         });
@@ -364,7 +364,7 @@ Please check your time range format and try again. Valid formats include:
             resource: resource || "all",
             limit,
           },
-          entries: (entries as unknown as LogEntry[]) ?? [],
+          entries: (entries as LogEntryLike[]) ?? [],
           allowFullPayload,
           footnote: redactionNotice,
         });
