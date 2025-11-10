@@ -193,6 +193,52 @@ describe('Support Tools', () => {
     );
   });
 
+  it('supports organization scoped case names', async () => {
+    const { registerSupportTools } = await import('../../../../src/services/support/tools.js');
+    registerSupportTools(mockServer as any);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          comments: [
+            {
+              name: 'organizations/123456789/cases/abc/comments/1',
+              body: 'Org comment',
+              createTime: '2024-01-01T00:00:00Z',
+              creator: { displayName: 'Support Engineer' },
+            },
+          ],
+        })
+      ),
+      headers: new Headers(),
+    });
+
+    const toolCall = mockServer.registerTool.mock.calls.find(
+      call => call[0] === 'gcp-support-list-comments'
+    );
+
+    expect(toolCall).toBeDefined();
+
+    const handler = toolCall![2];
+    const result = await handler({
+      name: 'organizations/123456789/cases/abc',
+      pageSize: 5,
+    });
+
+    expect(result.content[0].text).toContain('organizations/123456789/cases/abc');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'https://cloudsupport.googleapis.com/v2/organizations/123456789/cases/abc/comments'
+      ),
+      expect.objectContaining({
+        method: 'GET',
+      })
+    );
+  });
+
   it('handles support API errors gracefully', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network failure'));
 

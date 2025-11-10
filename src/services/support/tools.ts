@@ -23,7 +23,7 @@ import {
 import { supportApiClient } from "./client.js";
 
 const PARENT_PATTERN = /^(projects|organizations)\/[^/]+$/;
-const CASE_NAME_PATTERN = /^projects\/[^/]+\/cases\/[^/]+$/;
+const CASE_NAME_PATTERN = /^(projects|organizations)\/[^/]+\/cases\/[^/]+$/;
 
 function handleSupportError(context: string, error: unknown) {
   const message =
@@ -57,7 +57,7 @@ function validateParent(parent: string) {
 function validateCaseName(name: string) {
   if (!CASE_NAME_PATTERN.test(name)) {
     throw new GcpMcpError(
-      "Case name must match projects/{projectId}/cases/{caseId}.",
+      "Case name must match projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
       "INVALID_ARGUMENT",
       400,
     );
@@ -244,7 +244,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
       },
     },
     async ({ name }) => {
@@ -376,7 +378,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
         displayName: z.string().optional(),
         description: z.string().optional(),
         classificationId: z.string().optional(),
@@ -466,7 +470,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
         justification: z
           .string()
           .optional()
@@ -514,7 +520,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
         pageSize: z.number().min(1).max(100).default(20).describe("Maximum number of comments to return."),
         pageToken: z.string().optional().describe("Token for pagination."),
       },
@@ -563,7 +571,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
         body: z.string().min(1).describe("Comment body."),
       },
     },
@@ -605,7 +615,9 @@ export function registerSupportTools(server: McpServer): void {
       inputSchema: {
         name: z
           .string()
-          .describe("Case resource name, e.g. projects/{projectId}/cases/{caseId}."),
+          .describe(
+            "Case resource name, e.g. projects/{projectId}/cases/{caseId} or organizations/{organizationId}/cases/{caseId}.",
+          ),
         pageSize: z.number().min(1).max(100).default(20),
         pageToken: z.string().optional(),
       },
