@@ -25,6 +25,21 @@ Supported Google Cloud services:
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
 
+### Selecting active services
+
+Set the optional `MCP_ENABLED_SERVICES` environment variable to a comma-separated
+list (e.g. `spanner,trace`) to load only the services you need. When unset or
+set to `all`/`*`, the server registers every Google Cloud integration. Unknown
+entries are ignored with a startup warning, and common aliases such as
+`metrics`→Monitoring or `errors`→Error Reporting are supported for convenience.
+
+```json
+"env": {
+  "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/key.json",
+  "MCP_ENABLED_SERVICES": "spanner,trace"
+}
+```
+
 ### Error Reporting
 
 Monitor and analyse application errors with automated investigation and remediation suggestions:
