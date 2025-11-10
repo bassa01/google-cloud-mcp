@@ -175,13 +175,13 @@ The Google Cloud MCP server exposes Google Cloud Platform (GCP) operations throu
 
 The Error Reporting tools surface error group metadata and trend analysis from Cloud Error Reporting. They are ideal for triaging production exceptions across multiple services.
 
-**Key tools**
+#### Key tools
 
 - `gcp-error-reporting-list-groups` – Lists error groups with filtering by time range and service context.
 - `gcp-error-reporting-get-group-details` – Returns stack traces, occurrences, and affected services for a specific group.
 - `gcp-error-reporting-analyse-trends` – Summarises frequency changes to flag regressions or emerging issues.
 
-**Example workflow**
+#### Example workflow
 
 1. Filter groups for the affected project and service.
 2. Retrieve group details to inspect stack traces.
@@ -191,13 +191,13 @@ The Error Reporting tools surface error group metadata and trend analysis from C
 
 Logging tools query Cloud Logging with flexible filters, consistent pagination, and summarised results to make log hunting conversational.
 
-**Key tools**
+#### Key tools
 
 - `gcp-logging-query-logs` – Runs advanced LogQL-style filters with severity and resource constraints.
 - `gcp-logging-query-time-range` – Convenience helper focused on time-bounded searches.
 - `gcp-logging-search-comprehensive` – Performs multi-field searches to uncover related events.
 
-**Operational tips**
+#### Operational tips
 
 - Keep queries bounded to avoid quota issues.
 - Combine severity filters with resource types to narrow noisy workloads.
@@ -224,13 +224,13 @@ Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, 
 
 Profiler helpers analyse Cloud Profiler data so you can identify CPU, heap, or wall-time hot spots.
 
-**Key tools**
+#### Key tools
 
 - `gcp-profiler-list-profiles` – Lists profiles by type, deployment target, and date window.
 - `gcp-profiler-analyse-performance` – Highlights dominant call stacks and performance regressions.
 - `gcp-profiler-compare-trends` – Contrasts two profile sets to show improvements or regressions.
 
-**Operational tips**
+#### Operational tips
 
 - Start with smaller date windows to avoid processing large profile collections.
 - Use comparisons when validating new releases or configuration changes.
@@ -239,13 +239,13 @@ Profiler helpers analyse Cloud Profiler data so you can identify CPU, heap, or w
 
 Spanner tools assist with schema discovery and SQL execution across distributed databases.
 
-**Key tools**
+#### Key tools
 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs raw SQL queries safely through parameter binding.
 - `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build summary queries for conversational insights.
 
-**Operational tips**
+#### Operational tips
 
 - Always scope to production vs. staging instances to avoid cross-environment confusion.
 - Use natural-language helpers to draft queries, then refine them manually when needed.
@@ -254,14 +254,14 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 
 Trace utilities focus on distributed tracing diagnostics, correlating with logging where possible.
 
-**Key tools**
+#### Key tools
 
 - `gcp-trace-list-traces` – Lists traces by latency, span count, or time range.
 - `gcp-trace-get-trace` – Retrieves full trace timelines for root-cause analysis.
 - `gcp-trace-find-from-logs` – Cross-references log entries to locate related traces.
 - `gcp-trace-query-natural-language` – Generates advanced filters from descriptive prompts.
 
-**Operational tips**
+#### Operational tips
 
 - Pair `find-from-logs` with Logging queries to pivot quickly between traces and logs.
 - Focus on latency percentiles (95th/99th) to track performance regressions.
@@ -270,7 +270,7 @@ Trace utilities focus on distributed tracing diagnostics, correlating with loggi
 
 Support tools integrate with the Cloud Support API so agents can triage customer cases without leaving the MCP workflow.
 
-**Key tools**
+#### Key tools
 
 - `gcp-support-list-cases` / `gcp-support-search-cases` – Enumerate or query cases for a project/organisation.
 - `gcp-support-get-case` – Fetch full metadata, classifications, and SLA details for a single case.
@@ -278,7 +278,7 @@ Support tools integrate with the Cloud Support API so agents can triage customer
 - `gcp-support-list-comments`, `gcp-support-create-comment`, `gcp-support-list-attachments` – Collaborate directly from the MCP client.
 - `gcp-support-search-classifications` – Discover the correct product & component taxonomy before filing a case.
 
-**Operational tips**
+#### Operational tips
 
 - Use the `parent` argument (`projects/<id>` or `organizations/<id>`) to scope results; defaults to the active project.
 - The billing project must align with the Support entitlement—`tools.ts` resolves it automatically, but keep credentials consistent.
