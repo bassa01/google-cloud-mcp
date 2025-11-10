@@ -2,6 +2,8 @@
 
 A Model Context Protocol server that connects to Google Cloud services to provide context and tools for interacting with your Google Cloud resources.
 
+This codebase is actively maintained as a fork of [krzko/google-cloud-mcp](https://github.com/krzko/google-cloud-mcp), and we’re grateful to Kris Kozak and contributors for laying the groundwork that powers this project.
+
 <a href="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp/badge" alt="Google Cloud Server MCP server" />
 </a>
