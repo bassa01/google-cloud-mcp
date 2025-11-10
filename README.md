@@ -223,7 +223,7 @@ npx -y @modelcontextprotocol/inspector node dist/index.js
 
 ### Standalone invocation
 
-Set `MCP_SERVER_MODE=standalone` (or legacy flag `MCP_STANDALONE=true`) to boot the MCP server on demand and exit as soon as the client disconnects. This skips the keep-alive heartbeat and is ideal for Smithery or other launch-per-request hosts.
+Set `MCP_SERVER_MODE=standalone` to boot the MCP server on demand and exit as soon as the client disconnects. This skips the keep-alive heartbeat and is ideal for Smithery or other launch-per-request hosts.
 
 ```bash
 MCP_SERVER_MODE=standalone pnpm start

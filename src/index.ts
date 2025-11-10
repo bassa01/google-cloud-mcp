@@ -124,13 +124,6 @@ async function main(): Promise<void> {
   try {
     logger.info("Starting Google Cloud MCP server...");
 
-    const normalizeBooleanEnv = (value: string | undefined): boolean => {
-      if (!value) {
-        return false;
-      }
-      return ["1", "true", "yes", "on"].includes(value.toLowerCase());
-    };
-
     const serverModeEnv = process.env.MCP_SERVER_MODE?.toLowerCase();
     let serverMode: ServerMode = "daemon";
 
@@ -142,8 +135,6 @@ async function main(): Promise<void> {
           `Unknown MCP_SERVER_MODE value: ${process.env.MCP_SERVER_MODE}. Falling back to daemon mode`,
         );
       }
-    } else if (normalizeBooleanEnv(process.env.MCP_STANDALONE)) {
-      serverMode = "standalone";
     }
 
     const isStandaloneMode = serverMode === "standalone";
