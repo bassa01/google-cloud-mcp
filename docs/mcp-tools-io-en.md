@@ -1126,3 +1126,50 @@ Current project ID: `my-sre-prod`
 - `my-sre-prod` (current)
 - `analytics-playground`
 ```
+
+## Resource Reference
+
+MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted otherwise, placeholders such as `{projectId}`, `{instanceId}`, or `{databaseId}` can be omitted to fall back to the defaults established via `gcp-utils-set-project-id` or Google Cloud authentication context.
+
+### Logging Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-logging-recent-logs` | `gcp-logs://{projectId}/recent` | `projectId` optional; defaults to active project. | Returns the latest 50 log entries using `LOG_FILTER` (if set) plus a redaction notice and metadata summary. |
+| `gcp-logging-filtered-logs` | `gcp-logs://{projectId}/filter/{filter}` | `filter` path segment must be URL-encoded Cloud Logging filter; `projectId` optional. | Lists up to 50 entries that match the filter with severity/resource metadata and truncation notes. |
+
+### Monitoring Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-monitoring-recent-metrics` | `gcp-monitoring://{projectId}/recent` | Uses `MONITORING_FILTER` env var or CPU metric if unset. | Shows one hour of time series data, summarised via `buildStructuredTextBlock` with omitted-series counts. |
+| `gcp-monitoring-filtered-metrics` | `gcp-monitoring://{projectId}/filter/{filter}` | `filter` path segment URL-encoded; window fixed to last hour. | Returns the same structured time series view scoped to the supplied Monitoring filter. |
+
+### Spanner Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | Provide instance/database or rely on env/state defaults. | Markdown schema with tables, columns, indexes, and foreign keys for SQL generation. |
+| `gcp-spanner-table-preview` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables/{tableName}/preview` | `tableName` must match `[A-Za-z][A-Za-z0-9_]*`; preview row limit governed by `SPANNER_ROW_PREVIEW_LIMIT`. | Tabular preview (up to limit) plus notes when zero rows or truncation occurs. |
+| `gcp-spanner-database-tables` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables` | Same defaults as above. | Markdown table of table names + column counts plus quick links to schema/preview URIs. |
+| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain|analyze` | `sql` query parameter required; use `mode=analyze` or `analyze=1` for EXPLAIN ANALYZE. | Returns plan markdown, distributed-join/index insights, and notes about whether the query was executed. |
+| `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | Inherits instance/database defaults. | Raw JSON from `buildQueryStatsJson` summarising latencies, optimizer versions, and top queries. |
+
+### Trace Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` must be hex. | Hierarchical span breakdown rendered as markdown with timing metadata. |
+| `gcp-trace-related-logs` | `gcp-trace://{projectId}/traces/{traceId}/logs` | `traceId` hex; reuses Logging API to expand related entries. | Up to 50 log entries that reference the trace ID, including resource/label breakdowns. |
+| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO|1h|6h|30m>` | Optional `startTime` query accepts ISO timestamp or relative tokens (`1h`, `2d`, etc.). | Table of non-zero status traces between `startTime` and now with duration, error message, and deep links. |
+
+### Error Reporting Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-error-reporting-recent-errors` | `gcp-error-reporting://{projectId}/recent` | Analyses last hour of data. | Markdown summary of dominant error groups plus remediation suggestions. |
+| `gcp-error-reporting-error-analysis` | `gcp-error-reporting://{projectId}/analysis/{timeRange}` | `timeRange` accepts `1h`, `6h`, `24h`, `7d`, or `30d`; defaults to `1h`. | Same analysis pipeline over the selected window with group counts and recommendations. |
+| `gcp-error-reporting-service-errors` | `gcp-error-reporting://{projectId}/service/{serviceName}` | `serviceName` path segment filters `serviceFilter.service`. | 24-hour service-scoped error digestion with trend and remediation text. |
+
+### Profiler Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-profiler-all-profiles` | `gcp-profiler://{projectId}/profiles` | Requires Cloud Profiler API + auth; fetches up to 100 profiles. | Markdown digest of collected profiles, skipped counts, and per-profile summaries. |
+| `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | Same auth requirements. | CPU-only subset with hotspot analysis and optimisation recommendations. |
+| `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | Filters to HEAP / HEAP_ALLOC / PEAK_HEAP types. | Memory-distribution analysis plus leak/memory-management guidance. |
+| `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | Fetches up to 200 profiles for broader insights. | Comprehensive performance plan (immediate/medium/long-term) derived from recent profiles. |
