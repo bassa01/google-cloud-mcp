@@ -8,6 +8,10 @@ import { GcpMcpError } from "../../utils/error.js";
 import { formatTimeSeriesData, getMonitoringClient } from "./types.js";
 import { parseRelativeTime } from "../../utils/time.js";
 import { metricsLookup } from "./metrics_lookup.js";
+import {
+  buildStructuredTextBlock,
+  createTextPreview,
+} from "../../utils/output.js";
 
 /**
  * Registers Google Cloud Monitoring tools with the MCP server
@@ -117,12 +121,28 @@ export async function registerMonitoringTools(
         }
 
         const formattedData = formatTimeSeriesData(timeSeries);
+        const note =
+          formattedData.omittedSeries > 0
+            ? `Showing ${formattedData.series.length} of ${formattedData.totalSeries} series.`
+            : undefined;
+        const text = buildStructuredTextBlock({
+          title: "Metric Query Results",
+          metadata: {
+            projectId,
+            filter,
+            timeRange: `${start.toISOString()} -> ${end.toISOString()}`,
+            alignment: alignmentPeriod,
+          },
+          dataLabel: "series",
+          data: formattedData.series,
+          note,
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: `# Metric Query Results\n\nProject: ${projectId}\nFilter: ${filter}\nTime Range: ${start.toISOString()} to ${end.toISOString()}\n${alignmentPeriod ? `\nAlignment: ${alignmentPeriod}` : ""}\n\n${formattedData}`,
+              text,
             },
           ],
         };
@@ -248,32 +268,59 @@ export async function registerMonitoringTools(
           };
         }
 
-        let markdown = `# Available Metric Types\n\nProject: ${projectId}\n${filter ? `\nSearch term: "${filter}"` : ""}\n${useClientSideFiltering ? `\n*Note: Filtering was performed client-side by searching for "${filter}" in metric type, display name, and description.*` : ""}\n\nFound ${filteredDescriptors.length} metric types${metricDescriptors.length !== filteredDescriptors.length ? ` (filtered from ${metricDescriptors.length} total)` : ""}.\n\n`;
+        const limitedDescriptors = filteredDescriptors.slice(0, 50).map(
+          (descriptor: any) => {
+            const { text, truncated } = descriptor.description
+              ? createTextPreview(descriptor.description, 280)
+              : { text: undefined, truncated: false };
 
-        // Table header
-        markdown +=
-          "| Metric Type | Display Name | Kind | Value Type | Description |\n";
-        markdown +=
-          "|-------------|--------------|------|------------|-------------|\n";
+            return {
+              type: descriptor.type,
+              displayName: descriptor.displayName,
+              metricKind: descriptor.metricKind,
+              valueType: descriptor.valueType,
+              unit: descriptor.unit,
+              labels: descriptor.labels?.map((label: any) => ({
+                key: label.key,
+                description: label.description,
+              })),
+              description: text,
+              descriptionTruncated: truncated || undefined,
+            };
+          },
+        );
 
-        // Table rows - limit to first 50 to avoid excessive output
-        const limitedDescriptors = filteredDescriptors.slice(0, 50);
-        for (const descriptor of limitedDescriptors) {
-          const description = (descriptor.description || "")
-            .replace(/\n/g, " ")
-            .substring(0, 100);
-          markdown += `| ${descriptor.type || ""} | ${descriptor.displayName || ""} | ${descriptor.metricKind || ""} | ${descriptor.valueType || ""} | ${description} |\n`;
-        }
-
+        const noteParts: string[] = [];
         if (filteredDescriptors.length > 50) {
-          markdown += `\n*Note: Showing first 50 of ${filteredDescriptors.length} metric types. Use a more specific search term to narrow down results.*`;
+          noteParts.push(
+            `Showing first 50 of ${filteredDescriptors.length} metric types. Use a narrower filter for more targeted results.`,
+          );
         }
+        if (useClientSideFiltering && filter) {
+          noteParts.push(
+            `Filtering was performed client-side by searching for "${filter}" within type, display name, and description.`,
+          );
+        }
+        const note = noteParts.length ? noteParts.join(" ") : undefined;
+
+        const text = buildStructuredTextBlock({
+          title: "Available Metric Types",
+          metadata: {
+            projectId,
+            filter: filter || "None",
+            returned: limitedDescriptors.length,
+            totalMatched: filteredDescriptors.length,
+          },
+          dataLabel: "descriptors",
+          data: limitedDescriptors,
+          note,
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };
@@ -425,12 +472,31 @@ export async function registerMonitoringTools(
         }
 
         const formattedData = formatTimeSeriesData(timeSeries);
+        const note =
+          formattedData.omittedSeries > 0
+            ? `Showing ${formattedData.series.length} of ${formattedData.totalSeries} series.`
+            : undefined;
+        const text = buildStructuredTextBlock({
+          title: "Natural Language Query Results",
+          metadata: {
+            projectId,
+            generatedFilter: suggestedFilter,
+            timeRange: `${start.toISOString()} -> ${end.toISOString()}`,
+            alignment: alignmentPeriod,
+          },
+          dataLabel: "result",
+          data: {
+            query,
+            series: formattedData.series,
+          },
+          note,
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: `# Natural Language Query Results\n\nProject: ${projectId}\nQuery: ${query}\nGenerated Filter: ${suggestedFilter}\nTime Range: ${start.toISOString()} to ${end.toISOString()}${alignmentPeriod ? `\nAlignment: ${alignmentPeriod}` : ""}\n\n${formattedData}`,
+              text,
             },
           ],
         };

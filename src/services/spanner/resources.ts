@@ -444,7 +444,9 @@ export function registerSpannerResources(server: McpServer): void {
             databaseId: config.databaseId,
           });
         } finally {
-          await databaseHandle.close();
+          if (typeof databaseHandle.close === "function") {
+            await databaseHandle.close();
+          }
         }
 
         return {

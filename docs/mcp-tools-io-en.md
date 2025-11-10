@@ -18,7 +18,8 @@ Tools are invoked over MCP using the payload below:
 ### Common Response Pattern
 - Every tool returns one or more `text` entries inside `content`.
 - On failure, responses may include `isError: true` and a short explanation.
-- Markdown tables/headings are passed through verbatim—render them in the client as needed.
+- Responses now follow a “summary line + JSON block” layout: the summary line lists key metadata (e.g., `projectId=... | filter=... | omitted=...`) and truncation notes, and the JSON block carries the structured payload that MCP clients feed into `structuredContent`.
+- When sensitive fields are redacted, the summary ends with `_Redacted …_` to make the masking reason explicit.
 
 ### Notation
 | Column | Meaning |
@@ -50,14 +51,30 @@ Tools are invoked over MCP using the payload below:
 
 **Response example**
 ```text
-# Log Query Results
-Project: my-sre-prod
-Filter: resource.type="cloud_run_revision" severity>=ERROR
-Entries: 3
+Log Query Results
+projectId=my-sre-prod | filter=resource.type="cloud_run_revision" severity>=ERROR | limit=20
+Showing 3 of 50 entries. _Redacted fields: IP addresses, user identifiers, request bodies. Full payloads are limited to roles: security_admin, compliance_admin, site_reliability_admin._
+```
 
-## 2025-03-01T04:15:27Z — ERROR
-textPayload: POST /v1/orders 500
-...
+```json
+[
+  {
+    "timestamp": "2025-03-01T04:15:27.000Z",
+    "severity": "ERROR",
+    "resource": {
+      "type": "cloud_run_revision",
+      "labels": {
+        "service_name": "payments",
+        "revision_name": "payments-001"
+      }
+    },
+    "payload": {
+      "type": "text",
+      "value": "POST /v1/orders 500 deadline exceeded"
+    }
+  },
+  { "...": "..." }
+]
 ```
 
 ### gcp-logging-query-time-range — Query logs by time window
@@ -82,12 +99,23 @@ textPayload: POST /v1/orders 500
 
 **Response example**
 ```text
-# Log Time Range Results
-Project: my-sre-prod
-Time Range: 2025-03-05T02:10:00.000Z to 2025-03-05T04:10:00.000Z
-Filter: severity>=WARNING resource.type="gce_instance"
-Entries: 42
-...
+Log Time Range Results
+projectId=my-sre-prod | timeRange=2025-03-05T02:10:00.000Z -> 2025-03-05T04:10:00.000Z | filter=severity>=WARNING resource.type="gce_instance"
+Showing 20 of 42 entries.
+```
+
+```json
+[
+  {
+    "timestamp": "2025-03-05T03:02:11.000Z",
+    "severity": "WARNING",
+    "resource": { "type": "gce_instance" },
+    "payload": {
+      "type": "text",
+      "value": "Disk utilization crossed 85%"
+    }
+  }
+]
 ```
 
 ### gcp-logging-search-comprehensive — Cross-field search
@@ -115,14 +143,23 @@ Entries: 42
 
 **Response example**
 ```text
-# Comprehensive Log Search Results
-Project: my-sre-prod
-Search Term: "deadline exceeded"
-Time Range: 2025-03-04T05:00:00.000Z to 2025-03-05T05:00:00.000Z
-Severity: ERROR
-Resource: cloud_run_revision
-Entries Found: 7
-...
+Comprehensive Log Search Results
+projectId=my-sre-prod | searchTerm="deadline exceeded" | timeRange=2025-03-04T05:00:00.000Z -> 2025-03-05T05:00:00.000Z | severity=ERROR | resource=cloud_run_revision
+Entries: 7
+```
+
+```json
+[
+  {
+    "timestamp": "2025-03-04T22:41:07.000Z",
+    "severity": "ERROR",
+    "trace": "projects/my-sre-prod/traces/abc123",
+    "payload": {
+      "type": "text",
+      "value": "deadline exceeded calling billing API"
+    }
+  }
+]
 ```
 
 ## Spanner
@@ -150,15 +187,20 @@ Entries Found: 7
 
 **Response example**
 ```text
-# Query Results
-Project: prod-data
-Instance: main-instance
-Database: ledger
-SQL: `SELECT user_id, status ...`
-Rows: 25
-| user_id | status |
-| 12345 | ACTIVE |
-...
+Spanner Query Results
+projectId=prod-data | instance=main-instance | database=ledger
+```
+
+```json
+{
+  "sql": "SELECT user_id, status FROM accounts WHERE status=@status LIMIT 25",
+  "params": { "status": "ACTIVE" },
+  "rows": [
+    { "user_id": "12345", "status": "ACTIVE" },
+    { "user_id": "67890", "status": "ACTIVE" },
+    { "...": "..." }
+  ]
+}
 ```
 
 ### gcp-spanner-list-tables — List tables
@@ -179,14 +221,19 @@ Rows: 25
 
 **Response example**
 ```text
-# Spanner Tables
-Project: prod-data
-Instance: main-instance
-Database: ledger
-| Table Name | Column Count |
-| accounts | 14 |
-| payments | 22 |
-...
+Spanner Tables
+projectId=prod-data | instance=main-instance | database=ledger
+```
+
+```json
+{
+  "schemaResource": "gcp-spanner://prod-data/main-instance/ledger/schema",
+  "tablePreviewTemplate": "gcp-spanner://prod-data/main-instance/ledger/tables/{table}/preview",
+  "rows": [
+    { "tableName": "accounts", "columnCount": 14 },
+    { "tableName": "payments", "columnCount": 22 }
+  ]
+}
 ```
 
 ### gcp-spanner-list-instances — List instances
@@ -201,11 +248,24 @@ Database: ledger
 
 **Response example**
 ```text
-# Spanner Instances
-Project: prod-data
-| Instance ID | State | Config | Nodes |
-| main-instance | READY | regional-us-central1 | 3 |
-...
+Spanner Instances
+projectId=prod-data
+```
+
+```json
+{
+  "instancesResource": "gcp-spanner://prod-data/instances",
+  "databaseResourceTemplate": "gcp-spanner://prod-data/{instance}/databases",
+  "rows": [
+    {
+      "id": "main-instance",
+      "state": "READY",
+      "config": "regional-us-central1",
+      "nodeCount": 3
+    },
+    { "...": "..." }
+  ]
+}
 ```
 
 ### gcp-spanner-list-databases — List databases
@@ -223,13 +283,19 @@ Project: prod-data
 
 **Response example**
 ```text
-# Spanner Databases
-Project: prod-data
-Instance: main-instance
-| Database ID | State |
-| ledger | READY |
-| analytics | READY |
-...
+Spanner Databases
+projectId=prod-data | instance=main-instance
+```
+
+```json
+{
+  "tablesResourceTemplate": "gcp-spanner://prod-data/main-instance/{database}/tables",
+  "schemaResourceTemplate": "gcp-spanner://prod-data/main-instance/{database}/schema",
+  "rows": [
+    { "id": "ledger", "state": "READY" },
+    { "id": "analytics", "state": "READY" }
+  ]
+}
 ```
 
 ### gcp-spanner-query-natural-language — NL helper
@@ -253,14 +319,19 @@ Instance: main-instance
 
 **Response example**
 ```text
-# Query Results
-Project: prod-data
-Instance: main-instance
-Database: ledger
-Natural Language Query: List the first 20 orders...
-Generated SQL: `SELECT * FROM orders WHERE total > 100 LIMIT 20`
-| order_id | total | status |
-...
+Spanner Query Results
+projectId=prod-data | instance=main-instance | database=ledger
+```
+
+```json
+{
+  "naturalLanguageQuery": "List the first 20 orders with total > 100 USD",
+  "generatedSql": "SELECT * FROM orders WHERE total > 100 LIMIT 20",
+  "rows": [
+    { "order_id": "ORD-1001", "total": 240.15, "status": "PENDING" },
+    { "...": "..." }
+  ]
+}
 ```
 
 ### gcp-spanner-query-count — Query count metric
@@ -290,14 +361,27 @@ Generated SQL: `SELECT * FROM orders WHERE total > 100 LIMIT 20`
 
 **Response example**
 ```text
-# Spanner Query Count
-Project: prod-data
-Instance: main-instance
-Query Type: READ / Status: OK
-Time Range: 2025-03-05T00:00:00Z to 2025-03-05T06:00:00Z
-| Timestamp | Query Count |
-| 2025-03-05T00:05:00Z | 1820 |
-...
+Spanner Query Count
+projectId=prod-data | instance=main-instance | queryType=READ | status=OK | alignment=5m
+Showing 2 of 6 time series.
+```
+
+```json
+[
+  {
+    "instance": "main-instance",
+    "database": "ledger",
+    "queryType": "READ",
+    "status": "OK",
+    "optimizerVersion": "latest",
+    "points": [
+      { "timestamp": "2025-03-05T00:05:00Z", "count": "1820" },
+      { "timestamp": "2025-03-05T00:10:00Z", "count": "1764" }
+    ],
+    "pointsOmitted": 10
+  },
+  { "...": "..." }
+]
 ```
 
 ## Monitoring
@@ -324,14 +408,28 @@ Time Range: 2025-03-05T00:00:00Z to 2025-03-05T06:00:00Z
 
 **Response example**
 ```text
-# Metric Query Results
-Project: sre-metrics
-Filter: metric.type="compute.googleapis.com/instance/cpu/utilization" ...
-Time Range: 2025-03-05T02:00:00Z to 2025-03-05T04:00:00Z
-Alignment: 60s
-## Instance n2-standard-4
-| Timestamp | Value |
-...
+Metric Query Results
+projectId=sre-metrics | timeRange=2025-03-05T02:00:00Z -> 2025-03-05T04:00:00Z | filter=metric.type="compute.googleapis.com/instance/cpu/utilization"
+```
+
+```json
+[
+  {
+    "metricType": "compute.googleapis.com/instance/cpu/utilization",
+    "resource": {
+      "type": "gce_instance",
+      "labels": {
+        "instance_id": "1234567890",
+        "zone": "us-central1-b"
+      }
+    },
+    "points": [
+      { "timestamp": "2025-03-05T02:10:00Z", "value": 0.41 },
+      { "timestamp": "2025-03-05T02:11:00Z", "value": 0.39 }
+    ],
+    "pointsOmitted": 108
+  }
+]
 ```
 
 ### gcp-monitoring-list-metric-types — Discover metric descriptors
@@ -354,11 +452,21 @@ Alignment: 60s
 
 **Response example**
 ```text
-# Available Metric Types
-Project: sre-metrics
-Search term: "spanner"
-| Metric Type | Display Name | Kind | Value Type | Description |
-| spanner.googleapis.com/instance/cpu/utilization | CPU utilization | GAUGE | DOUBLE | ... |
+Available Metric Types
+projectId=sre-metrics | filter="spanner"
+```
+
+```json
+[
+  {
+    "type": "spanner.googleapis.com/instance/cpu/utilization",
+    "displayName": "CPU utilization",
+    "metricKind": "GAUGE",
+    "valueType": "DOUBLE",
+    "description": "Average CPU usage for Cloud Spanner instances."
+  },
+  { "...": "..." }
+]
 ```
 
 ### gcp-monitoring-query-natural-language — NL metric query
@@ -382,12 +490,24 @@ Search term: "spanner"
 
 **Response example**
 ```text
-# Natural Language Query Results
-Project: sre-metrics
-Query: Show App Engine latency by region for the last day
-Generated Filter: metric.type="appengine.googleapis.com/http/server/response_latencies" ...
-Time Range: 2025-03-04T00:00:00Z to 2025-03-05T00:00:00Z
-...
+Natural Language Query Results
+projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/http/server/response_latencies" | timeRange=2025-03-04T00:00:00Z -> 2025-03-05T00:00:00Z
+```
+
+```json
+{
+  "query": "Show App Engine latency by region for the last day",
+  "series": [
+    {
+      "metricType": "appengine.googleapis.com/http/server/response_latencies",
+      "metricLabels": { "region": "us-central" },
+      "points": [
+        { "timestamp": "2025-03-04T12:00:00Z", "value": 320.5 },
+        { "...": "..." }
+      ]
+    }
+  ]
+}
 ```
 
 ## Trace
