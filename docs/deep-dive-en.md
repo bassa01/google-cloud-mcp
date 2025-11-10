@@ -203,6 +203,10 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 - Combine severity filters with resource types to narrow noisy workloads.
 - Use follow-up prompts to summarise or cluster returned entries.
 
+#### Log redaction policy
+
+Every `gcp-logging-*` tool sanitises remote IPs, user identifiers, and request bodies before emitting a response. To allow trusted operators to inspect full payloads, set the comma-separated `LOG_PAYLOAD_FULL_ACCESS_ROLES` environment variable (defaults to `security_admin, compliance_admin, site_reliability_admin`) and provide matching roles through `MCP_USER_ROLES` or `MCP_ACTIVE_ROLES`. Without an explicit role match the payloads stay redacted and the response includes a notice explaining why.
+
 ### Monitoring
 
 Monitoring tools query Cloud Monitoring metrics, making it easy to fetch CPU, memory, or custom metrics without memorising MQL.
