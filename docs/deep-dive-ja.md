@@ -203,21 +203,26 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 - 重大度フィルターとリソース種別を組み合わせてノイズを削減。
 - 取得結果は追跡質問で要約やクラスタリングを依頼すると効率的です。
 
+#### ログのマスキングポリシー
+
+すべての `gcp-logging-*` ツールは、レスポンスを返す前にリモート IP・ユーザー識別子・リクエストボディを自動でマスクします。信頼済みオペレーターが完全なペイロードを確認する必要がある場合は、カンマ区切りの `LOG_PAYLOAD_FULL_ACCESS_ROLES` 環境変数（既定: `security_admin, compliance_admin, site_reliability_admin`）を設定し、`MCP_USER_ROLES` もしくは `MCP_ACTIVE_ROLES` に一致するロールを渡してください。一致がない場合は常にマスクされたままで、レスポンス末尾に理由を示す注意書きが追加されます。
+
 ### Monitoring
 
-Cloud Monitoring 指標を簡潔に取得し、CPU・メモリ・カスタム指標を MQL を覚えずに問い合わせできます。
+Cloud Monitoring 指標を簡潔に取得し、PromQL への移行中でも CPU・メモリ・カスタム指標をすばやく確認できます。
 
 **主要ツール**
 
-- `gcp-monitoring-query-metrics` – パラメータ化された MQL を実行。
+- `gcp-monitoring-query-metrics` – Cloud Monitoring のフィルター式を実行し、PromQL に転用しやすいラベル/値を返します。
 - `gcp-monitoring-list-metric-types` – Compute Engine や Cloud Run などのメトリクスタイプを調査。
-- `gcp-monitoring-query-natural-language` – 自然文プロンプトを MQL に変換して実行。
+- `gcp-monitoring-query-natural-language` – 自然文プロンプトをメトリックフィルターへ変換し、PromQL セレクターのたたき台を生成。
 
 **運用ヒント**
 
 - 先に `list-metric-types` を実行して利用可能なメトリクスを確認。
 - 5m / 1h などのアライメントウィンドウを指定し、ダッシュボードと揃えます。
 - `mean` / `max` / `percentile` などの集計を付与して結果を圧縮。
+- Managed Service for Prometheus や `projects.timeSeries.query` API と組み合わせ、完全な PromQL 実行を行います。
 
 ### Profiler
 
@@ -243,7 +248,8 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 - `gcp-spanner-list-instances` / `list-databases` / `list-tables` – インフラ全体をカタログ化。
 - `gcp-spanner-execute-query` – プレースホルダー付きで安全に SQL を実行。
 - `gcp-spanner-query-natural-language` / `query-count` – 会話的に集計やクエリ生成を実施。
-- `gcp-spanner-query-stats` (リソース) – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすい JSON で提示。
+- `gcp-spanner-query-stats` – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすい JSON で提示。
+- `gcp-spanner-query-plan` （\`gcp-spanner://.../query-plan?sql=SELECT+...\`）で EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を把握。
 
 **運用ヒント**
 
@@ -417,6 +423,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | `DEBUG` | `true` で詳細ログを有効化。 |
 | `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
 | `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
+| `MCP_ENABLED_SERVICES` | 有効化したいサービスをカンマ区切りで指定（例: `spanner,trace`）。未設定や `all` / `*` の場合は全サービス。 |
 
 ### クライアント設定例
 
@@ -455,9 +462,9 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
-| Monitoring | `gcp-monitoring-query-metrics` | 集計付き MQL 実行。 |
+| Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
-| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語から MQL を生成。 |
+| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語からメトリクスフィルターを生成。 |
 | Profiler | `gcp-profiler-list-profiles` | CPU/Heap/Wall-time プロファイル一覧。 |
 | Profiler | `gcp-profiler-analyse-performance` | ホットスポットの要約。 |
 | Profiler | `gcp-profiler-compare-trends` | リリース間の比較。 |
@@ -467,7 +474,8 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行。 |
 | Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成。 |
 | Spanner | `gcp-spanner-query-count` | 行数を即座に集計。 |
-| Spanner | `gcp-spanner-query-stats` (resource) | Query Insights を 1m/10m/1h JSON で要約。 |
+| Spanner | `gcp-spanner-query-stats` | Query Insights を 1m/10m/1h JSON で要約。 |
+| Spanner | `gcp-spanner-query-plan`  | EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を特定。 |
 | Trace | `gcp-trace-list-traces` | 遅い/失敗トレースを一覧。 |
 | Trace | `gcp-trace-get-trace` | トレース全体を取得。 |
 | Trace | `gcp-trace-find-from-logs` | ログからトレースへピボット。 |

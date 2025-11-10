@@ -1,27 +1,27 @@
 # GKE system metrics  |  Cloud Monitoring  |  Google Cloud
-This document lists the metrics available in Cloud Monitoring when Google Kubernetes Engine (GKE) [system metrics](about:/kubernetes-engine/docs/how-to/configure-metrics#system-metrics) are enabled.
+This document lists the metrics available in Cloud Monitoring when Google Kubernetes Engine (GKE) [system metrics](https://cloud.google.com/kubernetes-engine/docs/how-to/configure-metrics#system-metrics) are enabled.
 
 *   For a general explanation of the entries in the tables, including information about values like `DELTA` and `GAUGE`, see [Metric types](https://cloud.google.com/monitoring/api/v3/kinds-and-types).
     
-    To chart or monitor metric types with values of type `STRING`, you must use Monitoring Query Language (MQL), and you must convert the value into a numeric value. For information about MQL string-conversion methods, see [`String`](about:/monitoring/mql/reference#string-group).
+    To chart or monitor metric types with values of type `STRING`, convert them into numeric-friendly signals at ingest time or expose the state as labels that PromQL can evaluate. Legacy MQL string-conversion functions are being retired, so avoid adding new dependencies on legacy `String` helpers.
     
-*   For information about the units used in the metric lists, see the [`unit` field](about:/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor.FIELDS.unit) in the `MetricDescriptor` reference.
+*   For information about the units used in the metric lists, see the [`unit` field](https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor.FIELDS.unit) in the `MetricDescriptor` reference.
     
-*   For information about statements of the form “Sampled every _x_ seconds” and “After sampling, data is not visible for up to _y_ seconds”, see [Additional information: metadata](about:/monitoring/api/metrics#metadata).
+*   For information about statements of the form “Sampled every _x_ seconds” and “After sampling, data is not visible for up to _y_ seconds”, see [Additional information: metadata](https://cloud.google.com/monitoring/api/metrics#metadata).
     
 *   The resource-hierarchy level tells you if the metric is written at the project, organization, or folder level(s). When the level is not specified in the metric descriptor, the metric writes at the project level by default.
     
 
-*   For pricing information, see [Cloud Monitoring pricing summary](about:/stackdriver/pricing#monitoring-pricing-summary).
+*   For pricing information, see [Cloud Monitoring pricing summary](https://cloud.google.com/stackdriver/pricing#monitoring-pricing-summary).
 
-*   For information about the meaning of launch stages such as `GA` (General Availability) and `BETA` (Preview), see [Product launch stages](about:/products#product-launch-stages).
+*   For information about the meaning of launch stages such as `GA` (General Availability) and `BETA` (Preview), see [Product launch stages](https://cloud.google.com/products#product-launch-stages).
 
 Kubernetes metrics
 ------------------
 
 Metrics from [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
 
-The following list was last generated at 2025-03-06 15:20:27 UTC. For more information about this process, see [About the lists](about:/monitoring/api/metrics#generated).
+The following list was last generated at 2025-03-06 15:20:27 UTC. For more information about this process, see [About the lists](https://cloud.google.com/monitoring/api/metrics#generated).
 
 ### kubernetes
 

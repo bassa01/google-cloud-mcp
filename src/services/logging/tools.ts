@@ -5,6 +5,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getProjectId } from "../../utils/auth.js";
 import { formatLogEntry, getLoggingClient, LogEntry } from "./types.js";
+import { sanitizeLogEntry } from "./sanitizer.js";
+import {
+  canViewFullLogPayloads,
+  buildRedactionNotice,
+} from "./policy.js";
 import { parseRelativeTime } from "../../utils/time.js";
 
 /**
@@ -55,10 +60,14 @@ export function registerLoggingTools(server: McpServer): void {
           };
         }
 
+        const allowFullPayload = canViewFullLogPayloads();
         const formattedLogs = entries
           .map((entry) => {
             try {
-              return formatLogEntry(entry as unknown as LogEntry);
+              const safeEntry = sanitizeLogEntry(entry as unknown as LogEntry, {
+                allowFullPayload,
+              });
+              return formatLogEntry(safeEntry);
             } catch (err: unknown) {
               const errorMessage =
                 err instanceof Error ? err.message : "Unknown error";
@@ -67,11 +76,13 @@ export function registerLoggingTools(server: McpServer): void {
           })
           .join("\n\n");
 
+        const redactionNotice = buildRedactionNotice(allowFullPayload);
+
         return {
           content: [
             {
               type: "text",
-              text: `# Log Query Results\n\nProject: ${projectId}\nFilter: ${filter}\nEntries: ${entries.length}\n\n${formattedLogs}`,
+              text: `# Log Query Results\n\nProject: ${projectId}\nFilter: ${filter}\nEntries: ${entries.length}\n\n${formattedLogs}${redactionNotice}`,
             },
           ],
         };
@@ -153,10 +164,14 @@ Please check your filter syntax and try again. For filter syntax help, see: http
           };
         }
 
+        const allowFullPayload = canViewFullLogPayloads();
         const formattedLogs = entries
           .map((entry) => {
             try {
-              return formatLogEntry(entry as unknown as LogEntry);
+              const safeEntry = sanitizeLogEntry(entry as unknown as LogEntry, {
+                allowFullPayload,
+              });
+              return formatLogEntry(safeEntry);
             } catch (err: unknown) {
               const errorMessage =
                 err instanceof Error ? err.message : "Unknown error";
@@ -165,11 +180,13 @@ Please check your filter syntax and try again. For filter syntax help, see: http
           })
           .join("\n\n");
 
+        const redactionNotice = buildRedactionNotice(allowFullPayload);
+
         return {
           content: [
             {
               type: "text",
-              text: `# Log Time Range Results\n\nProject: ${projectId}\nTime Range: ${start.toISOString()} to ${end.toISOString()}\nFilter: ${filter || "None"}\nEntries: ${entries.length}\n\n${formattedLogs}`,
+              text: `# Log Time Range Results\n\nProject: ${projectId}\nTime Range: ${start.toISOString()} to ${end.toISOString()}\nFilter: ${filter || "None"}\nEntries: ${entries.length}\n\n${formattedLogs}${redactionNotice}`,
             },
           ],
         };
@@ -342,10 +359,14 @@ Please check your time range format and try again. Valid formats include:
           };
         }
 
+        const allowFullPayload = canViewFullLogPayloads();
         const formattedLogs = entries
           .map((entry) => {
             try {
-              return formatLogEntry(entry as unknown as LogEntry);
+              const safeEntry = sanitizeLogEntry(entry as unknown as LogEntry, {
+                allowFullPayload,
+              });
+              return formatLogEntry(safeEntry);
             } catch (err: unknown) {
               const errorMessage =
                 err instanceof Error ? err.message : "Unknown error";
@@ -354,11 +375,13 @@ Please check your time range format and try again. Valid formats include:
           })
           .join("\n\n---\n\n");
 
+        const redactionNotice = buildRedactionNotice(allowFullPayload);
+
         return {
           content: [
             {
               type: "text",
-              text: `# Comprehensive Log Search Results\n\nProject: ${projectId}\nSearch Term: "${searchTerm}"\nTime Range: ${startTime.toISOString()} to ${endTime.toISOString()}\nSeverity: ${severity || "All levels"}\nResource: ${resource || "All resources"}\nEntries Found: ${entries.length}\n\n**Search Coverage:**\nThis search looked across all payload types and fields including:\n- Text payloads\n- JSON payload fields (message, error, exception, stack traces, HTTP details, etc.)\n- Proto payload fields\n- Labels and metadata\n- HTTP request details\n- Source location information\n- Operation details\n\n---\n\n${formattedLogs}`,
+              text: `# Comprehensive Log Search Results\n\nProject: ${projectId}\nSearch Term: "${searchTerm}"\nTime Range: ${startTime.toISOString()} to ${endTime.toISOString()}\nSeverity: ${severity || "All levels"}\nResource: ${resource || "All resources"}\nEntries Found: ${entries.length}\n\n**Search Coverage:**\nThis search looked across all payload types and fields including:\n- Text payloads\n- JSON payload fields (message, error, exception, stack traces, HTTP details, etc.)\n- Proto payload fields\n- Labels and metadata\n- HTTP request details\n- Source location information\n- Operation details\n\n---\n\n${formattedLogs}${redactionNotice}`,
             },
           ],
         };

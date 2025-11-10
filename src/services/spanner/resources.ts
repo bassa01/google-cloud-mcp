@@ -10,8 +10,55 @@ import { GcpMcpError } from "../../utils/error.js";
 import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { formatSchemaAsMarkdown, getSpannerSchema } from "./schema.js";
 import { buildQueryStatsJson } from "./query-stats.js";
+import {
+  analyzeQueryPlan,
+  formatPlanRowsAsMarkdown,
+} from "./query-plan.js";
 import { logger } from "../../utils/logger.js";
 
+function parseBooleanFlag(value: string | null): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return ["1", "true", "yes", "y", "on"].includes(normalized);
+}
+
+function determineExplainMode(
+  modeParam: string | null,
+  analyzeParam: string | null,
+): { analyze: boolean; label: "EXPLAIN" | "EXPLAIN ANALYZE" } {
+  const normalizedMode = (modeParam || "").trim().toLowerCase();
+  const analyze =
+    normalizedMode === "analyze" ||
+    normalizedMode === "explain analyze" ||
+    parseBooleanFlag(analyzeParam);
+
+  return {
+    analyze,
+    label: analyze ? "EXPLAIN ANALYZE" : "EXPLAIN",
+  };
+}
+
+function buildExplainStatement(sql: string, analyze: boolean): string {
+  const trimmed = sql.trim();
+
+  if (/^explain\b/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  const prefix = analyze ? "EXPLAIN ANALYZE" : "EXPLAIN";
+  return `${prefix} ${trimmed}`;
+}
+
+function normalizePlanRows(rows?: unknown[] | null): Record<string, unknown>[] {
+  if (!rows || !Array.isArray(rows)) return [];
+
+  return rows.map((row: any) => {
+    if (row && typeof row.toJSON === "function") {
+      return row.toJSON();
+    }
+    return row as Record<string, unknown>;
+  });
+}
 const SPANNER_IDENTIFIER_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
 const TABLE_NAME_FORMAT_DOC =
   "Table names must start with a letter and may only contain letters, numbers, or underscores.";
@@ -78,6 +125,142 @@ export function registerSpannerResources(server: McpServer): void {
       } catch (error: any) {
         logger.error(
           `Error fetching Spanner schema: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
+    },
+  );
+
+  // Register a resource for query plan analysis
+  server.resource(
+    "gcp-spanner-query-plan",
+    new ResourceTemplate(
+      "gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan",
+      { list: undefined },
+    ),
+    async (uri, { projectId, instanceId, databaseId }, _extra) => {
+      try {
+        let actualProjectId: string;
+        try {
+          const projectIdValue = Array.isArray(projectId)
+            ? projectId[0]
+            : projectId;
+          actualProjectId = projectIdValue || (await getProjectId());
+          if (!actualProjectId) {
+            throw new Error("Project ID could not be determined");
+          }
+          logger.debug(
+            `Using project ID: ${actualProjectId} for spanner-query-plan resource`,
+          );
+        } catch (error) {
+          logger.error(
+            `Error detecting project ID: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          throw new GcpMcpError(
+            "Unable to detect a Project ID in the current environment.\nTo learn more about authentication and Google APIs, visit:\nhttps://cloud.google.com/docs/authentication/getting-started",
+            "UNAUTHENTICATED",
+            401,
+          );
+        }
+
+        const config = await getSpannerConfig(
+          Array.isArray(instanceId) ? instanceId[0] : instanceId,
+          Array.isArray(databaseId) ? databaseId[0] : databaseId,
+        );
+
+        const params = new URL(uri.href).searchParams;
+        const sqlParam = params.get("sql");
+
+        if (!sqlParam) {
+          throw new GcpMcpError(
+            "SQL query parameter (?sql=) is required to generate a query plan.",
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        const trimmedSql = sqlParam.trim();
+        if (!trimmedSql) {
+          throw new GcpMcpError(
+            "SQL query cannot be empty.",
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        const { analyze, label } = determineExplainMode(
+          params.get("mode"),
+          params.get("analyze"),
+        );
+        const explainSql = buildExplainStatement(trimmedSql, analyze);
+
+        const spanner = await getSpannerClient();
+        logger.debug(
+          `Using Spanner client with project ID: ${spanner.projectId} for spanner-query-plan`,
+        );
+        const instanceRef = spanner.instance(config.instanceId);
+        const databaseRef = instanceRef.database(config.databaseId);
+
+        const [rawPlanRows] = await databaseRef.run({
+          sql: explainSql,
+        });
+
+        const planRows = normalizePlanRows(rawPlanRows as unknown[]);
+        const schema = await getSpannerSchema(
+          config.instanceId,
+          config.databaseId,
+        );
+        const analysis = analyzeQueryPlan(planRows, schema, trimmedSql);
+        const planMarkdown = formatPlanRowsAsMarkdown(planRows);
+
+        let insightsMarkdown = "## Plan Insights\n\n";
+        const hasIssues =
+          analysis.distributedJoinIssues.length > 0 ||
+          analysis.missingIndexIssues.length > 0;
+
+        if (!hasIssues) {
+          insightsMarkdown +=
+            "- No obvious distributed joins or missing indexes detected based on the current plan and schema.\n";
+        } else {
+          if (analysis.distributedJoinIssues.length > 0) {
+            insightsMarkdown += "### Distributed Joins\n\n";
+            for (const issue of analysis.distributedJoinIssues) {
+              insightsMarkdown += `- ${issue}\n`;
+            }
+            insightsMarkdown += "\n";
+          }
+
+          if (analysis.missingIndexIssues.length > 0) {
+            insightsMarkdown += "### Missing Indexes\n\n";
+            for (const issue of analysis.missingIndexIssues) {
+              insightsMarkdown += `- ${issue}\n`;
+            }
+            insightsMarkdown += "\n";
+          }
+        }
+
+        if (analysis.referencedTables.length > 0) {
+          insightsMarkdown += `Tables referenced: ${analysis.referencedTables.join(", ")}\n`;
+        } else {
+          insightsMarkdown +=
+            "Tables referenced: Could not determine from the current plan or SQL.\n";
+        }
+
+        const modeNotice = analyze
+          ? "_Executed with EXPLAIN ANALYZE (query was run to capture timing information)._"
+          : "_Executed with EXPLAIN (plan only; query was not executed)._";
+
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: `# Spanner Query Plan\n\nProject: ${actualProjectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\nMode: ${label}\n\nOriginal SQL:\n\`\`\`sql\n${trimmedSql}\n\`\`\`\n\n${modeNotice}\n\n${insightsMarkdown}\n\n## Plan Nodes\n\n${planMarkdown}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error(
+          `Error fetching Spanner query plan: ${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
       }

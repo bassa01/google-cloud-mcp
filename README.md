@@ -2,6 +2,8 @@
 
 A Model Context Protocol server that connects to Google Cloud services to provide context and tools for interacting with your Google Cloud resources.
 
+This codebase is actively maintained as a fork of [krzko/google-cloud-mcp](https://github.com/krzko/google-cloud-mcp), and we’re grateful to Kris Kozak and contributors for laying the groundwork that powers this project.
+
 <a href="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp/badge" alt="Google Cloud Server MCP server" />
 </a>
@@ -22,6 +24,21 @@ Supported Google Cloud services:
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
+
+### Selecting active services
+
+Set the optional `MCP_ENABLED_SERVICES` environment variable to a comma-separated
+list (e.g. `spanner,trace`) to load only the services you need. When unset or
+set to `all`/`*`, the server registers every Google Cloud integration. Unknown
+entries are ignored with a startup warning, and common aliases such as
+`metrics`→Monitoring or `errors`→Error Reporting are supported for convenience.
+
+```json
+"env": {
+  "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/key.json",
+  "MCP_ENABLED_SERVICES": "spanner,trace"
+}
+```
 
 ### Error Reporting
 
@@ -45,6 +62,10 @@ Query and filter log entries from Google Cloud Logging:
 - "Search for logs containing 'timeout' from service my-api in project backend-456"
 - "Query logs for resource type gce_instance in project compute-prod-789"
 
+#### Log redaction policy
+
+All `gcp-logging-*` tools scrub IP addresses, user identifiers, and request bodies before results leave the server. To permit trusted operators to view full payloads, set the comma-separated `LOG_PAYLOAD_FULL_ACCESS_ROLES` environment variable (defaults to `security_admin,compliance_admin,site_reliability_admin`) and provide matching roles through `MCP_USER_ROLES`/`MCP_ACTIVE_ROLES`. A role match is required before payload redaction is lifted.
+
 ### Spanner
 
 Interact with Google Cloud Spanner databases:
@@ -52,6 +73,7 @@ Interact with Google Cloud Spanner databases:
 **Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-natural-language`, `gcp-spanner-query-count`
 
 **Resource Highlight:** `gcp-spanner-query-stats` surfaces Query Insights (SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR) as AI-ready JSON, listing 1m/10m/1h latency and CPU leaders for downstream automation.
+**Resources:** `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=SELECT+...` (add `&mode=analyze` for EXPLAIN ANALYZE) to review plans, distributed joins, and missing indexes.
 
 *Example prompts:*
 - "List all databases in Spanner instance my-instance in project ecommerce-prod-123"

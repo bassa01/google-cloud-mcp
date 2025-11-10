@@ -37,6 +37,12 @@ import { registerResourceDiscovery } from "./utils/resource-discovery.js";
 import { registerProjectTools } from "./utils/project-tools.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { logger } from "./utils/logger.js";
+import {
+  getEnabledServices,
+  isServiceEnabled,
+  parseServiceSelection,
+  type ServiceName,
+} from "./utils/service-selector.js";
 
 // Load environment variables
 dotenv.config();
@@ -148,78 +154,106 @@ async function main(): Promise<void> {
       }
     }
 
-    // Register resources and tools for each Google Cloud service
-    // These operations should not block server startup
-    try {
-      logger.info("Registering Google Cloud Logging services");
-      registerLoggingResources(server);
-      registerLoggingTools(server);
-    } catch (error) {
+    const serviceSelection = parseServiceSelection(
+      process.env.MCP_ENABLED_SERVICES,
+    );
+
+    if (process.env.MCP_ENABLED_SERVICES) {
+      if (serviceSelection.mode === "custom") {
+        logger.info(
+          `MCP_ENABLED_SERVICES restricting active services to: ${getEnabledServices(serviceSelection).join(", ")}`,
+        );
+      } else {
+        logger.info(
+          "MCP_ENABLED_SERVICES matched wildcard/ALL value; enabling every Google Cloud service",
+        );
+      }
+    }
+
+    if (serviceSelection.invalidEntries.length > 0) {
       logger.warn(
-        `Error registering Logging services: ${error instanceof Error ? error.message : String(error)}`,
+        `Ignoring unknown MCP_ENABLED_SERVICES entries: ${serviceSelection.invalidEntries.join(", ")}`,
       );
     }
 
-    try {
-      logger.info("Registering Google Cloud Spanner services");
-      registerSpannerResources(server);
-      registerSpannerTools(server);
-      registerSpannerQueryCountTool(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Spanner services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    const serviceRegistrations: Array<{
+      name: ServiceName;
+      label: string;
+      register: () => Promise<void>;
+    }> = [
+      {
+        name: "logging",
+        label: "Google Cloud Logging",
+        register: async () => {
+          registerLoggingResources(server);
+          registerLoggingTools(server);
+        },
+      },
+      {
+        name: "spanner",
+        label: "Google Cloud Spanner",
+        register: async () => {
+          registerSpannerResources(server);
+          registerSpannerTools(server);
+          registerSpannerQueryCountTool(server);
+        },
+      },
+      {
+        name: "monitoring",
+        label: "Google Cloud Monitoring",
+        register: async () => {
+          registerMonitoringResources(server);
+          await registerMonitoringTools(server);
+        },
+      },
+      {
+        name: "trace",
+        label: "Google Cloud Trace",
+        register: async () => {
+          await registerTraceService(server);
+        },
+      },
+      {
+        name: "error-reporting",
+        label: "Google Cloud Error Reporting",
+        register: async () => {
+          registerErrorReportingResources(server);
+          registerErrorReportingTools(server);
+        },
+      },
+      {
+        name: "profiler",
+        label: "Google Cloud Profiler",
+        register: async () => {
+          registerProfilerResources(server);
+          registerProfilerTools(server);
+        },
+      },
+      {
+        name: "support",
+        label: "Google Cloud Support",
+        register: async () => {
+          registerSupportTools(server);
+        },
+      },
+    ];
 
-    try {
-      logger.info("Registering Google Cloud Monitoring services");
-      registerMonitoringResources(server);
-      await registerMonitoringTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Monitoring services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    for (const service of serviceRegistrations) {
+      if (!isServiceEnabled(serviceSelection, service.name)) {
+        logger.info(
+          `Skipping ${service.label} registration (disabled via MCP_ENABLED_SERVICES)`,
+        );
+        continue;
+      }
 
-    try {
-      // Register Google Cloud Trace service
-      logger.info("Registering Google Cloud Trace services");
-      await registerTraceService(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Trace services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      // Register Google Cloud Error Reporting service
-      logger.info("Registering Google Cloud Error Reporting services");
-      registerErrorReportingResources(server);
-      registerErrorReportingTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Error Reporting services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      // Register Google Cloud Profiler service
-      logger.info("Registering Google Cloud Profiler services");
-      registerProfilerResources(server);
-      registerProfilerTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Profiler services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      logger.info("Registering Google Cloud Support services");
-      registerSupportTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering Support services: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      try {
+        logger.info(`Registering ${service.label} services`);
+        await service.register();
+      } catch (error) {
+        logger.warn(
+          `Error registering ${service.label} services: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     try {
