@@ -22,3 +22,8 @@ Follow the existing imperative style (`Map Support API 401 errors…`). Referenc
 
 ## Security & Configuration Tips
 Never commit credential files or `.env` data. Use environment variables (`GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_CLOUD_PROJECT`, optional `LAZY_AUTH`) and document new ones in the README. Enable `DEBUG=1` only during local diagnostics, and prefer least-privilege service accounts while scrubbing logs before sharing traces externally.
+
+## Documentation Expectations
+- Treat `docs/` (deep dives, references) as part of every feature change—if the behaviour, env vars, or tooling surface shifts, update the relevant docs alongside the code.
+- Keep the README in sync with user-facing flows, and call out the documentation updates in your PR checklist.
+- When adding security controls or policies, document both the default posture and the configuration knobs so operators can reason about them.
