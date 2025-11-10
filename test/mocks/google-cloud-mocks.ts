@@ -11,8 +11,12 @@ export const mockLoggingClient = {
   getSinks: vi.fn().mockResolvedValue([[], {}, {}]),
 };
 
+const LoggingMock = vi.fn(function LoggingMock() {
+  return mockLoggingClient;
+});
+
 vi.mock('@google-cloud/logging', () => ({
-  Logging: vi.fn(() => mockLoggingClient),
+  Logging: LoggingMock,
 }));
 
 // Mock @google-cloud/monitoring
@@ -22,9 +26,13 @@ export const mockMonitoringClient = {
   createTimeSeries: vi.fn().mockResolvedValue([{}]),
 };
 
+const MetricServiceClientMock = vi.fn(function MetricServiceClientMock() {
+  return mockMonitoringClient;
+});
+
 vi.mock('@google-cloud/monitoring', () => ({
-  default: { MetricServiceClient: vi.fn(() => mockMonitoringClient) },
-  MetricServiceClient: vi.fn(() => mockMonitoringClient),
+  default: { MetricServiceClient: MetricServiceClientMock },
+  MetricServiceClient: MetricServiceClientMock,
 }));
 
 // Mock @google-cloud/spanner
@@ -41,8 +49,12 @@ export const mockSpannerClient = {
   })),
 };
 
+const SpannerMock = vi.fn(function SpannerMock() {
+  return mockSpannerClient;
+});
+
 vi.mock('@google-cloud/spanner', () => ({
-  Spanner: vi.fn(() => mockSpannerClient),
+  Spanner: SpannerMock,
 }));
 
 // Mock google-auth-library
@@ -52,8 +64,12 @@ export const mockAuthClient = {
   authorize: vi.fn().mockResolvedValue(undefined),
 };
 
+const GoogleAuthMock = vi.fn(function GoogleAuthMock() {
+  return mockAuthClient;
+});
+
 vi.mock('google-auth-library', () => ({
-  GoogleAuth: vi.fn(() => mockAuthClient),
+  GoogleAuth: GoogleAuthMock,
 }));
 
 // Mock @modelcontextprotocol/sdk
@@ -68,11 +84,19 @@ export const mockMcpServer = {
   off: vi.fn(),
 };
 
+const McpServerMock = vi.fn(function McpServerMock() {
+  return mockMcpServer;
+});
+
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
-  McpServer: vi.fn(() => mockMcpServer),
+  McpServer: McpServerMock,
   ResourceTemplate: vi.fn(),
 }));
 
+const StdioServerTransportMock = vi.fn(function StdioServerTransportMock() {
+  return {};
+});
+
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn(),
+  StdioServerTransport: StdioServerTransportMock,
 }));

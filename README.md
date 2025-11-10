@@ -2,9 +2,16 @@
 
 A Model Context Protocol server that connects to Google Cloud services to provide context and tools for interacting with your Google Cloud resources.
 
+This codebase is actively maintained as a fork of [krzko/google-cloud-mcp](https://github.com/krzko/google-cloud-mcp), and we’re grateful to Kris Kozak and contributors for laying the groundwork that powers this project.
+
 <a href="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp/badge" alt="Google Cloud Server MCP server" />
 </a>
+
+## Requirements
+
+- Node.js 24.11.0 or newer (see `.nvmrc`)
+- pnpm 10.21.0+ via Corepack (`corepack enable && corepack use pnpm@10.21.0`)
 
 ## Services
 
@@ -39,6 +46,10 @@ Query and filter log entries from Google Cloud Logging:
 - "Show me logs from project my-app-prod-123 from the last hour with severity ERROR"
 - "Search for logs containing 'timeout' from service my-api in project backend-456"
 - "Query logs for resource type gce_instance in project compute-prod-789"
+
+#### Log redaction policy
+
+All `gcp-logging-*` tools scrub IP addresses, user identifiers, and request bodies before results leave the server. To permit trusted operators to view full payloads, set the comma-separated `LOG_PAYLOAD_FULL_ACCESS_ROLES` environment variable (defaults to `security_admin,compliance_admin,site_reliability_admin`) and provide matching roles through `MCP_USER_ROLES`/`MCP_ACTIVE_ROLES`. A role match is required before payload redaction is lifted.
 
 ### Spanner
 
