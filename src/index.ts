@@ -2,7 +2,7 @@
  * Google Cloud MCP Server
  *
  * This server provides Model Context Protocol resources and tools for interacting
- * with Google Cloud services (Billing, Error Reporting, IAM, Logging, Monitoring, Profiler, Spanner, and Trace).
+ * with Google Cloud services (Error Reporting, Logging, Monitoring, Profiler, Spanner, and Trace).
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import dotenv from "dotenv";

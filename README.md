@@ -10,26 +10,12 @@ A Model Context Protocol server that connects to Google Cloud services to provid
 
 Supported Google Cloud services:
 
-- [x] [Billing](https://cloud.google.com/billing)
 - [x] [Error Reporting](https://cloud.google.com/error-reporting)
-- [x] [Identity and Access Management (IAM)](https://cloud.google.com/iam)
 - [x] [Logging](https://cloud.google.com/logging)
 - [x] [Monitoring](https://cloud.google.com/monitoring)
 - [x] [Profiler](https://cloud.google.com/profiler)
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
-
-### Billing
-
-Manage and analyse Google Cloud billing with cost optimisation insights:
-
-**Tools:** `gcp-billing-list-accounts`, `gcp-billing-get-account-details`, `gcp-billing-list-projects`, `gcp-billing-get-project-info`, `gcp-billing-list-services`, `gcp-billing-list-skus`, `gcp-billing-analyse-costs`, `gcp-billing-detect-anomalies`, `gcp-billing-cost-recommendations`, `gcp-billing-service-breakdown`
-
-*Example prompts:*
-- "Show me all my billing accounts"
-- "Analyse costs for project my-app-prod-123 for the last 30 days"
-- "Generate cost recommendations for billing account billingAccounts/123456-789ABC-DEF012"
-- "Check for billing anomalies in project my-ecommerce-456"
 
 ### Error Reporting
 
@@ -41,18 +27,6 @@ Monitor and analyse application errors with automated investigation and remediat
 - "Show me error groups from project my-webapp-prod-789 for the last hour"
 - "Get details for error group projects/my-app-123/groups/xyz789"
 - "Analyse error trends for service my-api in project analytics-prod-456"
-
-### IAM
-
-Query and analyse IAM policies and permissions:
-
-**Tools:** `gcp-iam-get-project-policy`, `gcp-iam-test-project-permissions`, `gcp-iam-test-resource-permissions`, `gcp-iam-validate-deployment-permissions`, `gcp-iam-list-deployment-services`, `gcp-iam-analyse-permission-gaps`
-
-*Example prompts:*
-- "Get IAM policy for project my-webapp-prod-123"
-- "Test if I have storage.buckets.create permission on project data-lake-456"
-- "Check deployment permissions for Cloud Run in project microservices-789"
-- "Analyse permission gaps for deploying to GKE cluster in project k8s-prod-321"
 
 ### Logging
 
@@ -115,12 +89,12 @@ Analyse distributed traces from Google Cloud Trace:
 Once configured, you can interact with Google Cloud services using natural language:
 
 ```
-"What are my current billing costs for project my-webapp-prod-123?"
 "Show me errors from project ecommerce-api-456 in the last hour"
-"Check if I have permission to deploy to Cloud Run in project microservices-789"
 "Find logs containing 'database timeout' from project backend-prod-321 yesterday"
 "List Spanner databases in instance prod-db for project data-store-654"
 "What's the CPU usage of Compute Engine instances in project infrastructure-987?"
+"Compare recent heap profiles in project performance-test-789"
+"List traces for checkout-api in project ecommerce-prod-321 during the past day"
 ```
 
 ## Authentication
