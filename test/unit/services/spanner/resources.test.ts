@@ -48,6 +48,22 @@ function getTablePreviewHandler() {
   ) => Promise<unknown>;
 }
 
+function getQueryStatsHandler() {
+  const mockServer = { resource: vi.fn() };
+  registerSpannerResources(mockServer as any);
+  const queryStatsCall = mockServer.resource.mock.calls.find(
+    call => call[0] === 'gcp-spanner-query-stats',
+  );
+  if (!queryStatsCall) {
+    throw new Error('Query stats resource not registered');
+  }
+  return queryStatsCall[2] as (
+    uri: URL,
+    params: Record<string, unknown>,
+    extra: unknown,
+  ) => Promise<unknown>;
+}
+
 describe('Spanner resources table preview', () => {
   beforeEach(async () => {
     vi.resetModules();
@@ -130,5 +146,111 @@ describe('Spanner resources table preview', () => {
     ).rejects.toThrow(/Table name is required/);
 
     expect(runMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('Spanner query stats resource', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+
+    runMock = vi.fn();
+    databaseFactoryMock = vi.fn(() => ({ run: runMock }));
+    instanceFactoryMock = vi.fn(() => ({ database: databaseFactoryMock }));
+
+    mockGetProjectId.mockResolvedValue('resolved-project');
+    mockGetSpannerConfig.mockResolvedValue({
+      instanceId: 'test-instance',
+      databaseId: 'test-database',
+    });
+    mockGetSpannerClient.mockResolvedValue({
+      projectId: 'resolved-project',
+      instance: instanceFactoryMock,
+    });
+
+    ({ registerSpannerResources } = await import(
+      '../../../../src/services/spanner/resources.js'
+    ));
+  });
+
+  it('renders latency and CPU heatmaps', async () => {
+    runMock.mockImplementation(({ sql }: { sql: string }) => {
+      const baseRow = {
+        query_text: 'SELECT * FROM Users',
+        text_fingerprint: 'fp-users',
+        request_tag: 'tag-users',
+        interval_end: '2025-01-02T03:04:05Z',
+        execution_count: '12',
+        avg_latency_seconds: 1.25,
+        avg_cpu_seconds: 0.5,
+        total_cpu_seconds: 6,
+      };
+      const altRow = {
+        query_text: 'UPDATE Accounts SET balance = balance - 1',
+        text_fingerprint: 'fp-accounts',
+        request_tag: null,
+        interval_end: '2025-01-02T03:04:05Z',
+        execution_count: '3',
+        avg_latency_seconds: 2.75,
+        avg_cpu_seconds: 1.5,
+        total_cpu_seconds: 4.5,
+      };
+
+      if (sql.includes('QUERY_STATS_TOP_MINUTE') && sql.includes('avg_latency')) {
+        return Promise.resolve([[baseRow, altRow]]);
+      }
+      if (sql.includes('QUERY_STATS_TOP_MINUTE') && sql.includes('total_cpu')) {
+        return Promise.resolve([[altRow, baseRow]]);
+      }
+      if (sql.includes('QUERY_STATS_TOP_10MINUTE') && sql.includes('avg_latency')) {
+        return Promise.resolve([[altRow]]);
+      }
+      if (sql.includes('QUERY_STATS_TOP_10MINUTE') && sql.includes('total_cpu')) {
+        return Promise.resolve([[baseRow]]);
+      }
+      if (sql.includes('QUERY_STATS_TOP_HOUR') && sql.includes('avg_latency')) {
+        return Promise.resolve([[baseRow]]);
+      }
+      if (sql.includes('QUERY_STATS_TOP_HOUR') && sql.includes('total_cpu')) {
+        return Promise.resolve([[altRow]]);
+      }
+      return Promise.resolve([[]]);
+    });
+
+    const handler = getQueryStatsHandler();
+    const response: any = await handler(
+      new URL('gcp-spanner://resolved-project/test-instance/test-database/query-stats'),
+      {
+        projectId: 'resolved-project',
+        instanceId: 'test-instance',
+        databaseId: 'test-database',
+      },
+      undefined,
+    );
+
+    const text = response.contents[0].text as string;
+    expect(text).toContain('Average latency heatmap');
+    expect(text).toContain('Total CPU heatmap');
+    expect(text).toContain('fp-users');
+    expect(text).toContain('fp-accounts');
+    expect(runMock).toHaveBeenCalledTimes(6);
+  });
+
+  it('handles missing query stats gracefully', async () => {
+    runMock.mockResolvedValue([[]]);
+
+    const handler = getQueryStatsHandler();
+    const response: any = await handler(
+      new URL('gcp-spanner://resolved-project/test-instance/test-database/query-stats'),
+      {
+        projectId: 'resolved-project',
+        instanceId: 'test-instance',
+        databaseId: 'test-database',
+      },
+      undefined,
+    );
+
+    expect(response.contents[0].text).toContain('No query stats were returned');
+    expect(runMock).toHaveBeenCalled();
   });
 });

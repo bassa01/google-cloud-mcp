@@ -9,6 +9,7 @@ import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { formatSchemaAsMarkdown, getSpannerSchema } from "./schema.js";
+import { buildQueryStatsMarkdown } from "./query-stats.js";
 import { logger } from "../../utils/logger.js";
 
 const SPANNER_IDENTIFIER_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -201,6 +202,74 @@ export function registerSpannerResources(server: McpServer): void {
       } catch (error: any) {
         logger.error(
           `Error fetching table preview: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
+    },
+  );
+
+  // Register a resource for query stats heatmaps
+  server.resource(
+    "gcp-spanner-query-stats",
+    new ResourceTemplate(
+      "gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats",
+      { list: undefined },
+    ),
+    async (uri, { projectId, instanceId, databaseId }, _extra) => {
+      try {
+        let actualProjectId: string;
+        try {
+          const projectIdValue = Array.isArray(projectId)
+            ? projectId[0]
+            : projectId;
+          actualProjectId = projectIdValue || (await getProjectId());
+          if (!actualProjectId) {
+            throw new Error("Project ID could not be determined");
+          }
+          logger.debug(
+            `Using project ID: ${actualProjectId} for spanner-query-stats resource`,
+          );
+        } catch (error) {
+          logger.error(
+            `Error detecting project ID: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          throw new GcpMcpError(
+            "Unable to detect a Project ID in the current environment.\nTo learn more about authentication and Google APIs, visit:\nhttps://cloud.google.com/docs/authentication/getting-started",
+            "UNAUTHENTICATED",
+            401,
+          );
+        }
+
+        const config = await getSpannerConfig(
+          Array.isArray(instanceId) ? instanceId[0] : instanceId,
+          Array.isArray(databaseId) ? databaseId[0] : databaseId,
+        );
+
+        const spanner = await getSpannerClient();
+        logger.debug(
+          `Using Spanner client with project ID: ${spanner.projectId} for spanner-query-stats`,
+        );
+        const databaseHandle = spanner
+          .instance(config.instanceId)
+          .database(config.databaseId);
+
+        const markdown = await buildQueryStatsMarkdown(databaseHandle, {
+          projectId: actualProjectId,
+          instanceId: config.instanceId,
+          databaseId: config.databaseId,
+        });
+
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              text: markdown,
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error(
+          `Error fetching Spanner query stats: ${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
       }

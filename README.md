@@ -51,6 +51,8 @@ Interact with Google Cloud Spanner databases:
 
 **Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-natural-language`, `gcp-spanner-query-count`
 
+**Resource Highlight:** `gcp-spanner-query-stats` surfaces Query Insights (SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR) as markdown heatmaps across 1m/10m/1h windows.
+
 *Example prompts:*
 - "List all databases in Spanner instance my-instance in project ecommerce-prod-123"
 - "Execute SQL: SELECT COUNT(*) FROM users in database user-db in project my-app-456"
