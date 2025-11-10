@@ -44,6 +44,8 @@ import {
   type ServiceName,
 } from "./utils/service-selector.js";
 
+type ServerMode = "daemon" | "standalone";
+
 // Load environment variables
 dotenv.config();
 
@@ -66,27 +68,39 @@ async function main(): Promise<void> {
 
   // Enhanced signal handlers for graceful shutdown
   let isShuttingDown = false;
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
-  const gracefulShutdown = async (signal: string) => {
+  const gracefulShutdown = async (
+    reason: string,
+    exitCode: number = 0,
+  ): Promise<void> => {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
-    logger.info(`Received ${signal} signal, shutting down gracefully`);
+    logger.info(`Received ${reason} signal, shutting down gracefully`);
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = undefined;
+    }
 
     try {
       // Close any remaining connections
       logger.info("Graceful shutdown completed");
-      process.exit(0);
+      process.exit(exitCode);
     } catch (error) {
       logger.error(
         `Error during shutdown: ${error instanceof Error ? error.message : String(error)}`,
       );
-      process.exit(1);
+      process.exit(exitCode === 0 ? 1 : exitCode);
     }
   };
 
-  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => {
+    void gracefulShutdown("SIGINT");
+  });
+  process.on("SIGTERM", () => {
+    void gracefulShutdown("SIGTERM");
+  });
 
   // Debug environment variables
   if (process.env.DEBUG) {
@@ -109,6 +123,33 @@ async function main(): Promise<void> {
 
   try {
     logger.info("Starting Google Cloud MCP server...");
+
+    const normalizeBooleanEnv = (value: string | undefined): boolean => {
+      if (!value) {
+        return false;
+      }
+      return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+    };
+
+    const serverModeEnv = process.env.MCP_SERVER_MODE?.toLowerCase();
+    let serverMode: ServerMode = "daemon";
+
+    if (serverModeEnv) {
+      if (serverModeEnv === "daemon" || serverModeEnv === "standalone") {
+        serverMode = serverModeEnv;
+      } else {
+        logger.warn(
+          `Unknown MCP_SERVER_MODE value: ${process.env.MCP_SERVER_MODE}. Falling back to daemon mode`,
+        );
+      }
+    } else if (normalizeBooleanEnv(process.env.MCP_STANDALONE)) {
+      serverMode = "standalone";
+    }
+
+    const isStandaloneMode = serverMode === "standalone";
+    logger.info(
+      `Execution mode: ${isStandaloneMode ? "standalone (exit after transport closes)" : "daemon (keep process alive)"}`,
+    );
 
     // Create the MCP server first to ensure it's ready to handle requests
     // even if authentication is still initializing
@@ -289,39 +330,52 @@ async function main(): Promise<void> {
     // Initialize stdio transport for Claude Desktop compatibility
     logger.info("Initializing stdio transport for Claude Desktop");
     const transport = new StdioServerTransport();
+
+    transport.onclose = () => {
+      if (isStandaloneMode) {
+        logger.info(
+          "Standalone mode enabled; transport closed so the server will exit",
+        );
+        void gracefulShutdown("STDIO transport closed");
+      } else {
+        logger.info("STDIO transport closed; waiting in daemon mode");
+      }
+    };
     await server.connect(transport);
 
     logger.info("Server started successfully and ready to handle requests");
 
-    // Keep the process alive and periodically check auth status
-    let heartbeatCount = 0;
-    setInterval(() => {
-      // Heartbeat to keep the process alive
-      heartbeatCount++;
-      if (process.env.DEBUG) {
-        logger.debug(`Server heartbeat #${heartbeatCount}`);
-      }
+    if (!isStandaloneMode) {
+      // Keep the process alive and periodically check auth status
+      let heartbeatCount = 0;
+      heartbeatTimer = setInterval(() => {
+        // Heartbeat to keep the process alive
+        heartbeatCount++;
+        if (process.env.DEBUG) {
+          logger.debug(`Server heartbeat #${heartbeatCount}`);
+        }
 
-      // Check auth status periodically, but not on every heartbeat to reduce load
-      // Only check auth every 5 heartbeats (approximately every 2.5 minutes)
-      if (!authClient && heartbeatCount % 5 === 0) {
-        logger.debug("Attempting delayed authentication check");
-        initGoogleAuth(false)
-          .then((auth) => {
-            if (auth && !authClient) {
-              logger.info(
-                "Google Cloud authentication initialized successfully (delayed)",
+        // Check auth status periodically, but not on every heartbeat to reduce load
+        // Only check auth every 5 heartbeats (approximately every 2.5 minutes)
+        if (!authClient && heartbeatCount % 5 === 0) {
+          logger.debug("Attempting delayed authentication check");
+          initGoogleAuth(false)
+            .then((auth) => {
+              if (auth && !authClient) {
+                logger.info(
+                  "Google Cloud authentication initialized successfully (delayed)",
+                );
+              }
+            })
+            .catch((authError) => {
+              // Log but don't crash on auth errors
+              logger.debug(
+                `Delayed auth check failed: ${authError instanceof Error ? authError.message : String(authError)}`,
               );
-            }
-          })
-          .catch((authError) => {
-            // Log but don't crash on auth errors
-            logger.debug(
-              `Delayed auth check failed: ${authError instanceof Error ? authError.message : String(authError)}`,
-            );
-          });
-      }
-    }, 30000);
+            });
+        }
+      }, 30000);
+    }
   } catch (error) {
     // Log the error to stderr (won't interfere with stdio protocol)
     logger.error(

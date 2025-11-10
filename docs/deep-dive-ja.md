@@ -424,6 +424,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
 | `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
 | `MCP_ENABLED_SERVICES` | 有効化したいサービスをカンマ区切りで指定（例: `spanner,trace`）。未設定や `all` / `*` の場合は全サービス。 |
+| `MCP_SERVER_MODE` | デフォルトの `daemon` はプロセスを常駐、`standalone` でクライアント切断時に終了。互換のため `MCP_STANDALONE=true` も利用できます。 |
 
 ### クライアント設定例
 
