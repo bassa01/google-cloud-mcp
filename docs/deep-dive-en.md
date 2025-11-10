@@ -207,13 +207,13 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 
 Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, or custom signals while migrating dashboards and alerts to PromQL.
 
-**Key tools**
+### Key tools
 
 - `gcp-monitoring-query-metrics` – Executes Cloud Monitoring metric filters and returns label/value pairs ready to port into PromQL.
 - `gcp-monitoring-list-metric-types` – Discovers metric type URIs for services such as Compute Engine or Cloud Run.
 - `gcp-monitoring-query-natural-language` – Converts plain-language prompts into metric filters you can refine into PromQL selectors.
 
-**Operational tips**
+### Operational tips
 
 - Use `list-metric-types` before natural-language queries to confirm metric availability.
 - Provide alignment windows (e.g., 5m, 1h) to match dashboard expectations.
