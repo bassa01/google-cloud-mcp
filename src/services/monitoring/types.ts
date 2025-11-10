@@ -3,6 +3,10 @@
  */
 import monitoring from "@google-cloud/monitoring";
 import { google } from "@google-cloud/monitoring/build/protos/protos.js";
+import {
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
 const { MetricServiceClient } = monitoring;
 
 /**
@@ -49,67 +53,143 @@ export function getMonitoringClient() {
  * Formats a time series data point for display
  *
  * @param timeSeries The time series data to format
- * @returns A formatted string representation of the time series data
+ * @returns Summaries suitable for compact MCP responses
  */
 export function formatTimeSeriesData(
   timeSeries: google.monitoring.v3.ITimeSeries[],
+): TimeSeriesFormatResult {
+  const seriesList = timeSeries ?? [];
+  const { displayed, omitted } = previewList(
+    seriesList,
+    METRIC_SERIES_PREVIEW_LIMIT,
+  );
+
+  const formattedSeries = displayed.map((series) => {
+    const points = series.points ?? [];
+    const { displayed: pointSubset, omitted: pointOmitted } = previewList(
+      points,
+      METRIC_POINT_PREVIEW_LIMIT,
+    );
+
+    return {
+      metricType: series.metric?.type,
+      metricLabels:
+        series.metric?.labels && Object.keys(series.metric.labels).length > 0
+          ? series.metric.labels
+          : undefined,
+      resource:
+        series.resource && (series.resource.type || series.resource.labels)
+          ? {
+              type: series.resource?.type,
+              labels:
+                series.resource?.labels &&
+                Object.keys(series.resource.labels).length > 0
+                  ? series.resource.labels
+                  : undefined,
+            }
+          : undefined,
+      metricKind: series.metricKind,
+      valueType: series.valueType,
+      points: pointSubset.map((point) => ({
+        timestamp: toTimestamp(point.interval?.endTime),
+        value: extractPointValue(point.value),
+      })),
+      pointsOmitted: pointOmitted,
+    };
+  });
+
+  return {
+    series: formattedSeries,
+    totalSeries: seriesList.length,
+    omittedSeries: omitted,
+  };
+}
+
+export interface TimeSeriesPointSummary {
+  timestamp: string;
+  value: string | number | boolean | Record<string, unknown>;
+}
+
+export interface TimeSeriesSummary {
+  metricType?: string;
+  metricLabels?: Record<string, string>;
+  resource?: {
+    type?: string;
+    labels?: Record<string, string>;
+  };
+  metricKind?: string;
+  valueType?: string;
+  points: TimeSeriesPointSummary[];
+  pointsOmitted?: number;
+}
+
+export interface TimeSeriesFormatResult {
+  series: TimeSeriesSummary[];
+  totalSeries: number;
+  omittedSeries: number;
+}
+
+const METRIC_SERIES_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.MONITORING_SERIES_PREVIEW_LIMIT,
+  5,
+  { min: 1, max: 20 },
+);
+
+const METRIC_POINT_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.MONITORING_POINT_PREVIEW_LIMIT,
+  12,
+  { min: 3, max: 60 },
+);
+
+function toTimestamp(
+  timestamp?: google.protobuf.ITimestamp | null,
 ): string {
-  if (!timeSeries || timeSeries.length === 0) {
-    return "No time series data found.";
+  if (!timestamp?.seconds) {
+    return "unknown";
   }
 
-  let result = "";
+  const millis =
+    Number(timestamp.seconds) * 1000 + Math.floor((timestamp.nanos ?? 0) / 1e6);
 
-  for (const series of timeSeries) {
-    // Format metric information
-    const metricType = series.metric?.type;
-    const metricLabels = series.metric?.labels
-      ? Object.entries(series.metric?.labels)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(", ")
-      : "";
-
-    const resourceType = series.resource?.type;
-    const resourceLabels = Object.entries(series.resource?.labels ?? {})
-      .map(([k, v]) => `${k}=${v}`)
-      .join(", ");
-
-    result += `## Metric: ${metricType}\n`;
-    result += `- Resource: ${resourceType}(${resourceLabels})\n`;
-    if (metricLabels) {
-      result += `- Labels: ${metricLabels}\n`;
-    }
-    result += `- Kind: ${series.metricKind}, Type: ${series.valueType}\n\n`;
-
-    // Format data points
-    result += "| Timestamp | Value |\n";
-    result += "|-----------|-------|\n";
-
-    for (const point of series.points ?? []) {
-      const timestamp = new Date(
-        Number(point.interval?.endTime?.seconds) * 1000,
-      ).toISOString();
-      // Extract the value based on valueType
-      let value: string;
-      if (point.value?.boolValue !== undefined) {
-        value = String(point.value?.boolValue) ?? "N/A";
-      } else if (point.value?.int64Value !== undefined) {
-        value = point.value?.int64Value?.toString() ?? "N/A";
-      } else if (point.value?.doubleValue !== undefined) {
-        value = point.value?.doubleValue?.toFixed(6) ?? "N/A";
-      } else if (point.value?.stringValue !== undefined) {
-        value = point.value?.stringValue ?? "N/A";
-      } else if (point.value?.distributionValue) {
-        value = "Distribution";
-      } else {
-        value = "N/A";
-      }
-
-      result += `| ${timestamp} | ${value} |\n`;
-    }
-
-    result += "\n---\n\n";
+  const date = new Date(millis);
+  if (Number.isNaN(date.getTime())) {
+    return "unknown";
   }
 
-  return result;
+  return date.toISOString();
+}
+
+function extractPointValue(
+  value?: google.monitoring.v3.TypedValue | null,
+): string | number | boolean | Record<string, unknown> {
+  if (!value) {
+    return "N/A";
+  }
+
+  if (value.boolValue !== undefined) {
+    return value.boolValue;
+  }
+
+  if (value.doubleValue !== undefined) {
+    return Number(value.doubleValue);
+  }
+
+  if (value.int64Value !== undefined) {
+    return value.int64Value;
+  }
+
+  if (value.stringValue !== undefined) {
+    return value.stringValue;
+  }
+
+  if (value.distributionValue) {
+    return {
+      distribution: {
+        mean: value.distributionValue.mean,
+        count: value.distributionValue.count,
+      },
+    };
+  }
+
+  return "N/A";
 }

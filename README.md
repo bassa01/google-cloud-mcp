@@ -66,6 +66,22 @@ Query and filter log entries from Google Cloud Logging:
 
 All `gcp-logging-*` tools scrub IP addresses, user identifiers, and request bodies before results leave the server. To permit trusted operators to view full payloads, set the comma-separated `LOG_PAYLOAD_FULL_ACCESS_ROLES` environment variable (defaults to `security_admin,compliance_admin,site_reliability_admin`) and provide matching roles through `MCP_USER_ROLES`/`MCP_ACTIVE_ROLES`. A role match is required before payload redaction is lifted.
 
+#### Response sizing & preview controls
+
+To keep MCP responses LLM-friendly, every tool now emits a short metadata line followed by JSON data, and large result sets are previewed instead of streamed in full. Tune the preview windows with the following environment variables:
+
+| Variable | Default | Scope |
+| --- | --- | --- |
+| `LOG_OUTPUT_PREVIEW_LIMIT` (alias `LOG_OUTPUT_MAX`) | `20` entries | Caps how many log entries are returned per call. |
+| `LOG_TEXT_PAYLOAD_PREVIEW` | `600` characters | Truncates long `textPayload` values with an ellipsis. |
+| `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `execute-query`, `list-*`, and NL query outputs. |
+| `SPANNER_QUERY_COUNT_SERIES_LIMIT` | `5` series | Maximum Spanner query-count time series per response. |
+| `SPANNER_QUERY_COUNT_POINT_LIMIT` | `60` points | Per-series datapoint cap for query-count results. |
+| `MONITORING_SERIES_PREVIEW_LIMIT` | `5` series | Maximum Monitoring time series per response. |
+| `MONITORING_POINT_PREVIEW_LIMIT` | `12` points | Per-series datapoint cap for Monitoring results. |
+
+Each response clearly reports how many rows/series were omitted so that automations can decide whether to narrow filters or request a smaller time window.
+
 ### Spanner
 
 Interact with Google Cloud Spanner databases:

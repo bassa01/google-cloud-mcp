@@ -19,10 +19,10 @@ describe('Logging Types and Utilities', () => {
       
       const formatted = formatLogEntry(mockEntry as any);
       
-      expect(formatted).toMatch(/^##/); // Starts with ##
-      expect(formatted).toContain('INFO'); // Contains severity
-      expect(formatted).toContain('gce_instance'); // Contains resource type
-      expect(formatted).toContain(mockEntry.textPayload);
+      expect(formatted.severity).toBe('INFO');
+      expect(formatted.resource?.type).toBe('gce_instance');
+      expect(formatted.payload.type).toBe('text');
+      expect(formatted.payload.value).toContain(mockEntry.textPayload);
     });
 
     it('should handle log entry with JSON payload', async () => {
@@ -39,8 +39,8 @@ describe('Logging Types and Utilities', () => {
       
       const formatted = formatLogEntry(mockEntry as any);
       
-      expect(formatted).toContain('JSON log message');
-      expect(formatted).toContain('userId');
+      expect(formatted.payload.type).toBe('json');
+      expect(formatted.payload.value).toMatchObject({ message: 'JSON log message', userId: 123 });
     });
 
     it('should handle log entry with minimal data', async () => {
@@ -52,8 +52,8 @@ describe('Logging Types and Utilities', () => {
       
       const formatted = formatLogEntry(minimalEntry as any);
       
-      expect(formatted).toMatch(/^##/); // Starts with ##
-      expect(formatted).toContain('INFO');
+      expect(formatted.severity).toBe('INFO');
+      expect(formatted.payload.value).toBe('[no payload available]');
     });
   });
 

@@ -27,3 +27,4 @@ Never commit credential files or `.env` data. Use environment variables (`GOOGLE
 - Treat `docs/` (deep dives, references) as part of every feature change—if the behaviour, env vars, or tooling surface shifts, update the relevant docs alongside the code.
 - Keep the README in sync with user-facing flows, and call out the documentation updates in your PR checklist.
 - When adding security controls or policies, document both the default posture and the configuration knobs so operators can reason about them.
+- When updating localized docs, keep the English and Japanese variants in sync (e.g., changes to `docs/*-ja.md` require matching updates to the corresponding `docs/*-en.md`).

@@ -45,19 +45,19 @@ describe('Monitoring Types and Utilities', () => {
       }];
       
       const formatted = formatTimeSeriesData(mockTimeSeries);
-      
-      expect(formatted).toContain('Metric: compute.googleapis.com/instance/cpu/utilization');
-      expect(formatted).toContain('cpu/utilization');
-      expect(formatted).toContain('test-instance');
-      expect(formatted).toContain('0.75');
+
+      expect(formatted.series.length).toBe(1);
+      expect(formatted.series[0].metricType).toBe('compute.googleapis.com/instance/cpu/utilization');
+      expect(formatted.series[0].points[0].value).toBe(0.75);
     });
 
     it('should handle empty time series', async () => {
       const { formatTimeSeriesData } = await import('../../../../src/services/monitoring/types.js');
       
       const formatted = formatTimeSeriesData([]);
-      
-      expect(formatted).toContain('No time series data found');
+
+      expect(formatted.series.length).toBe(0);
+      expect(formatted.totalSeries).toBe(0);
     });
   });
 
@@ -76,8 +76,8 @@ describe('Monitoring Types and Utilities', () => {
         }]
       }];
       
-      // Should not throw when formatting valid structure
-      expect(() => formatTimeSeriesData(mockTimeSeries)).not.toThrow();
+      const formatted = formatTimeSeriesData(mockTimeSeries);
+      expect(formatted.series[0].points.length).toBeGreaterThan(0);
     });
   });
 });
