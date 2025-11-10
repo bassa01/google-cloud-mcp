@@ -46,6 +46,8 @@ Monitor and analyse application errors with automated investigation and remediat
 
 **Tools:** `gcp-error-reporting-list-groups`, `gcp-error-reporting-get-group-details`, `gcp-error-reporting-analyse-trends`
 
+All Error Reporting tools now emit a compact summary followed by JSON data that previews groups/events and trend buckets; control the preview windows with the `ERROR_REPORTING_*` environment variables listed below.
+
 *Example prompts:*
 - "Show me error groups from project my-webapp-prod-789 for the last hour"
 - "Get details for error group projects/my-app-123/groups/xyz789"
@@ -79,6 +81,22 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | `SPANNER_QUERY_COUNT_POINT_LIMIT` | `60` points | Per-series datapoint cap for query-count results. |
 | `MONITORING_SERIES_PREVIEW_LIMIT` | `5` series | Maximum Monitoring time series per response. |
 | `MONITORING_POINT_PREVIEW_LIMIT` | `12` points | Per-series datapoint cap for Monitoring results. |
+| `ERROR_REPORTING_GROUP_PREVIEW_LIMIT` | `20` groups | Maximum error groups returned by `list-groups`/trend tools. |
+| `ERROR_REPORTING_EVENT_PREVIEW_LIMIT` | `10` events | Caps recent events returned from `get-group-details`. |
+| `ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT` | `4000` characters | Truncates Error Reporting analysis markdown payloads. |
+| `ERROR_REPORTING_TREND_POINTS_LIMIT` | `40` buckets | Timeline buckets retained in trend analysis responses. |
+| `PROFILER_PROFILE_PREVIEW_LIMIT` | `25` profiles | Limits profile lists and analysis samples. |
+| `PROFILER_ANALYSIS_PREVIEW_LIMIT` | `4000` characters | Truncates Profiler insight/recommendation markdown. |
+| `SUPPORT_CASE_PREVIEW_LIMIT` | `20` cases | Limits case listings/search results. |
+| `SUPPORT_COMMENT_PREVIEW_LIMIT` | `20` comments | Caps displayed comments per request. |
+| `SUPPORT_ATTACHMENT_PREVIEW_LIMIT` | `20` attachments | Attachment list preview window. |
+| `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT` | `20` items | Caps case-classification search results. |
+| `SUPPORT_DESCRIPTION_PREVIEW_LIMIT` | `600` characters | Truncates case descriptions and comment bodies. |
+| `TRACE_SPAN_PREVIEW_LIMIT` | `50` spans | Maximum spans returned per trace. |
+| `TRACE_TRACE_PREVIEW_LIMIT` | `20` traces | Caps multi-trace listings (list/natural-language). |
+| `TRACE_LOG_PREVIEW_LIMIT` | `20` traces | Limits traces returned from log correlation searches. |
+| `TRACE_ATTRIBUTE_PREVIEW_LIMIT` | `15` attributes | Attribute keys retained per span summary. |
+| `TRACE_ANALYSIS_PREVIEW_LIMIT` | `4000` characters | Truncates hierarchy markdown embedded in trace responses. |
 
 Each response clearly reports how many rows/series were omitted so that automations can decide whether to narrow filters or request a smaller time window.
 
@@ -116,6 +134,8 @@ Analyse application performance with Google Cloud Profiler:
 
 **Tools:** `gcp-profiler-list-profiles`, `gcp-profiler-analyse-performance`, `gcp-profiler-compare-trends`
 
+Profiler responses share the summary + JSON shape used elsewhere in the server, including truncated analysis markdown (`PROFILER_ANALYSIS_PREVIEW_LIMIT`) and sample profile previews (`PROFILER_PROFILE_PREVIEW_LIMIT`).
+
 *Example prompts:*
 - "List CPU profiles from project my-java-app-123 for the last 24 hours"
 - "Analyse performance bottlenecks in service my-api in project backend-prod-456"
@@ -127,11 +147,26 @@ Analyse distributed traces from Google Cloud Trace:
 
 **Tools:** `gcp-trace-get-trace`, `gcp-trace-list-traces`, `gcp-trace-find-from-logs`, `gcp-trace-query-natural-language`
 
+Trace responses now include metadata lines (project/time window/filter) plus JSON payloads containing span/trace previews and optional hierarchy markdown; tune them with the `TRACE_*_PREVIEW_LIMIT` variables.
+
 *Example prompts:*
 - "Get trace details for ID abc123def456 in project distributed-app-789"
 - "Show me failed traces from project microservices-prod-123 from the last hour"
 - "Find logs related to trace xyz789 in project web-backend-456"
 - "Query traces for service checkout-api in project ecommerce-prod-321"
+
+### Support
+
+Work with Google Cloud Support cases directly from MCP:
+
+**Tools:** `gcp-support-list-cases`, `gcp-support-search-cases`, `gcp-support-get-case`, `gcp-support-create-case`, `gcp-support-update-case`, `gcp-support-close-case`, `gcp-support-list-comments`, `gcp-support-create-comment`, `gcp-support-list-attachments`, `gcp-support-search-classifications`
+
+Support responses now emit sanitized case/comment/attachment JSON along with short investigation notes. Use the `SUPPORT_*_PREVIEW_LIMIT` variables to balance detail vs. payload size.
+
+*Example prompts:*
+- "List open P1 cases for projects/my-prod-123"
+- "Add an update to projects/foo/cases/1234567890123456789 summarizing the mitigation"
+- "Search classifications for 'service account access'"
 
 ## Deep Wiki / 詳細ドキュメント
 

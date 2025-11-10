@@ -20,6 +20,11 @@ Tools are invoked over MCP using the payload below:
 - On failure, responses may include `isError: true` and a short explanation.
 - Responses now follow a “summary line + JSON block” layout: the summary line lists key metadata (e.g., `projectId=... | filter=... | omitted=...`) and truncation notes, and the JSON block carries the structured payload that MCP clients feed into `structuredContent`.
 - When sensitive fields are redacted, the summary ends with `_Redacted …_` to make the masking reason explicit.
+- New preview knobs keep payloads bounded beyond Logging/Spanner/Monitoring:
+  - **Error Reporting** – `ERROR_REPORTING_GROUP_PREVIEW_LIMIT`, `ERROR_REPORTING_EVENT_PREVIEW_LIMIT`, `ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT`, `ERROR_REPORTING_TREND_POINTS_LIMIT`.
+  - **Profiler** – `PROFILER_PROFILE_PREVIEW_LIMIT`, `PROFILER_ANALYSIS_PREVIEW_LIMIT`.
+  - **Support** – `SUPPORT_CASE_PREVIEW_LIMIT`, `SUPPORT_COMMENT_PREVIEW_LIMIT`, `SUPPORT_ATTACHMENT_PREVIEW_LIMIT`, `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT`, `SUPPORT_DESCRIPTION_PREVIEW_LIMIT`.
+  - **Trace** – `TRACE_SPAN_PREVIEW_LIMIT`, `TRACE_TRACE_PREVIEW_LIMIT`, `TRACE_LOG_PREVIEW_LIMIT`, `TRACE_ATTRIBUTE_PREVIEW_LIMIT`, `TRACE_ANALYSIS_PREVIEW_LIMIT`.
 
 ### Notation
 | Column | Meaning |
@@ -512,6 +517,8 @@ projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/ht
 
 ## Trace
 
+Trace tools now emit structured span/trace previews with optional hierarchy markdown; adjust coverage via the `TRACE_*` preview settings.
+
 ### gcp-trace-get-trace — Retrieve by trace ID
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
@@ -623,6 +630,8 @@ Detected intent: error traces / window=1h / limit=5
 
 ## Error Reporting
 
+All Error Reporting tools emit metadata summaries plus JSON payloads; adjust preview depth with the `ERROR_REPORTING_*` variables outlined above.
+
 ### gcp-error-reporting-list-groups — Aggregate error groups
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
@@ -716,6 +725,8 @@ Time Range: 7d / Resolution: 1h
 ```
 
 ## Profiler
+
+Profiler responses follow the summary+JSON contract, with profile samples and analysis markdown truncated via `PROFILER_*` preview limits.
 
 ### gcp-profiler-list-profiles — List raw profiles
 | Field | Type | Required | Default / Constraints | Description |
@@ -811,6 +822,8 @@ Analysed: 132 profiles
 ```
 
 ## Support API
+
+Support tools return sanitized case/comment/attachment previews plus metadata so automations can reason about truncation; configure the `SUPPORT_*` preview limits as needed.
 
 ### gcp-support-list-cases — List support cases
 | Field | Type | Required | Default / Constraints | Description |

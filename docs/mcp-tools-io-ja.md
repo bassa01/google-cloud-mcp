@@ -20,6 +20,11 @@
 - エラー時は `isError: true` と簡潔なメッセージを含むことがあります。
 - 2025/11 時点の実装では、出力は「要約テキスト + JSON ブロック」の 2 段構成になっています。要約テキストでは `projectId=... | filter=...` などのメタ情報／省略件数を `key=value` 形式で列挙し、続く JSON ブロックに最新データをそのまま載せます。LLM での二次利用を想定したコンパクトなフォーマットです。
 - マスク対象（IP・ユーザー識別子など）が含まれる場合は、要約テキスト末尾に `_Redacted ..._` という注記が付きます。
+- 追加のプレビュー制御:
+  - **Error Reporting** – `ERROR_REPORTING_GROUP_PREVIEW_LIMIT` / `ERROR_REPORTING_EVENT_PREVIEW_LIMIT` / `ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT` / `ERROR_REPORTING_TREND_POINTS_LIMIT`
+  - **Profiler** – `PROFILER_PROFILE_PREVIEW_LIMIT` / `PROFILER_ANALYSIS_PREVIEW_LIMIT`
+  - **Support** – `SUPPORT_CASE_PREVIEW_LIMIT` / `SUPPORT_COMMENT_PREVIEW_LIMIT` / `SUPPORT_ATTACHMENT_PREVIEW_LIMIT` / `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT` / `SUPPORT_DESCRIPTION_PREVIEW_LIMIT`
+  - **Trace** – `TRACE_SPAN_PREVIEW_LIMIT` / `TRACE_TRACE_PREVIEW_LIMIT` / `TRACE_LOG_PREVIEW_LIMIT` / `TRACE_ATTRIBUTE_PREVIEW_LIMIT` / `TRACE_ANALYSIS_PREVIEW_LIMIT`
 
 ### 表記ルール
 | 表記 | 説明 |
@@ -512,6 +517,8 @@ projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/ht
 
 ## Trace
 
+Trace ツールは span/trace プレビューと階層マークダウンを含む JSON を返し、`TRACE_*` プレビュー変数でスパン件数や属性数を調整できます。
+
 ### gcp-trace-get-trace — Trace ID から詳細取得
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
@@ -623,6 +630,8 @@ Detected intent: error traces / window=1h / limit=5
 
 ## Error Reporting
 
+Error Reporting 系ツールも要約+JSON 形式で返り、`ERROR_REPORTING_*` プレビュー変数でグループ数・イベント数・トレンド粒度を調整できます。
+
 ### gcp-error-reporting-list-groups — エラーグループ集計
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
@@ -716,6 +725,8 @@ Time Range: 7d / Resolution: 1h
 ```
 
 ## Profiler
+
+Profiler も同じサマリ+JSON 形式で、`PROFILER_PROFILE_PREVIEW_LIMIT` / `PROFILER_ANALYSIS_PREVIEW_LIMIT` により一覧件数や洞察テキストの長さを制御できます。
 
 ### gcp-profiler-list-profiles — プロファイル一覧
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
@@ -811,6 +822,8 @@ Analysed: 132 profiles
 ```
 
 ## Support API
+
+Support 関連のレスポンスはケース／コメント／添付ファイルをサニタイズした JSON で返り、`SUPPORT_*` プレビュー変数で件数や本文トリミング長を制御できます。
 
 ### gcp-support-list-cases — ケース一覧
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |

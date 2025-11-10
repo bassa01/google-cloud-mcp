@@ -7,12 +7,12 @@ import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import {
   buildSupportErrorMessage,
+  CaseAttachment,
+  CaseClassification,
   CaseComment,
   formatAttachments,
   formatCaseDetails,
-  formatCaseSummary,
   formatClassifications,
-  formatComments,
   ListAttachmentsResponse,
   ListCasesResponse,
   ListCommentsResponse,
@@ -21,9 +21,45 @@ import {
   SupportCase,
 } from "./types.js";
 import { supportApiClient } from "./client.js";
+import {
+  buildStructuredResponse,
+  createTextPreview,
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
 
 const PARENT_PATTERN = /^(projects|organizations)\/[^/]+$/;
 const CASE_NAME_PATTERN = /^(projects|organizations)\/[^/]+\/cases\/[^/]+$/;
+
+const SUPPORT_CASE_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SUPPORT_CASE_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const SUPPORT_COMMENT_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SUPPORT_COMMENT_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const SUPPORT_ATTACHMENT_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SUPPORT_ATTACHMENT_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const SUPPORT_CLASSIFICATION_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SUPPORT_CLASSIFICATION_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const SUPPORT_DESCRIPTION_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SUPPORT_DESCRIPTION_PREVIEW_LIMIT,
+  600,
+  { min: 120, max: 2000 },
+);
 
 function handleSupportError(context: string, error: unknown) {
   const message =
@@ -92,6 +128,112 @@ function resolveBillingProject(parent: string | undefined, defaultProjectId: str
   return defaultProjectId;
 }
 
+interface SupportCaseSummaryPayload {
+  name?: string;
+  displayName?: string;
+  description?: string;
+  descriptionTruncated?: boolean;
+  priority?: string;
+  state?: string;
+  classification?: CaseClassification;
+  createTime?: string;
+  updateTime?: string;
+  timeZone?: string;
+  languageCode?: string;
+  contactEmail?: string;
+  subscriberEmailAddresses?: string[];
+  escalated?: boolean;
+  testCase?: boolean;
+  creator?: SupportCase["creator"];
+}
+
+interface SupportCommentSummaryPayload {
+  name?: string;
+  createTime?: string;
+  creator?: CaseComment["creator"];
+  body?: string;
+  bodyTruncated?: boolean;
+  plainTextBody?: string;
+}
+
+interface SupportAttachmentSummaryPayload {
+  name?: string;
+  filename?: string;
+  mimeType?: string;
+  sizeBytes?: string;
+  createTime?: string;
+  creator?: CaseAttachment["creator"];
+}
+
+interface SupportClassificationSummaryPayload {
+  id: string;
+  displayName?: string;
+}
+
+function summarizeCase(caseItem: SupportCase): SupportCaseSummaryPayload {
+  const { text, truncated } = caseItem.description
+    ? createTextPreview(caseItem.description, SUPPORT_DESCRIPTION_PREVIEW_LIMIT)
+    : { text: undefined, truncated: false };
+
+  return {
+    name: caseItem.name,
+    displayName: caseItem.displayName,
+    description: text,
+    descriptionTruncated: truncated,
+    priority: caseItem.priority,
+    state: caseItem.state,
+    classification: caseItem.classification,
+    createTime: caseItem.createTime,
+    updateTime: caseItem.updateTime,
+    timeZone: caseItem.timeZone,
+    languageCode: caseItem.languageCode,
+    contactEmail: caseItem.contactEmail,
+    subscriberEmailAddresses: caseItem.subscriberEmailAddresses,
+    escalated: caseItem.escalated,
+    testCase: caseItem.testCase,
+    creator: caseItem.creator,
+  };
+}
+
+function summarizeComment(comment: CaseComment): SupportCommentSummaryPayload {
+  const { text, truncated } = comment.body
+    ? createTextPreview(comment.body, SUPPORT_DESCRIPTION_PREVIEW_LIMIT)
+    : comment.plainTextBody
+      ? createTextPreview(comment.plainTextBody, SUPPORT_DESCRIPTION_PREVIEW_LIMIT)
+      : { text: undefined, truncated: false };
+
+  return {
+    name: comment.name,
+    createTime: comment.createTime,
+    creator: comment.creator,
+    body: text,
+    bodyTruncated: truncated,
+    plainTextBody: comment.plainTextBody,
+  };
+}
+
+function summarizeAttachment(
+  attachment: CaseAttachment,
+): SupportAttachmentSummaryPayload {
+  return {
+    name: attachment.name,
+    filename: attachment.filename,
+    mimeType: attachment.mimeType,
+    sizeBytes: attachment.sizeBytes,
+    createTime: attachment.createTime,
+    creator: attachment.creator,
+  };
+}
+
+function summarizeClassification(
+  classification: CaseClassification,
+): SupportClassificationSummaryPayload {
+  return {
+    id: classification.id,
+    displayName: classification.displayName,
+  };
+}
+
 export function registerSupportTools(server: McpServer): void {
   server.registerTool(
     "gcp-support-list-cases",
@@ -136,18 +278,32 @@ export function registerSupportTools(server: McpServer): void {
         );
 
         const cases = response.cases ?? [];
-        const body = cases
-          .map((item, index) => formatCaseSummary(item, index + 1))
-          .join("\n\n");
+        const previewLimit = Math.min(SUPPORT_CASE_PREVIEW_LIMIT, pageSize);
+        const { displayed, omitted } = previewList(cases, previewLimit);
 
-        const paginationInfo = response.nextPageToken
-          ? `\n\nNext page token: ${response.nextPageToken}`
-          : "";
-
-        const text =
-          `# Support Cases\n\nParent: ${resolvedParent}\nReturned: ${cases.length}${
-            filter ? `\nFilter: ${filter}` : ""
-          }${paginationInfo}\n\n${cases.length ? body : "No support cases were found."}`;
+        const text = buildStructuredResponse({
+          title: "Support Cases",
+          metadata: {
+            parent: resolvedParent,
+            filter,
+            pageSize,
+            nextPageToken: response.nextPageToken,
+          },
+          dataLabel: "cases",
+          data: {
+            cases: displayed.map(summarizeCase),
+            casesOmitted: omitted,
+            nextPageToken: response.nextPageToken,
+          },
+          preview: {
+            total: cases.length,
+            displayed: displayed.length,
+            omitted,
+            limit: previewLimit,
+            label: "cases",
+            emptyMessage: "No support cases were found.",
+          },
+        });
 
         return {
           content: [
@@ -209,18 +365,32 @@ export function registerSupportTools(server: McpServer): void {
         );
 
         const cases = response.cases ?? [];
-        const body = cases
-          .map((item, index) => formatCaseSummary(item, index + 1))
-          .join("\n\n");
+        const previewLimit = Math.min(SUPPORT_CASE_PREVIEW_LIMIT, pageSize);
+        const { displayed, omitted } = previewList(cases, previewLimit);
 
-        const paginationInfo = response.nextPageToken
-          ? `\n\nNext page token: ${response.nextPageToken}`
-          : "";
-
-        const text =
-          `# Support Case Search\n\nParent: ${resolvedParent}\nQuery: ${query}\nReturned: ${cases.length}${
-            paginationInfo
-          }\n\n${cases.length ? body : "No support cases matched the query."}`;
+        const text = buildStructuredResponse({
+          title: "Support Case Search",
+          metadata: {
+            parent: resolvedParent,
+            query,
+            pageSize,
+            nextPageToken: response.nextPageToken,
+          },
+          dataLabel: "cases",
+          data: {
+            cases: displayed.map(summarizeCase),
+            casesOmitted: omitted,
+            nextPageToken: response.nextPageToken,
+          },
+          preview: {
+            total: cases.length,
+            displayed: displayed.length,
+            omitted,
+            limit: previewLimit,
+            label: "cases",
+            emptyMessage: "No support cases matched the query.",
+          },
+        });
 
         return {
           content: [
@@ -272,11 +442,23 @@ export function registerSupportTools(server: McpServer): void {
           };
         }
 
+        const text = buildStructuredResponse({
+          title: "Support Case Details",
+          metadata: {
+            caseName: name,
+          },
+          dataLabel: "case",
+          data: {
+            case: summarizeCase(supportCase),
+            detailsMarkdown: formatCaseDetails(supportCase),
+          },
+        });
+
         return {
           content: [
             {
               type: "text" as const,
-              text: formatCaseDetails(supportCase),
+              text,
             },
           ],
         };
@@ -352,9 +534,18 @@ export function registerSupportTools(server: McpServer): void {
           billingProject,
         );
 
-        const text =
-          formatCaseDetails(createdCase) +
-          `\n\n✅ Support case created successfully in ${resolvedParent}.`;
+        const text = buildStructuredResponse({
+          title: "Support Case Created",
+          metadata: {
+            parent: resolvedParent,
+          },
+          dataLabel: "case",
+          data: {
+            case: summarizeCase(createdCase),
+            detailsMarkdown: formatCaseDetails(createdCase),
+            status: "created",
+          },
+        });
 
         return {
           content: [
@@ -444,9 +635,19 @@ export function registerSupportTools(server: McpServer): void {
           billingProject,
         );
 
-        const text =
-          formatCaseDetails(updatedCase) +
-          `\n\n✅ Support case ${name} updated successfully.`;
+        const text = buildStructuredResponse({
+          title: "Support Case Updated",
+          metadata: {
+            caseName: name,
+            updateMask,
+          },
+          dataLabel: "case",
+          data: {
+            case: summarizeCase(updatedCase),
+            detailsMarkdown: formatCaseDetails(updatedCase),
+            status: "updated",
+          },
+        });
 
         return {
           content: [
@@ -492,11 +693,20 @@ export function registerSupportTools(server: McpServer): void {
           billingProject,
         );
 
-        const text =
-          formatCaseDetails(response) +
-          `\n\n✅ Support case ${name} closed.${
-            justification ? `\nJustification: ${justification}` : ""
-          }`;
+        const text = buildStructuredResponse({
+          title: "Support Case Closed",
+          metadata: {
+            caseName: name,
+            justification,
+          },
+          dataLabel: "case",
+          data: {
+            case: summarizeCase(response),
+            detailsMarkdown: formatCaseDetails(response),
+            status: "closed",
+            justification,
+          },
+        });
 
         return {
           content: [
@@ -540,14 +750,31 @@ export function registerSupportTools(server: McpServer): void {
         );
 
         const comments = response.comments ?? [];
-        const paginationInfo = response.nextPageToken
-          ? `\n\nNext page token: ${response.nextPageToken}`
-          : "";
+        const previewLimit = Math.min(SUPPORT_COMMENT_PREVIEW_LIMIT, pageSize);
+        const { displayed, omitted } = previewList(comments, previewLimit);
 
-        const text =
-          `# Support Case Comments\n\nCase: ${name}\nReturned: ${comments.length}${paginationInfo}\n\n${formatComments(
-            comments,
-          )}`;
+        const text = buildStructuredResponse({
+          title: "Support Case Comments",
+          metadata: {
+            caseName: name,
+            pageSize,
+            nextPageToken: response.nextPageToken,
+          },
+          dataLabel: "comments",
+          data: {
+            comments: displayed.map(summarizeComment),
+            commentsOmitted: omitted,
+            nextPageToken: response.nextPageToken,
+          },
+          preview: {
+            total: comments.length,
+            displayed: displayed.length,
+            omitted,
+            limit: previewLimit,
+            label: "comments",
+            emptyMessage: "No comments found for this case.",
+          },
+        });
 
         return {
           content: [
@@ -590,8 +817,17 @@ export function registerSupportTools(server: McpServer): void {
           billingProject,
         );
 
-        const text =
-          `✅ Comment added to ${name}.\n\n${formatComments([createdComment])}`;
+        const text = buildStructuredResponse({
+          title: "Support Case Comment Created",
+          metadata: {
+            caseName: name,
+          },
+          dataLabel: "comment",
+          data: {
+            comment: summarizeComment(createdComment),
+            status: "created",
+          },
+        });
 
         return {
           content: [
@@ -635,14 +871,35 @@ export function registerSupportTools(server: McpServer): void {
         );
 
         const attachments = response.attachments ?? [];
-        const paginationInfo = response.nextPageToken
-          ? `\n\nNext page token: ${response.nextPageToken}`
-          : "";
+        const previewLimit = Math.min(
+          SUPPORT_ATTACHMENT_PREVIEW_LIMIT,
+          pageSize,
+        );
+        const { displayed, omitted } = previewList(attachments, previewLimit);
 
-        const text =
-          `# Support Case Attachments\n\nCase: ${name}\nReturned: ${attachments.length}${
-            paginationInfo
-          }\n\n${formatAttachments(attachments)}`;
+        const text = buildStructuredResponse({
+          title: "Support Case Attachments",
+          metadata: {
+            caseName: name,
+            pageSize,
+            nextPageToken: response.nextPageToken,
+          },
+          dataLabel: "attachments",
+          data: {
+            attachments: displayed.map(summarizeAttachment),
+            attachmentsOmitted: omitted,
+            nextPageToken: response.nextPageToken,
+            markdown: formatAttachments(displayed),
+          },
+          preview: {
+            total: attachments.length,
+            displayed: displayed.length,
+            omitted,
+            limit: previewLimit,
+            label: "attachments",
+            emptyMessage: "No attachments found for this case.",
+          },
+        });
 
         return {
           content: [
@@ -685,14 +942,38 @@ export function registerSupportTools(server: McpServer): void {
         );
 
         const classifications = response.caseClassifications ?? [];
-        const paginationInfo = response.nextPageToken
-          ? `\n\nNext page token: ${response.nextPageToken}`
-          : "";
+        const previewLimit = Math.min(
+          SUPPORT_CLASSIFICATION_PREVIEW_LIMIT,
+          pageSize,
+        );
+        const { displayed, omitted } = previewList(
+          classifications,
+          previewLimit,
+        );
 
-        const text =
-          `# Case Classifications\n\nQuery: ${query}\nReturned: ${classifications.length}${
-            paginationInfo
-          }\n\n${formatClassifications(classifications)}`;
+        const text = buildStructuredResponse({
+          title: "Case Classifications",
+          metadata: {
+            query,
+            pageSize,
+            nextPageToken: response.nextPageToken,
+          },
+          dataLabel: "classifications",
+          data: {
+            classifications: displayed.map(summarizeClassification),
+            classificationsOmitted: omitted,
+            nextPageToken: response.nextPageToken,
+            markdown: formatClassifications(displayed),
+          },
+          preview: {
+            total: classifications.length,
+            displayed: displayed.length,
+            omitted,
+            limit: previewLimit,
+            label: "classifications",
+            emptyMessage: "No classifications matched the query.",
+          },
+        });
 
         return {
           content: [
