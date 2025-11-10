@@ -11,7 +11,6 @@ A Model Context Protocol server that connects to Google Cloud services to provid
 Supported Google Cloud services:
 
 - [x] [Error Reporting](https://cloud.google.com/error-reporting)
-- [x] [Identity and Access Management (IAM)](https://cloud.google.com/iam)
 - [x] [Logging](https://cloud.google.com/logging)
 - [x] [Monitoring](https://cloud.google.com/monitoring)
 - [x] [Profiler](https://cloud.google.com/profiler)
@@ -28,18 +27,6 @@ Monitor and analyse application errors with automated investigation and remediat
 - "Show me error groups from project my-webapp-prod-789 for the last hour"
 - "Get details for error group projects/my-app-123/groups/xyz789"
 - "Analyse error trends for service my-api in project analytics-prod-456"
-
-### IAM
-
-Query and analyse IAM policies and permissions:
-
-**Tools:** `gcp-iam-get-project-policy`, `gcp-iam-test-project-permissions`, `gcp-iam-test-resource-permissions`, `gcp-iam-validate-deployment-permissions`, `gcp-iam-list-deployment-services`, `gcp-iam-analyse-permission-gaps`
-
-*Example prompts:*
-- "Get IAM policy for project my-webapp-prod-123"
-- "Test if I have storage.buckets.create permission on project data-lake-456"
-- "Check deployment permissions for Cloud Run in project microservices-789"
-- "Analyse permission gaps for deploying to GKE cluster in project k8s-prod-321"
 
 ### Logging
 
@@ -103,10 +90,11 @@ Once configured, you can interact with Google Cloud services using natural langu
 
 ```
 "Show me errors from project ecommerce-api-456 in the last hour"
-"Check if I have permission to deploy to Cloud Run in project microservices-789"
 "Find logs containing 'database timeout' from project backend-prod-321 yesterday"
 "List Spanner databases in instance prod-db for project data-store-654"
 "What's the CPU usage of Compute Engine instances in project infrastructure-987?"
+"Compare recent heap profiles in project performance-test-789"
+"List traces for checkout-api in project ecommerce-prod-321 during the past day"
 ```
 
 ## Authentication
