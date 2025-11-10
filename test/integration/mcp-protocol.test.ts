@@ -41,39 +41,20 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Tool Registration Compliance', () => {
-    it('should register IAM tools with proper schema', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
-      // Verify tools are registered with required fields
-      const toolCalls = mockMcpServer.registerTool.mock.calls;
-      
-      toolCalls.forEach(call => {
-        const [name, schema, handler] = call;
-        
-        expect(typeof name).toBe('string');
-        expect(schema).toHaveProperty('title');
-        expect(schema).toHaveProperty('description');
-        expect(schema).toHaveProperty('inputSchema');
-        expect(typeof handler).toBe('function');
-      });
-    });
-
     it('should register billing tools with proper schema', async () => {
       vi.clearAllMocks();
       const { registerBillingTools } = await import('../../src/services/billing/tools.js');
-      
+
       registerBillingTools(mockMcpServer as any);
-      
+
       // Verify billing tools are registered with required fields
       const toolCalls = mockMcpServer.registerTool.mock.calls;
-      
+
       expect(toolCalls.length).toBeGreaterThan(0);
-      
+
       toolCalls.forEach(call => {
         const [name, schema, handler] = call;
-        
+
         expect(typeof name).toBe('string');
         expect(name).toMatch(/^gcp-billing-/);
         expect(schema).toHaveProperty('title');
@@ -83,51 +64,39 @@ describe('MCP Protocol Compliance', () => {
       });
     });
 
-    it('should validate tool input schemas', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
+    it('should validate logging tool input schemas', async () => {
+      vi.clearAllMocks();
+      const { registerLoggingTools } = await import('../../src/services/logging/tools.js');
+
+      registerLoggingTools(mockMcpServer as any);
+
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-get-project-policy'
+        call => call[0] === 'gcp-logging-query-logs'
       );
-      
+
       expect(toolCall).toBeDefined();
-      
-      const schema = toolCall[1];
-      expect(schema.inputSchema).toBeDefined();
-      
-      // Verify Zod schema structure
-      if (schema.inputSchema.project) {
-        expect(schema.inputSchema.project).toBeDefined();
+
+      const schema = toolCall?.[1];
+      expect(schema?.inputSchema).toBeDefined();
+
+      const filterSchema = schema?.inputSchema?.filter;
+      if (filterSchema) {
+        expect(typeof filterSchema.describe).toBe('function');
+      }
+
+      const limitSchema = schema?.inputSchema?.limit;
+      if (limitSchema && 'safeParse' in limitSchema) {
+        expect(limitSchema.safeParse(0).success).toBe(false);
+        expect(limitSchema.safeParse(100).success).toBe(true);
       }
     });
   });
 
   describe('Resource Registration Compliance', () => {
-    it('should register IAM resources with proper templates', async () => {
-      const { registerIamResources } = await import('../../src/services/iam/resources.js');
-      
-      registerIamResources(mockMcpServer as any);
-      
-      // Verify resources are registered with MCP compliant structure
-      expect(mockMcpServer.resource).toHaveBeenCalled();
-      
-      const resourceCalls = mockMcpServer.resource.mock.calls;
-      
-      resourceCalls.forEach(call => {
-        const [name, template, handler] = call;
-        
-        expect(typeof name).toBe('string');
-        expect(template).toBeDefined();
-        expect(typeof handler).toBe('function');
-      });
-    });
-
     it('should register billing resources with proper templates', async () => {
       vi.clearAllMocks();
       const { registerBillingResources } = await import('../../src/services/billing/resources.js');
-      
+
       registerBillingResources(mockMcpServer as any);
       
       // Verify billing resources are registered with MCP compliant structure
@@ -147,28 +116,9 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Response Format Compliance', () => {
-    it('should return MCP-compliant IAM tool responses', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
-      const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-test-project-permissions'
-      );
-      
-      const toolHandler = toolCall[2];
-      const result = await toolHandler({ permissions: ['test.permission'] });
-      
-      // Verify MCP response structure
-      expect(result).toHaveProperty('content');
-      expect(Array.isArray(result.content)).toBe(true);
-      expect(result.content[0]).toHaveProperty('type');
-      expect(result.content[0]).toHaveProperty('text');
-    });
-
     it('should return MCP-compliant billing tool responses', async () => {
       vi.clearAllMocks();
-      
+
       // Import and set up billing client mock
       const { mockBillingClient } = await import('../mocks/google-cloud-mocks.js');
       const { createMockBillingAccount } = await import('../utils/test-helpers.js');
@@ -194,65 +144,60 @@ describe('MCP Protocol Compliance', () => {
       expect(result.content[0]).toHaveProperty('text');
     });
 
-    it('should handle errors in MCP-compliant format', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      // Mock error condition
-      const { mockResourceManagerClient } = await import('../mocks/google-cloud-mocks.js');
-      mockResourceManagerClient.testIamPermissions.mockRejectedValue(new Error('Test error'));
-      
-      registerIamTools(mockMcpServer as any);
-      
+    it('should handle logging errors in MCP-compliant format', async () => {
+      const { registerLoggingTools } = await import('../../src/services/logging/tools.js');
+
+      const { mockLoggingClient } = await import('../mocks/google-cloud-mocks.js');
+      mockLoggingClient.getEntries.mockRejectedValueOnce(new Error('Test error'));
+
+      registerLoggingTools(mockMcpServer as any);
+
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-test-project-permissions'
+        call => call[0] === 'gcp-logging-query-logs'
       );
-      
-      const toolHandler = toolCall[2];
-      const result = await toolHandler({ permissions: ['test.permission'] });
-      
+
+      const toolHandler = toolCall?.[2];
+      const result = await toolHandler?.({ filter: 'severity>=ERROR', limit: 10 });
+
       // Verify error response structure
       expect(result).toHaveProperty('content');
       expect(result).toHaveProperty('isError');
-      expect(result.isError).toBe(true);
+      expect(result?.isError).toBe(true);
     });
   });
 
   describe('Security Best Practices Compliance', () => {
-    it('should validate input parameters', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
+    it('should validate logging tool input parameters', async () => {
+      const { registerLoggingTools } = await import('../../src/services/logging/tools.js');
+
+      registerLoggingTools(mockMcpServer as any);
+
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-test-resource-permissions'
+        call => call[0] === 'gcp-logging-query-logs'
       );
-      
-      const toolHandler = toolCall[2];
-      
-      // Test should handle invalid input gracefully
-      try {
-        await toolHandler({ resource: '', permissions: [] });
-        // Should not throw, but handle gracefully
-      } catch (error) {
-        // If it throws, it should be a handled error
-        expect(error).toBeInstanceOf(Error);
+
+      const schema = toolCall?.[1];
+      const limitSchema = schema?.inputSchema?.limit;
+      if (limitSchema && 'safeParse' in limitSchema) {
+        expect(limitSchema.safeParse(-1).success).toBe(false);
+      } else {
+        throw new Error('Expected limit schema to be defined');
       }
     });
 
-    it('should not expose sensitive information in errors', async () => {
-      const { registerIamTools } = await import('../../src/services/iam/tools.js');
-      
-      registerIamTools(mockMcpServer as any);
-      
+    it('should not expose sensitive information in logging responses', async () => {
+      const { registerLoggingTools } = await import('../../src/services/logging/tools.js');
+
+      registerLoggingTools(mockMcpServer as any);
+
       const toolCall = mockMcpServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-iam-get-project-policy'
+        call => call[0] === 'gcp-logging-query-logs'
       );
-      
-      const toolHandler = toolCall[2];
-      const result = await toolHandler({ project: 'test-project' });
-      
-      // Verify no sensitive data in response
-      const responseText = result.content[0].text;
+
+      const toolHandler = toolCall?.[2];
+      const result = await toolHandler?.({ filter: 'severity>=ERROR', limit: 5 });
+
+      const responseText = result?.content?.[0]?.text ?? '';
       expect(responseText).not.toContain('password');
       expect(responseText).not.toContain('secret');
       expect(responseText).not.toContain('key');
@@ -266,7 +211,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should handle UTF-8 encoding', () => {
-      const testString = '🔐 IAM Policy Test ✅';
+      const testString = '🔐 Logging Response Test ✅';
       const encoded = Buffer.from(testString, 'utf-8');
       const decoded = encoded.toString('utf-8');
       

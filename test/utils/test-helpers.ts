@@ -43,11 +43,6 @@ export function createMockGoogleCloudClients() {
         })),
       })),
     },
-    resourceManager: {
-      getIamPolicy: vi.fn(),
-      setIamPolicy: vi.fn(),
-      testIamPermissions: vi.fn(),
-    },
   };
 }
 
@@ -89,26 +84,6 @@ export function createMockLogEntries(count: number = 5) {
       version: '1.0.0',
     },
   }));
-}
-
-/**
- * Create mock IAM policy
- */
-export function createMockIamPolicy() {
-  return {
-    bindings: [
-      {
-        role: 'roles/owner',
-        members: ['user:test@example.com'],
-      },
-      {
-        role: 'roles/viewer',
-        members: ['serviceAccount:test@test-project.iam.gserviceaccount.com'],
-      },
-    ],
-    etag: 'mock-etag',
-    version: 1,
-  };
 }
 
 /**

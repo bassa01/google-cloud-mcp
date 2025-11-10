@@ -2,7 +2,7 @@
  * Google Cloud MCP Server
  *
  * This server provides Model Context Protocol resources and tools for interacting
- * with Google Cloud services (Billing, Error Reporting, IAM, Logging, Monitoring, Profiler, Spanner, and Trace).
+ * with Google Cloud services (Billing, Error Reporting, Logging, Monitoring, Profiler, Spanner, and Trace).
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import dotenv from "dotenv";
@@ -22,10 +22,6 @@ import {
   registerMonitoringTools,
 } from "./services/monitoring/index.js";
 import { registerTraceService } from "./services/trace/index.js";
-import {
-  registerIamResources,
-  registerIamTools,
-} from "./services/iam/index.js";
 import {
   registerErrorReportingResources,
   registerErrorReportingTools,
@@ -192,17 +188,6 @@ async function main(): Promise<void> {
     } catch (error) {
       logger.warn(
         `Error registering Trace services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      // Register Google Cloud IAM service
-      logger.info("Registering Google Cloud IAM services");
-      registerIamResources(server);
-      registerIamTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering IAM services: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
