@@ -322,7 +322,10 @@ async function main(): Promise<void> {
     logger.info("Initializing stdio transport for Claude Desktop");
     const transport = new StdioServerTransport();
 
-    transport.onclose = () => {
+    await server.connect(transport);
+
+    const existingCloseHandler = transport.onclose?.bind(transport);
+    transport.onclose = (event) => {
       if (isStandaloneMode) {
         logger.info(
           "Standalone mode enabled; transport closed so the server will exit",
@@ -331,8 +334,9 @@ async function main(): Promise<void> {
       } else {
         logger.info("STDIO transport closed; waiting in daemon mode");
       }
+
+      existingCloseHandler?.(event);
     };
-    await server.connect(transport);
 
     logger.info("Server started successfully and ready to handle requests");
 
