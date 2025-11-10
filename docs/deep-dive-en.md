@@ -2,10 +2,11 @@
 
 ## Onboarding checklist
 
-1. **Verify your toolchain** – ensure Node.js 18.20+ and pnpm 9+ are available:
+1. **Verify your toolchain** – ensure Node.js 24.11+ and pnpm 10.21+ are available:
    ```bash
    node -v
-   corepack enable pnpm && pnpm -v
+   corepack enable && corepack use pnpm@10.21.0
+   pnpm -v
    ```
 2. **Install the Google Cloud CLI** – run `gcloud components update` and sign in with an account that has at least viewer access to one project.
 3. **Clone the repo & install dependencies** – `git clone`, `pnpm install`, and confirm `pnpm lint` & `pnpm test` pass before starting feature work.
@@ -19,8 +20,8 @@
 
 ### 1. Install prerequisites
 
-- **Node.js 18.20+** – matches the `engines.node` constraint in `package.json`.
-- **pnpm 9+** – enable via `corepack enable pnpm` to stay aligned with the repo’s `packageManager` metadata.
+- **Node.js 24.11+** – matches the `engines.node` constraint in `package.json`.
+- **pnpm 10.21+** – enable via `corepack enable && corepack use pnpm@10.21.0` to stay aligned with the repo’s `packageManager` metadata.
 - **Google Cloud CLI** – manages credentials and sets the active project (`gcloud init`).
 - **Google Cloud project & entitlements** – access to Logging, Monitoring, Spanner, Trace, Profiler, Error Reporting, and (optionally) Support APIs.
 

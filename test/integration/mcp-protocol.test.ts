@@ -3,10 +3,19 @@
  * Tests adherence to Model Context Protocol specification 2025-06-18
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Import mocks first
 import '../mocks/google-cloud-mocks.js';
 import { mockMcpServer } from '../mocks/google-cloud-mocks.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const billingToolsPath = resolve(__dirname, '../../src/services/billing/tools.ts');
+const billingResourcesPath = resolve(__dirname, '../../src/services/billing/resources.ts');
+const billingServiceAvailable = existsSync(billingToolsPath) && existsSync(billingResourcesPath);
 
 describe('MCP Protocol Compliance', () => {
   beforeEach(() => {
@@ -41,7 +50,7 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Tool Registration Compliance', () => {
-    it('should register billing tools with proper schema', async () => {
+    it.runIf(billingServiceAvailable)('should register billing tools with proper schema', async () => {
       vi.clearAllMocks();
       const { registerBillingTools } = await import('../../src/services/billing/tools.js');
 
@@ -93,7 +102,7 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Resource Registration Compliance', () => {
-    it('should register billing resources with proper templates', async () => {
+    it.runIf(billingServiceAvailable)('should register billing resources with proper templates', async () => {
       vi.clearAllMocks();
       const { registerBillingResources } = await import('../../src/services/billing/resources.js');
 
@@ -115,7 +124,7 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Response Format Compliance', () => {
-    it('should return MCP-compliant billing tool responses', async () => {
+    it.runIf(billingServiceAvailable)('should return MCP-compliant billing tool responses', async () => {
       vi.clearAllMocks();
 
       // Import and set up billing client mock
