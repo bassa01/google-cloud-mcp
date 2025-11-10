@@ -58,7 +58,7 @@ interface QueryStatsCollection {
   cpu: Map<string, QueryMetricEntry>;
 }
 
-interface HeatmapSectionOptions {
+interface MetricSectionOptions {
   metric: QueryMetric;
   title: string;
   rowsLimit: number;
@@ -75,18 +75,18 @@ export interface QueryStatsContext {
 }
 
 const DEFAULT_SQL_LIMIT = 15;
-const DEFAULT_HEATMAP_ROWS = 6;
+const DEFAULT_TABLE_ROWS = 6;
 
 /**
- * Generates markdown describing query stats heatmaps per metric/window.
+ * Generates markdown describing query stats per metric/window in a structured table.
  */
 export async function buildQueryStatsMarkdown(
   database: Database,
   context: QueryStatsContext,
   options: QueryStatsMarkdownOptions = {},
 ): Promise<string> {
-  const heatmapRows = options.maxRows ?? DEFAULT_HEATMAP_ROWS;
-  const sqlLimit = Math.max(DEFAULT_SQL_LIMIT, heatmapRows * 2);
+  const tableRows = options.maxRows ?? DEFAULT_TABLE_ROWS;
+  const sqlLimit = Math.max(DEFAULT_SQL_LIMIT, tableRows * 2);
   const collection = await collectQueryStats(database, sqlLimit);
 
   const hasLatency = collection.latency.size > 0;
@@ -113,27 +113,29 @@ export async function buildQueryStatsMarkdown(
   }
 
   if (hasLatency) {
-    markdown += buildHeatmapSection(collection.latency, {
+    markdown += buildMetricSection(collection.latency, {
       metric: "latency",
-      title: "Average latency heatmap",
-      rowsLimit: heatmapRows,
+      title: "Average latency leaders (seconds)",
+      rowsLimit: tableRows,
     });
   } else {
-    markdown += "### Average latency heatmap\n\nNo latency records were returned.\n\n";
+    markdown +=
+      "### Average latency leaders (seconds)\n\nNo latency records were returned.\n\n";
   }
 
   if (hasCpu) {
-    markdown += buildHeatmapSection(collection.cpu, {
+    markdown += buildMetricSection(collection.cpu, {
       metric: "cpu",
-      title: "Total CPU heatmap",
-      rowsLimit: heatmapRows,
+      title: "Total CPU leaders (seconds)",
+      rowsLimit: tableRows,
     });
   } else {
-    markdown += "### Total CPU heatmap\n\nNo CPU-intensive records were returned.\n\n";
+    markdown +=
+      "### Total CPU leaders (seconds)\n\nNo CPU-intensive records were returned.\n\n";
   }
 
   markdown +=
-    "Data sourced from SPANNER_SYS.QUERY_STATS_TOP_MINUTE / 10MINUTE / HOUR views. Values and colors are relative within each heatmap.\n";
+    "Data sourced from SPANNER_SYS.QUERY_STATS_TOP_MINUTE / 10MINUTE / HOUR views. Values are reported per window to stay LLM-friendly.\n";
 
   return markdown;
 }
@@ -341,42 +343,33 @@ function deriveRowKey(row: QueryStatsRow): string {
   return `sql:${hash}`;
 }
 
-function buildHeatmapSection(
+function buildMetricSection(
   entries: Map<string, QueryMetricEntry>,
-  options: HeatmapSectionOptions,
+  options: MetricSectionOptions,
 ): string {
   const rows = pickTopEntries(entries, options.metric, options.rowsLimit);
   if (rows.length === 0) {
     return `### ${options.title}\n\nNo data points available.\n\n`;
   }
 
-  const values: number[] = [];
-  for (const entry of rows) {
-    for (const window of QUERY_WINDOWS) {
-      const value = getMetricValue(entry.windows[window.id], options.metric);
-      if (value !== null && value !== undefined) {
-        values.push(value);
-      }
-    }
-  }
-
-  const colorScale = createColorScale(values);
-
   let markdown = `### ${options.title}\n\n`;
-  const header = `| Query fingerprint | ${QUERY_WINDOWS.map(w => w.shortLabel).join(" | ")} |`;
-  const separator =
-    "|-------------------|" +
-    QUERY_WINDOWS.map(() => "----------------|").join("");
-  markdown += `${header}\n${separator}\n`;
+  markdown +=
+    "| Rank | Fingerprint | 1m | 10m | 1h | Sample Query | Request Tag |\n";
+  markdown += "| --- | --- | --- | --- | --- | --- | --- |\n";
 
-  for (const entry of rows) {
-    const label = formatQueryLabel(entry);
-    const cells = QUERY_WINDOWS.map(window => {
-      const value = getMetricValue(entry.windows[window.id], options.metric);
-      return formatHeatmapCell(value, options.metric, colorScale);
-    });
-    markdown += `| ${label} | ${cells.join(" | ")} |\n`;
-  }
+  rows.forEach((entry, index) => {
+    const fingerprint = formatFingerprint(entry.key);
+    const windowValues = QUERY_WINDOWS.map(window =>
+      formatMetricCell(entry.windows[window.id], options.metric),
+    );
+    const sampleQuery = escapeTableText(
+      truncateForTable(entry.sampleQuery || "<unknown query>"),
+    );
+    const requestTag = escapeTableText(entry.requestTag || "—");
+    markdown += `| ${index + 1} | ${fingerprint} | ${windowValues.join(
+      " | ",
+    )} | ${sampleQuery} | ${requestTag} |\n`;
+  });
 
   markdown += "\n";
   return markdown;
@@ -423,37 +416,15 @@ function getMetricValue(
   return row.totalCpuSeconds ?? null;
 }
 
-interface ColorScale {
-  min: number;
-  max: number;
-}
-
-function createColorScale(values: number[]): ColorScale {
-  if (!values.length) {
-    return { min: 0, max: 1 };
-  }
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (min === max) {
-    return { min, max: min + 1 };
-  }
-  return { min, max };
-}
-
-function formatHeatmapCell(
-  value: number | null,
+function formatMetricCell(
+  row: QueryStatsRow | undefined,
   metric: QueryMetric,
-  scale: ColorScale,
 ): string {
+  const value = getMetricValue(row, metric);
   if (value === null || value === undefined) {
-    return "⬜️ —";
+    return "—";
   }
-  const ratio = Math.min(
-    1,
-    Math.max(0, (value - scale.min) / (scale.max - scale.min || 1)),
-  );
-  const color = ratio > 0.75 ? "🟥" : ratio > 0.5 ? "🟧" : ratio > 0.25 ? "🟨" : "🟩";
-  return `${color} ${formatMetricValue(value, metric)}`;
+  return formatMetricValue(value, metric);
 }
 
 function formatMetricValue(value: number, metric: QueryMetric): string {
@@ -470,15 +441,18 @@ function formatMetricValue(value: number, metric: QueryMetric): string {
   return `${value.toFixed(3)}${suffix}`;
 }
 
-function formatQueryLabel(entry: QueryMetricEntry): string {
-  const fp = entry.key.startsWith("sql:") ? entry.key.slice(4) : entry.key;
-  const hint = truncateForTable(entry.sampleQuery || "<unknown query>");
-  return `\`${fp}\` ${hint.replace(/\|/g, "\\|")}`;
+function formatFingerprint(key: string): string {
+  const fp = key.startsWith("sql:") ? key.slice(4) : key;
+  return `\`${fp}\``;
 }
 
 function truncateForTable(text: string): string {
-  if (text.length <= 96) {
+  if (text.length <= 120) {
     return text;
   }
-  return `${text.slice(0, 93)}...`;
+  return `${text.slice(0, 117)}...`;
+}
+
+function escapeTableText(text: string): string {
+  return text.replace(/\|/g, "\\|");
 }

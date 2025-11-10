@@ -208,7 +208,7 @@ export function registerSpannerResources(server: McpServer): void {
     },
   );
 
-  // Register a resource for query stats heatmaps
+  // Register a resource for query stats summaries
   server.resource(
     "gcp-spanner-query-stats",
     new ResourceTemplate(

@@ -173,7 +173,7 @@ describe('Spanner query stats resource', () => {
     ));
   });
 
-  it('renders latency and CPU heatmaps', async () => {
+  it('renders latency and CPU tables', async () => {
     runMock.mockImplementation(({ sql }: { sql: string }) => {
       const baseRow = {
         query_text: 'SELECT * FROM Users',
@@ -229,8 +229,8 @@ describe('Spanner query stats resource', () => {
     );
 
     const text = response.contents[0].text as string;
-    expect(text).toContain('Average latency heatmap');
-    expect(text).toContain('Total CPU heatmap');
+    expect(text).toContain('Average latency leaders');
+    expect(text).toContain('Total CPU leaders');
     expect(text).toContain('fp-users');
     expect(text).toContain('fp-accounts');
     expect(runMock).toHaveBeenCalledTimes(6);
