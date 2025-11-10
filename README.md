@@ -84,6 +84,11 @@ Analyse distributed traces from Google Cloud Trace:
 - "Find logs related to trace xyz789 in project web-backend-456"
 - "Query traces for service checkout-api in project ecommerce-prod-321"
 
+## Deep Wiki / 詳細ドキュメント
+
+- [Deep Dive (English)](docs/deep-dive-en.md)
+- [詳細ガイド (日本語)](docs/deep-dive-ja.md)
+
 ## Quick Start
 
 Once configured, you can interact with Google Cloud services using natural language:
