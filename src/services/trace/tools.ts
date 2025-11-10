@@ -9,12 +9,19 @@ import {
   buildTraceHierarchy,
   formatTraceData,
   extractTraceIdFromLog,
-  TraceData,
   TraceSpan,
   TraceStatus,
 } from "./types.js";
 import { Logging } from "@google-cloud/logging";
 import { logger } from "../../utils/logger.js";
+import {
+  buildStructuredResponse,
+  createTextPreview,
+  previewList,
+  previewRecordEntries,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
+import { stateManager } from "../../utils/state-manager.js";
 
 const TRACE_SPAN_PREVIEW_LIMIT = resolveBoundedNumber(
   process.env.TRACE_SPAN_PREVIEW_LIMIT,
@@ -45,14 +52,6 @@ const TRACE_ANALYSIS_PREVIEW_LIMIT = resolveBoundedNumber(
   4000,
   { min: 500, max: 8000 },
 );
-import {
-  buildStructuredResponse,
-  createTextPreview,
-  previewList,
-  previewRecordEntries,
-  resolveBoundedNumber,
-} from "../../utils/output.js";
-import { stateManager } from "../../utils/state-manager.js";
 
 /**
  * Registers Google Cloud Trace tools with the MCP server

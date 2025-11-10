@@ -27,6 +27,7 @@
   - **Trace** – `TRACE_SPAN_PREVIEW_LIMIT` / `TRACE_TRACE_PREVIEW_LIMIT` / `TRACE_LOG_PREVIEW_LIMIT` / `TRACE_ATTRIBUTE_PREVIEW_LIMIT` / `TRACE_ANALYSIS_PREVIEW_LIMIT`
 
 ### 表記ルール
+
 | 表記 | 説明 |
 | --- | --- |
 | 型 | `string`, `number`, `boolean`, `enum[...]`, `record`, `array` など。 |
@@ -38,6 +39,7 @@
 ## ロギング (Logging)
 
 ### gcp-logging-query-logs — 任意フィルタでログ検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | filter | string | はい | Cloud Logging クエリ構文 | 取得したいログのフィルタ式。リソース・ラベル・payload など任意の条件を書けます。 |
@@ -83,6 +85,7 @@ Showing 3 of 50 entries. _Redacted fields: IP addresses, user identifiers, reque
 ```
 
 ### gcp-logging-query-time-range — 時間範囲でログ検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | startTime | string | はい | ISO8601 または相対値 (`1h`, `2d` など) | 期間開始。相対指定は現在時刻からのオフセット。 |
@@ -124,6 +127,7 @@ Showing 20 of 42 entries.
 ```
 
 ### gcp-logging-search-comprehensive — 全フィールド横断検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | searchTerm | string | はい |  | text/json/proto payload, labels, HTTP 情報などを横断して検索する語句。 |
@@ -170,6 +174,7 @@ Entries: 7
 ## Spanner
 
 ### gcp-spanner-execute-query — SQL を直接実行
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | sql | string | はい |  | SELECT / WITH / EXPLAIN / SHOW / DESCRIBE といった読み取り専用 SQL のみ許可。 |
@@ -209,6 +214,7 @@ projectId=prod-data | instance=main-instance | database=ledger
 ```
 
 ### gcp-spanner-list-tables — テーブル一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | instanceId | string | いいえ | state/env の既定値 | 対象インスタンス。 |
@@ -242,6 +248,7 @@ projectId=prod-data | instance=main-instance | database=ledger
 ```
 
 ### gcp-spanner-list-instances — インスタンス一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | _dummy | string | いいえ | 内部互換用 | 入力不要。 |
@@ -274,6 +281,7 @@ projectId=prod-data
 ```
 
 ### gcp-spanner-list-databases — データベース一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | instanceId | string | はい |  | `projects/{project}/instances/{instance}` のインスタンス ID。 |
@@ -304,6 +312,7 @@ projectId=prod-data | instance=main-instance
 ```
 
 ### gcp-spanner-query-natural-language — 自然言語→SQL 補助
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | query | string | はい |  | 「orders テーブルの件数を知りたい」など、読み取り専用の要件を自然文で記述。 |
@@ -340,6 +349,7 @@ projectId=prod-data | instance=main-instance | database=ledger
 ```
 
 ### gcp-spanner-query-count — クエリ回数の指標
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | instanceId | string | いいえ | 全インスタンス | 指定すると特定インスタンスのみ集計。 |
@@ -390,6 +400,7 @@ Showing 2 of 6 time series.
 ```
 
 ### gcp-spanner-query-plan（リソース） — EXPLAIN / EXPLAIN ANALYZE を確認
+
 | パラメータ | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | projectId | string | いいえ | 現在のプロジェクト | URI パス `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan` の一部。 |
@@ -428,12 +439,14 @@ _EXPLAIN ANALYZE で実行し、タイミング情報を取得しています。
 | ID | Type | Rows | Executions | Description |
 |----|------|------|------------|-------------|
 | 1 | Distributed Union | 1200 | 1 | ...
+
 ```
 
 
 ## Monitoring
 
 ### gcp-monitoring-query-metrics — 任意フィルタでメトリクス取得
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | filter | string | はい | Monitoring ListTimeSeries フィルタ | `metric.type` や `resource.type` 等を含む完全なフィルタ式。 |
@@ -480,6 +493,7 @@ projectId=sre-metrics | timeRange=2025-03-05T02:00:00Z -> 2025-03-05T04:00:00Z |
 ```
 
 ### gcp-monitoring-list-metric-types — メトリック種別ディスカバリ
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | filter | string | いいえ | なし | `spanner` などの自由語、または API フィルタ式。 |
@@ -517,6 +531,7 @@ projectId=sre-metrics | filter="spanner"
 ```
 
 ### gcp-monitoring-query-natural-language — 自然言語でメトリクス検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | query | string | はい |  | 「Spanner の CPU 使用率を見せて」など自然文。 |
@@ -562,6 +577,7 @@ projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/ht
 Trace ツールは span/trace プレビューと階層マークダウンを含む JSON を返し、`TRACE_*` プレビュー変数でスパン件数や属性数を調整できます。
 
 ### gcp-trace-get-trace — Trace ID から詳細取得
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | traceId | string | はい | 16〜32桁の hex | 取得対象の Trace ID。 |
@@ -610,6 +626,7 @@ projectId=my-sre-prod | traceId=4f6c2d9b1a8e5cf2 | spanCount=42 | omitted=12
 ```
 
 ### gcp-trace-list-traces — 最近のトレース一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | projectId | string | いいえ | 現在のデフォルト | 別プロジェクトでも検索可能。 |
@@ -654,6 +671,7 @@ projectId=my-sre-prod | timeRange=2025-03-05T02:10:00Z -> 2025-03-05T04:10:00Z |
 ```
 
 ### gcp-trace-find-from-logs — ログから Trace ID を抽出
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | projectId | string | いいえ | デフォルト | 検索対象プロジェクト。 |
@@ -693,6 +711,7 @@ projectId=my-sre-prod | logFilter=severity>=ERROR ... | uniqueTraces=12 | examin
 ```
 
 ### gcp-trace-query-natural-language — NL でトレース調査
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | query | string | はい |  | 例: "Show failed traces from last day"。Trace ID が含まれる場合は直接 get-trace を実行。 |
@@ -741,6 +760,7 @@ projectId=my-sre-prod | traceId=4f6c2d9b1a8e5cf2 | spanCount=42 | omitted=12
 Error Reporting 系ツールも要約+JSON 形式で返り、`ERROR_REPORTING_*` プレビュー変数でグループ数・イベント数・トレンド粒度を調整できます。
 
 ### gcp-error-reporting-list-groups — エラーグループ集計
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | timeRange | string | いいえ | `1h` | `1h`, `6h`, `24h`/`1d`, `7d`, `30d`。期間に応じて API period を自動変換。 |
@@ -792,6 +812,7 @@ projectId=my-sre-prod | timeRange=24h | service=checkout | totalGroups=3 | omitt
 ```
 
 ### gcp-error-reporting-get-group-details — グループ詳細とイベント
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | groupId | string | はい |  | `projects/.../groups/...` の末尾 ID。 |
@@ -847,6 +868,7 @@ projectId=my-sre-prod | groupId=abcdef1234567890 | timeRange=7d | events=5
 ```
 
 ### gcp-error-reporting-analyse-trends — 時系列トレンド分析
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | timeRange | string | いいえ | `24h` | `1h`,`6h`,`24h`,`7d`,`30d`。 |
@@ -910,6 +932,7 @@ projectId=my-sre-prod | timeRange=7d | resolution=1h | groups=18
 Profiler も同じサマリ+JSON 形式で、`PROFILER_PROFILE_PREVIEW_LIMIT` / `PROFILER_ANALYSIS_PREVIEW_LIMIT` により一覧件数や洞察テキストの長さを制御できます。
 
 ### gcp-profiler-list-profiles — プロファイル一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | pageSize | number | いいえ | 50 (1-1000) | 最大取得数。 |
@@ -955,6 +978,7 @@ projectId=perf-lab | profileType=CPU | target=checkout | returned=10 | omitted=5
 ```
 
 ### gcp-profiler-analyse-performance — プロファイル集合を要約
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | profileType | enum[...] | いいえ | 全タイプ | CPU などに限定。 |
@@ -1007,6 +1031,7 @@ projectId=perf-lab | profileType=HEAP | target=orders | analysed=62
 ```
 
 ### gcp-profiler-compare-trends — 時系列比較
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | target | string | いいえ |  | 比較対象ターゲット。 |
@@ -1055,6 +1080,7 @@ projectId=perf-lab | profileType=CPU | analysed=132
 Support 関連のレスポンスはケース／コメント／添付ファイルをサニタイズした JSON で返り、`SUPPORT_*` プレビュー変数で件数や本文トリミング長を制御できます。
 
 ### gcp-support-list-cases — ケース一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | parent | string | いいえ | `projects/{currentProject}` | `projects/{id}` または `organizations/{id}`。 |
@@ -1101,6 +1127,7 @@ parent=projects/my-sre-prod | filter=state=OPEN AND priority=P1 | returned=3 | o
 ```
 
 ### gcp-support-search-cases — フリーテキスト検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | parent | string | いいえ | デフォルト | 検索対象。 |
@@ -1140,6 +1167,7 @@ parent=projects/my-sre-prod | query=displayName:incident state=OPEN | returned=2
 ```
 
 ### gcp-support-get-case — ケース詳細を取得
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい | `projects/{id}/cases/{caseId}` | 完全修飾ケース名。 |
@@ -1179,6 +1207,7 @@ caseName=projects/my-sre-prod/cases/12345 | priority=P1 | state=OPEN
 ```
 
 ### gcp-support-create-case — ケース作成
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | parent | string | いいえ | 現在のプロジェクト | `projects/{id}` または `organizations/{id}`。 |
@@ -1225,6 +1254,7 @@ parent=projects/my-sre-prod | case=projects/my-sre-prod/cases/98765 | status=cre
 ```
 
 ### gcp-support-update-case — ケース更新
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい |  | 更新対象。 |
@@ -1268,6 +1298,7 @@ caseName=projects/my-sre-prod/cases/98765 | updateMask=priority,subscriberEmailA
 ```
 
 ### gcp-support-close-case — ケースをクローズ
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい |  | 対象ケース。 |
@@ -1303,6 +1334,7 @@ caseName=projects/my-sre-prod/cases/98765 | justification=Issue resolved after r
 ```
 
 ### gcp-support-list-comments — コメント一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい |  | ケース名。 |
@@ -1343,6 +1375,7 @@ caseName=projects/my-sre-prod/cases/98765 | returned=3 | omitted=2
 ```
 
 ### gcp-support-create-comment — コメント追加
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい |  | ケース名。 |
@@ -1377,6 +1410,7 @@ caseName=projects/my-sre-prod/cases/98765 | status=created
 ```
 
 ### gcp-support-list-attachments — 添付ファイル一覧
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | name | string | はい |  | ケース名。 |
@@ -1421,6 +1455,7 @@ caseName=projects/my-sre-prod/cases/98765 | returned=2
 ```
 
 ### gcp-support-search-classifications — 分類検索
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | query | string | はい |  | 例: `id:"100445"` や `displayName:"service account"`。 |
@@ -1460,6 +1495,7 @@ query=displayName:"Cloud Run" | returned=4
 ## Project Utilities
 
 ### gcp-utils-set-project-id — 既定プロジェクト設定
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | project_id | string | はい |  | 以降のツールで使うデフォルト GCP プロジェクト。 |
@@ -1479,6 +1515,7 @@ Default Google Cloud project ID has been set to: `my-sre-prod`
 ```
 
 ### gcp-utils-get-project-id — 既定プロジェクト確認
+
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | (なし) | — | — | — | 引数不要。 |
@@ -1502,18 +1539,21 @@ Current project ID: `my-sre-prod`
 MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-utils-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
 
 ### ロギング リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-logging-recent-logs` | `gcp-logs://{projectId}/recent` | `projectId` は省略可。 | `LOG_FILTER` (設定されていれば) を使って最新 50 件のログを要約し、マスク情報を付与。 |
 | `gcp-logging-filtered-logs` | `gcp-logs://{projectId}/filter/{filter}` | `filter` は URL エンコードした Cloud Logging フィルタ。 | 条件に合致した最大 50 件をシビアリティ／リソース情報付きで返却。 |
 
 ### Monitoring リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-monitoring-recent-metrics` | `gcp-monitoring://{projectId}/recent` | `MONITORING_FILTER` がなければ CPU メトリクスを使用。 | 直近 1 時間の時系列データを `buildStructuredTextBlock` 形式で要約。 |
 | `gcp-monitoring-filtered-metrics` | `gcp-monitoring://{projectId}/filter/{filter}` | `filter` は URL エンコード済み。取得範囲は常に直近 1 時間。 | 指定フィルタの時系列を同じ構造化フォーマットで返却。 |
 
 ### Spanner リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | インスタンス／DB を指定、または既定値に依存。 | テーブル・カラム・インデックス・外部キーまで含む Markdown スキーマ。 |
@@ -1523,6 +1563,7 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | 既定のインスタンス／DB を使用。 | `buildQueryStatsJson` が生成するレイテンシ・オプティマイザ情報などの JSON。 |
 
 ### Trace リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` は 16 進文字列。 | 階層化されたスパン構造を Markdown で表示。 |
@@ -1530,6 +1571,7 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO\|1h\|6h\|30m>` | `startTime` は ISO 形式または `1h`,`2d` などの相対表記。 | 指定期間内でエラーになったトレースの表を表示し、各行にリンクを付与。 |
 
 ### Error Reporting リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-error-reporting-recent-errors` | `gcp-error-reporting://{projectId}/recent` | 直近 1 時間を解析。 | 優勢なエラーグループの要約と推奨アクションを Markdown で返却。 |
@@ -1537,6 +1579,7 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-error-reporting-service-errors` | `gcp-error-reporting://{projectId}/service/{serviceName}` | `serviceName` で `serviceFilter.service` を指定。 | 過去 24 時間のサービス単位エラーダイジェスト。 |
 
 ### Profiler リソース
+
 | リソース | URI テンプレート | パラメータ | レスポンス |
 | --- | --- | --- | --- |
 | `gcp-profiler-all-profiles` | `gcp-profiler://{projectId}/profiles` | Cloud Profiler API への認証が必要。最大 100 件。 | 収集済みプロファイルの Markdown ダイジェストと個別サマリ。 |
