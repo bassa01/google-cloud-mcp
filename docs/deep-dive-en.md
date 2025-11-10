@@ -243,11 +243,13 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs raw SQL queries safely through parameter binding.
 - `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build summary queries for conversational insights.
+- `gcp-spanner-query-stats` (resource) renders Query Insights data from `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` as markdown heatmaps across 1m/10m/1h windows, ranking fingerprints by latency and CPU.
 
 **Operational tips**
 
 - Always scope to production vs. staging instances to avoid cross-environment confusion.
 - Use natural-language helpers to draft queries, then refine them manually when needed.
+- Ensure Cloud Spanner Query Insights is enabled and grant the MCP service account `roles/spanner.databaseReader` so the query-stats resource can pull from the SPANNER_SYS views; if any interval is missing the markdown will note it.
 
 ### Trace
 
@@ -466,6 +468,7 @@ Testing tips:
 | Spanner | `gcp-spanner-execute-query` | Execute parameterised SQL. |
 | Spanner | `gcp-spanner-query-natural-language` | Generate SQL from natural language. |
 | Spanner | `gcp-spanner-query-count` | Quickly calculate row counts. |
+| Spanner | `gcp-spanner-query-stats` (resource) | Heatmap view of Query Insights across 1m/10m/1h windows. |
 | Trace | `gcp-trace-list-traces` | Surface slow or erroring traces. |
 | Trace | `gcp-trace-get-trace` | Inspect complete trace timelines. |
 | Trace | `gcp-trace-find-from-logs` | Pivot from logs to traces. |
