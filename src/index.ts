@@ -30,6 +30,7 @@ import {
   registerProfilerResources,
   registerProfilerTools,
 } from "./services/profiler/index.js";
+import { registerSupportTools } from "./services/support/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
@@ -209,6 +210,15 @@ async function main(): Promise<void> {
     } catch (error) {
       logger.warn(
         `Error registering Profiler services: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    try {
+      logger.info("Registering Google Cloud Support services");
+      registerSupportTools(server);
+    } catch (error) {
+      logger.warn(
+        `Error registering Support services: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 

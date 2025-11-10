@@ -16,6 +16,7 @@ Supported Google Cloud services:
 - [x] [Profiler](https://cloud.google.com/profiler)
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
+- [x] [Support](https://cloud.google.com/support/docs/reference/rest)
 
 ### Error Reporting
 
