@@ -209,19 +209,20 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 
 ### Monitoring
 
-Cloud Monitoring 指標を簡潔に取得し、CPU・メモリ・カスタム指標を MQL を覚えずに問い合わせできます。
+Cloud Monitoring 指標を簡潔に取得し、PromQL への移行中でも CPU・メモリ・カスタム指標をすばやく確認できます。
 
 **主要ツール**
 
-- `gcp-monitoring-query-metrics` – パラメータ化された MQL を実行。
+- `gcp-monitoring-query-metrics` – Cloud Monitoring のフィルター式を実行し、PromQL に転用しやすいラベル/値を返します。
 - `gcp-monitoring-list-metric-types` – Compute Engine や Cloud Run などのメトリクスタイプを調査。
-- `gcp-monitoring-query-natural-language` – 自然文プロンプトを MQL に変換して実行。
+- `gcp-monitoring-query-natural-language` – 自然文プロンプトをメトリックフィルターへ変換し、PromQL セレクターのたたき台を生成。
 
 **運用ヒント**
 
 - 先に `list-metric-types` を実行して利用可能なメトリクスを確認。
 - 5m / 1h などのアライメントウィンドウを指定し、ダッシュボードと揃えます。
 - `mean` / `max` / `percentile` などの集計を付与して結果を圧縮。
+- Managed Service for Prometheus や `projects.timeSeries.query` API と組み合わせ、完全な PromQL 実行を行います。
 
 ### Profiler
 
@@ -457,9 +458,9 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
-| Monitoring | `gcp-monitoring-query-metrics` | 集計付き MQL 実行。 |
+| Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
-| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語から MQL を生成。 |
+| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語からメトリクスフィルターを生成。 |
 | Profiler | `gcp-profiler-list-profiles` | CPU/Heap/Wall-time プロファイル一覧。 |
 | Profiler | `gcp-profiler-analyse-performance` | ホットスポットの要約。 |
 | Profiler | `gcp-profiler-compare-trends` | リリース間の比較。 |
