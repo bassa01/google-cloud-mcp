@@ -2,7 +2,7 @@
  * Mock implementations for Google Cloud services
  */
 import { vi } from 'vitest';
-import { createMockLogEntries, createMockIamPolicy, createMockSpannerSchema } from '../utils/test-helpers.js';
+import { createMockLogEntries, createMockSpannerSchema, createMockBillingAccount, createMockCostData } from '../utils/test-helpers.js';
 
 // Mock @google-cloud/logging
 export const mockLoggingClient = {
@@ -43,17 +43,6 @@ export const mockSpannerClient = {
 
 vi.mock('@google-cloud/spanner', () => ({
   Spanner: vi.fn(() => mockSpannerClient),
-}));
-
-// Mock @google-cloud/resource-manager
-export const mockResourceManagerClient = {
-  getIamPolicy: vi.fn().mockResolvedValue([createMockIamPolicy()]),
-  setIamPolicy: vi.fn().mockResolvedValue([createMockIamPolicy()]),
-  testIamPermissions: vi.fn().mockResolvedValue([{ permissions: ['test.permission'] }]),
-};
-
-vi.mock('@google-cloud/resource-manager', () => ({
-  ProjectsClient: vi.fn(() => mockResourceManagerClient),
 }));
 
 // Mock google-auth-library

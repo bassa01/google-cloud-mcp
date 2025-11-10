@@ -23,10 +23,6 @@ import {
 } from "./services/monitoring/index.js";
 import { registerTraceService } from "./services/trace/index.js";
 import {
-  registerIamResources,
-  registerIamTools,
-} from "./services/iam/index.js";
-import {
   registerErrorReportingResources,
   registerErrorReportingTools,
 } from "./services/error-reporting/index.js";
@@ -191,17 +187,6 @@ async function main(): Promise<void> {
     } catch (error) {
       logger.warn(
         `Error registering Trace services: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    try {
-      // Register Google Cloud IAM service
-      logger.info("Registering Google Cloud IAM services");
-      registerIamResources(server);
-      registerIamTools(server);
-    } catch (error) {
-      logger.warn(
-        `Error registering IAM services: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
