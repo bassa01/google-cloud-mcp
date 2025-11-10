@@ -243,7 +243,7 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 - `gcp-spanner-list-instances` / `list-databases` / `list-tables` – インフラ全体をカタログ化。
 - `gcp-spanner-execute-query` – プレースホルダー付きで安全に SQL を実行。
 - `gcp-spanner-query-natural-language` / `query-count` – 会話的に集計やクエリ生成を実施。
-- `gcp-spanner-query-stats` (リソース) – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすいテーブル形式で提示。
+- `gcp-spanner-query-stats` (リソース) – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすい JSON で提示。
 
 **運用ヒント**
 
@@ -467,7 +467,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行。 |
 | Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成。 |
 | Spanner | `gcp-spanner-query-count` | 行数を即座に集計。 |
-| Spanner | `gcp-spanner-query-stats` (resource) | Query Insights を 1m/10m/1h テーブルで要約。 |
+| Spanner | `gcp-spanner-query-stats` (resource) | Query Insights を 1m/10m/1h JSON で要約。 |
 | Trace | `gcp-trace-list-traces` | 遅い/失敗トレースを一覧。 |
 | Trace | `gcp-trace-get-trace` | トレース全体を取得。 |
 | Trace | `gcp-trace-find-from-logs` | ログからトレースへピボット。 |

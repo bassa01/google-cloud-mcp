@@ -58,13 +58,7 @@ interface QueryStatsCollection {
   cpu: Map<string, QueryMetricEntry>;
 }
 
-interface MetricSectionOptions {
-  metric: QueryMetric;
-  title: string;
-  rowsLimit: number;
-}
-
-export interface QueryStatsMarkdownOptions {
+export interface QueryStatsOptions {
   maxRows?: number;
 }
 
@@ -75,15 +69,55 @@ export interface QueryStatsContext {
 }
 
 const DEFAULT_SQL_LIMIT = 15;
-const DEFAULT_TABLE_ROWS = 6;
+const DEFAULT_TABLE_ROWS = 5;
+
+interface MetricWindows {
+  minute?: number;
+  tenMinute?: number;
+  hour?: number;
+}
+
+interface MetricSummaryEntry {
+  rank: number;
+  fingerprint: string;
+  sampleQuery: string;
+  requestTag?: string | null;
+  dominantWindow?: string | null;
+  dominantValue?: number | null;
+  windows: MetricWindows;
+  metric: QueryMetric;
+  unit: "seconds";
+}
+
+interface IntervalStatus {
+  id: QueryStatsWindowId;
+  label: string;
+  shortLabel: string;
+  sourceView: string;
+  latestIntervalEnd: string | null;
+}
+
+interface QueryStatsResponse {
+  metadata: {
+    projectId: string;
+    instanceId: string;
+    databaseId: string;
+    generatedAt: string;
+  };
+  intervals: IntervalStatus[];
+  latencyTop: MetricSummaryEntry[];
+  cpuTop: MetricSummaryEntry[];
+  warnings?: string[];
+  source: string;
+}
 
 /**
- * Generates markdown describing query stats per metric/window in a structured table.
+ * Generates JSON describing query stats per metric/window.
  */
-export async function buildQueryStatsMarkdown(
+export async function buildQueryStatsJson(
   database: Database,
   context: QueryStatsContext,
-  options: QueryStatsMarkdownOptions = {},
+  options: QueryStatsOptions = {},
 ): Promise<string> {
   const tableRows = options.maxRows ?? DEFAULT_TABLE_ROWS;
   const sqlLimit = Math.max(DEFAULT_SQL_LIMIT, tableRows * 2);
@@ -92,52 +126,37 @@ export async function buildQueryStatsMarkdown(
   const hasLatency = collection.latency.size > 0;
   const hasCpu = collection.cpu.size > 0;
 
-  let markdown = `# Spanner Query Stats (experimental)\n\n`;
-  markdown += `Project: ${context.projectId}\n`;
-  markdown += `Instance: ${context.instanceId}\n`;
-  markdown += `Database: ${context.databaseId}\n\n`;
-
-  markdown += "## Interval Coverage\n\n";
-  markdown += "| Window | Latest Interval End | Source View |\n";
-  markdown += "|--------|---------------------|-------------|\n";
-  for (const window of QUERY_WINDOWS) {
-    const interval = collection.intervals[window.id];
-    markdown += `| ${window.label} | ${interval ?? "n/a"} | ${window.tableName} |\n`;
-  }
-  markdown += "\n";
+  const response: QueryStatsResponse = {
+    metadata: {
+      projectId: context.projectId,
+      instanceId: context.instanceId,
+      databaseId: context.databaseId,
+      generatedAt: new Date().toISOString(),
+    },
+    intervals: QUERY_WINDOWS.map(window => ({
+      id: window.id,
+      label: window.label,
+      shortLabel: window.shortLabel,
+      sourceView: window.tableName,
+      latestIntervalEnd: collection.intervals[window.id] ?? null,
+    })),
+    latencyTop: hasLatency
+      ? buildMetricEntries(collection.latency, "latency", tableRows)
+      : [],
+    cpuTop: hasCpu
+      ? buildMetricEntries(collection.cpu, "cpu", tableRows)
+      : [],
+    source:
+      "SPANNER_SYS.QUERY_STATS_TOP_MINUTE, _10MINUTE, _HOUR (Query Insights)",
+  };
 
   if (!hasLatency && !hasCpu) {
-    markdown +=
-      "No query stats were returned from SPANNER_SYS views. Ensure Query Insights is enabled and that your service account has monitoring access.";
-    return markdown;
+    response.warnings = [
+      "No query stats were returned. Ensure Query Insights is enabled and that the service account can read SPANNER_SYS views.",
+    ];
   }
 
-  if (hasLatency) {
-    markdown += buildMetricSection(collection.latency, {
-      metric: "latency",
-      title: "Average latency leaders (seconds)",
-      rowsLimit: tableRows,
-    });
-  } else {
-    markdown +=
-      "### Average latency leaders (seconds)\n\nNo latency records were returned.\n\n";
-  }
-
-  if (hasCpu) {
-    markdown += buildMetricSection(collection.cpu, {
-      metric: "cpu",
-      title: "Total CPU leaders (seconds)",
-      rowsLimit: tableRows,
-    });
-  } else {
-    markdown +=
-      "### Total CPU leaders (seconds)\n\nNo CPU-intensive records were returned.\n\n";
-  }
-
-  markdown +=
-    "Data sourced from SPANNER_SYS.QUERY_STATS_TOP_MINUTE / 10MINUTE / HOUR views. Values are reported per window to stay LLM-friendly.\n";
-
-  return markdown;
+  return JSON.stringify(response, null, 2);
 }
 
 async function collectQueryStats(
@@ -343,36 +362,49 @@ function deriveRowKey(row: QueryStatsRow): string {
   return `sql:${hash}`;
 }
 
-function buildMetricSection(
+const WINDOW_PROP_MAP: Record<QueryStatsWindowId, keyof MetricWindows> = {
+  MINUTE: "minute",
+  "10MINUTE": "tenMinute",
+  HOUR: "hour",
+};
+
+function buildMetricEntries(
   entries: Map<string, QueryMetricEntry>,
-  options: MetricSectionOptions,
-): string {
-  const rows = pickTopEntries(entries, options.metric, options.rowsLimit);
-  if (rows.length === 0) {
-    return `### ${options.title}\n\nNo data points available.\n\n`;
-  }
+  metric: QueryMetric,
+  limit: number,
+): MetricSummaryEntry[] {
+  return pickTopEntries(entries, metric, limit).map((entry, index) => {
+    const windows = buildMetricWindows(entry, metric);
+    const dominant = getDominantWindow(entry, metric);
 
-  let markdown = `### ${options.title}\n\n`;
-  markdown +=
-    "| Rank | Fingerprint | 1m | 10m | 1h | Sample Query | Request Tag |\n";
-  markdown += "| --- | --- | --- | --- | --- | --- | --- |\n";
-
-  rows.forEach((entry, index) => {
-    const fingerprint = formatFingerprint(entry.key);
-    const windowValues = QUERY_WINDOWS.map(window =>
-      formatMetricCell(entry.windows[window.id], options.metric),
-    );
-    const sampleQuery = escapeTableText(
-      truncateForTable(entry.sampleQuery || "<unknown query>"),
-    );
-    const requestTag = escapeTableText(entry.requestTag || "—");
-    markdown += `| ${index + 1} | ${fingerprint} | ${windowValues.join(
-      " | ",
-    )} | ${sampleQuery} | ${requestTag} |\n`;
+    return {
+      rank: index + 1,
+      fingerprint: normalizeFingerprint(entry.key),
+      sampleQuery: entry.sampleQuery || "<unknown query>",
+      requestTag: entry.requestTag ?? null,
+      dominantWindow: dominant?.label ?? null,
+      dominantValue: dominant?.value ?? null,
+      windows,
+      metric,
+      unit: "seconds",
+    };
   });
+}
 
-  markdown += "\n";
-  return markdown;
+function buildMetricWindows(
+  entry: QueryMetricEntry,
+  metric: QueryMetric,
+): MetricWindows {
+  const windows: MetricWindows = {};
+  for (const window of QUERY_WINDOWS) {
+    const value = getMetricValue(entry.windows[window.id], metric);
+    if (value === null || value === undefined) {
+      continue;
+    }
+    const prop = WINDOW_PROP_MAP[window.id];
+    windows[prop] = value;
+  }
+  return windows;
 }
 
 function pickTopEntries(
@@ -403,6 +435,23 @@ function maxMetricValue(entry: QueryMetricEntry, metric: QueryMetric): number | 
   return max;
 }
 
+function getDominantWindow(
+  entry: QueryMetricEntry,
+  metric: QueryMetric,
+): { label: string; value: number } | null {
+  let dominant: { label: string; value: number } | null = null;
+  for (const window of QUERY_WINDOWS) {
+    const value = getMetricValue(entry.windows[window.id], metric);
+    if (value === null || value === undefined) {
+      continue;
+    }
+    if (!dominant || value > dominant.value) {
+      dominant = { label: window.label, value };
+    }
+  }
+  return dominant;
+}
+
 function getMetricValue(
   row: QueryStatsRow | undefined,
   metric: QueryMetric,
@@ -416,43 +465,6 @@ function getMetricValue(
   return row.totalCpuSeconds ?? null;
 }
 
-function formatMetricCell(
-  row: QueryStatsRow | undefined,
-  metric: QueryMetric,
-): string {
-  const value = getMetricValue(row, metric);
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  return formatMetricValue(value, metric);
-}
-
-function formatMetricValue(value: number, metric: QueryMetric): string {
-  const suffix = metric === "latency" ? "s" : "s";
-  if (value >= 100) {
-    return `${value.toFixed(0)}${suffix}`;
-  }
-  if (value >= 10) {
-    return `${value.toFixed(1)}${suffix}`;
-  }
-  if (value >= 1) {
-    return `${value.toFixed(2)}${suffix}`;
-  }
-  return `${value.toFixed(3)}${suffix}`;
-}
-
-function formatFingerprint(key: string): string {
-  const fp = key.startsWith("sql:") ? key.slice(4) : key;
-  return `\`${fp}\``;
-}
-
-function truncateForTable(text: string): string {
-  if (text.length <= 120) {
-    return text;
-  }
-  return `${text.slice(0, 117)}...`;
-}
-
-function escapeTableText(text: string): string {
-  return text.replace(/\|/g, "\\|");
+function normalizeFingerprint(key: string): string {
+  return key.startsWith("sql:") ? key.slice(4) : key;
 }

@@ -228,11 +228,18 @@ describe('Spanner query stats resource', () => {
       undefined,
     );
 
-    const text = response.contents[0].text as string;
-    expect(text).toContain('Average latency leaders');
-    expect(text).toContain('Total CPU leaders');
-    expect(text).toContain('fp-users');
-    expect(text).toContain('fp-accounts');
+    const payload = JSON.parse(response.contents[0].text as string);
+    expect(payload.metadata.projectId).toBe('resolved-project');
+    expect(Array.isArray(payload.latencyTop)).toBe(true);
+    expect(Array.isArray(payload.cpuTop)).toBe(true);
+    const latencyFingerprints = payload.latencyTop.map((entry: any) => entry.fingerprint);
+    expect(latencyFingerprints).toContain('fp-users');
+    expect(latencyFingerprints).toContain('fp-accounts');
+    const cpuFingerprints = payload.cpuTop.map((entry: any) => entry.fingerprint);
+    expect(cpuFingerprints).toContain('fp-users');
+    expect(cpuFingerprints).toContain('fp-accounts');
+    expect(payload.latencyTop[0].windows).toBeDefined();
+    expect(payload.latencyTop[0].windows.minute).toBeDefined();
     expect(runMock).toHaveBeenCalledTimes(6);
   });
 
@@ -250,7 +257,8 @@ describe('Spanner query stats resource', () => {
       undefined,
     );
 
-    expect(response.contents[0].text).toContain('No query stats were returned');
+    const payload = JSON.parse(response.contents[0].text as string);
+    expect(payload.warnings?.[0]).toContain('No query stats were returned');
     expect(runMock).toHaveBeenCalled();
   });
 });

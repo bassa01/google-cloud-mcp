@@ -9,7 +9,7 @@ import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { formatSchemaAsMarkdown, getSpannerSchema } from "./schema.js";
-import { buildQueryStatsMarkdown } from "./query-stats.js";
+import { buildQueryStatsJson } from "./query-stats.js";
 import { logger } from "../../utils/logger.js";
 
 const SPANNER_IDENTIFIER_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -253,7 +253,7 @@ export function registerSpannerResources(server: McpServer): void {
           .instance(config.instanceId)
           .database(config.databaseId);
 
-        const markdown = await buildQueryStatsMarkdown(databaseHandle, {
+        const payload = await buildQueryStatsJson(databaseHandle, {
           projectId: actualProjectId,
           instanceId: config.instanceId,
           databaseId: config.databaseId,
@@ -263,7 +263,7 @@ export function registerSpannerResources(server: McpServer): void {
           contents: [
             {
               uri: uri.href,
-              text: markdown,
+              text: payload,
             },
           ],
         };
