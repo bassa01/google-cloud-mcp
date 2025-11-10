@@ -10,7 +10,6 @@ A Model Context Protocol server that connects to Google Cloud services to provid
 
 Supported Google Cloud services:
 
-- [x] [Billing](https://cloud.google.com/billing)
 - [x] [Error Reporting](https://cloud.google.com/error-reporting)
 - [x] [Identity and Access Management (IAM)](https://cloud.google.com/iam)
 - [x] [Logging](https://cloud.google.com/logging)
@@ -18,18 +17,6 @@ Supported Google Cloud services:
 - [x] [Profiler](https://cloud.google.com/profiler)
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
-
-### Billing
-
-Manage and analyse Google Cloud billing with cost optimisation insights:
-
-**Tools:** `gcp-billing-list-accounts`, `gcp-billing-get-account-details`, `gcp-billing-list-projects`, `gcp-billing-get-project-info`, `gcp-billing-list-services`, `gcp-billing-list-skus`, `gcp-billing-analyse-costs`, `gcp-billing-detect-anomalies`, `gcp-billing-cost-recommendations`, `gcp-billing-service-breakdown`
-
-*Example prompts:*
-- "Show me all my billing accounts"
-- "Analyse costs for project my-app-prod-123 for the last 30 days"
-- "Generate cost recommendations for billing account billingAccounts/123456-789ABC-DEF012"
-- "Check for billing anomalies in project my-ecommerce-456"
 
 ### Error Reporting
 
@@ -115,7 +102,6 @@ Analyse distributed traces from Google Cloud Trace:
 Once configured, you can interact with Google Cloud services using natural language:
 
 ```
-"What are my current billing costs for project my-webapp-prod-123?"
 "Show me errors from project ecommerce-api-456 in the last hour"
 "Check if I have permission to deploy to Cloud Run in project microservices-789"
 "Find logs containing 'database timeout' from project backend-prod-321 yesterday"
