@@ -436,11 +436,16 @@ export function registerSpannerResources(server: McpServer): void {
           .instance(config.instanceId)
           .database(config.databaseId);
 
-        const payload = await buildQueryStatsJson(databaseHandle, {
-          projectId: actualProjectId,
-          instanceId: config.instanceId,
-          databaseId: config.databaseId,
-        });
+        let payload: string;
+        try {
+          payload = await buildQueryStatsJson(databaseHandle, {
+            projectId: actualProjectId,
+            instanceId: config.instanceId,
+            databaseId: config.databaseId,
+          });
+        } finally {
+          await databaseHandle.close();
+        }
 
         return {
           contents: [
