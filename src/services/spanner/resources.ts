@@ -11,6 +11,10 @@ import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { formatSchemaAsMarkdown, getSpannerSchema } from "./schema.js";
 import { logger } from "../../utils/logger.js";
 
+const SPANNER_IDENTIFIER_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
+const TABLE_NAME_FORMAT_DOC =
+  "Table names must start with a letter and may only contain letters, numbers, or underscores.";
+
 /**
  * Registers Google Cloud Spanner resources with the MCP server
  *
@@ -118,9 +122,21 @@ export function registerSpannerResources(server: McpServer): void {
           Array.isArray(databaseId) ? databaseId[0] : databaseId,
         );
 
-        if (!tableName) {
+        const tableNameValue = Array.isArray(tableName)
+          ? tableName[0]
+          : tableName;
+
+        if (!tableNameValue) {
           throw new GcpMcpError(
-            "Table name is required",
+            `Table name is required. ${TABLE_NAME_FORMAT_DOC}`,
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        if (!SPANNER_IDENTIFIER_REGEX.test(tableNameValue)) {
+          throw new GcpMcpError(
+            `Invalid table name: "${tableNameValue}". ${TABLE_NAME_FORMAT_DOC}`,
             "INVALID_ARGUMENT",
             400,
           );
@@ -134,8 +150,10 @@ export function registerSpannerResources(server: McpServer): void {
         const database = instance.database(config.databaseId);
 
         // Get a preview of the table data (first 10 rows)
+        const sanitizedTableName = `\`${tableNameValue}\``;
         const [result] = await database.run({
-          sql: `SELECT * FROM ${tableName} LIMIT 10`,
+          sql: `SELECT * FROM ${sanitizedTableName} LIMIT @limit`,
+          params: { limit: 10 },
         });
 
         if (!result || result.length === 0) {
@@ -143,7 +161,7 @@ export function registerSpannerResources(server: McpServer): void {
             contents: [
               {
                 uri: uri.href,
-                text: `# Table Preview: ${tableName}\n\nNo data found in the table.`,
+                text: `# Table Preview: ${tableNameValue}\n\nNo data found in the table.\n\nAccepted table name format: ${TABLE_NAME_FORMAT_DOC}`,
               },
             ],
           };
@@ -152,7 +170,8 @@ export function registerSpannerResources(server: McpServer): void {
         // Convert to markdown table
         const columns = Object.keys(result[0]);
 
-        let markdown = `# Table Preview: ${tableName}\n\n`;
+        let markdown = `# Table Preview: ${tableNameValue}\n\n`;
+        markdown += `> Accepted table name format: ${TABLE_NAME_FORMAT_DOC}\n\n`;
 
         // Table header
         markdown += "| " + columns.join(" | ") + " |\n";
@@ -174,7 +193,7 @@ export function registerSpannerResources(server: McpServer): void {
           contents: [
             {
               uri: uri.href,
-              text: `# Table Preview: ${tableName}\n\nProject: ${actualProjectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\n${markdown}`,
+              text: `# Table Preview: ${tableNameValue}\n\nProject: ${actualProjectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\n${markdown}`,
             },
           ],
         };
