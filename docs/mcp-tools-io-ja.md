@@ -384,6 +384,48 @@ Showing 2 of 6 time series.
 ]
 ```
 
+### gcp-spanner-query-plan（リソース） — EXPLAIN / EXPLAIN ANALYZE を確認
+| パラメータ | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| projectId | string | いいえ | 現在のプロジェクト | URI パス `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan` の一部。 |
+| instanceId | string | いいえ | env/state | 省略時は `SPANNER_INSTANCE` や state manager から補完。 |
+| databaseId | string | いいえ | env/state | 省略時は `SPANNER_DATABASE` や state manager から補完。 |
+| sql | string (query param) | はい | URL エンコード必須 | EXPLAIN / EXPLAIN ANALYZE で評価する SELECT 文。DML/DDL はブロック。 |
+| mode | enum[`explain`,`analyze`] | いいえ | `explain` | EXPLAIN (プランのみ) と EXPLAIN ANALYZE (実行あり) を切り替え。 |
+| analyze | string/bool (query param) | いいえ | false | `mode` の代替。`?analyze=1` のように指定可能。 |
+
+MCP では `read_resource` で呼び出します:
+```jsonc
+{
+  "type": "read_resource",
+  "uri": "gcp-spanner://my-sre-prod/main-instance/ledger/query-plan?sql=SELECT+user_id%2C+status+FROM+accounts&mode=analyze"
+}
+```
+
+**戻り値例**
+```text
+# Spanner Query Plan
+Project: my-sre-prod
+Instance: main-instance
+Database: ledger
+Mode: EXPLAIN ANALYZE
+
+Original SQL:
+SELECT user_id, status FROM accounts LIMIT 25
+
+_EXPLAIN ANALYZE で実行し、タイミング情報を取得しています。_
+
+## Plan Insights
+- 現在のプランとスキーマでは分散 JOIN やインデックス不足は確認されませんでした。
+参照テーブル: accounts
+
+## Plan Nodes
+| ID | Type | Rows | Executions | Description |
+|----|------|------|------------|-------------|
+| 1 | Distributed Union | 1200 | 1 | ...
+```
+
+
 ## Monitoring
 
 ### gcp-monitoring-query-metrics — 任意フィルタでメトリクス取得
@@ -843,8 +885,250 @@ Returned: 3
 ### gcp-support-search-cases — フリーテキスト検索
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
-| parent | string | いいえ | デフォルト | 検索対象。 |
-| query | string | はい |  | `
+| parent | string | いいえ | デフォルト | 検索対象の親リソース。省略時は現在のプロジェクト (`projects/{id}`) 。 |
+| query | string | はい |  | `displayName:"upgrade"` のような自由検索やフィールド条件に対応。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大取得件数。 |
+| pageToken | string | いいえ |  | 次ページ取得トークン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-search-cases",
+  "arguments": {
+    "query": "displayName:incident state=OPEN",
+    "pageSize": 5
+  }
+}
+```
+
+**戻り値例**
+```text
+# Support Case Search
+Parent: projects/my-sre-prod
+Query: displayName:incident state=OPEN
+Returned: 2
+1. [P2][OPEN] Incident 500s - case/67890
+...
+```
+
+### gcp-support-get-case — ケース詳細を取得
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい | `projects/{id}/cases/{caseId}` | 完全修飾されたケースリソース。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-get-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/12345"
+  }
+}
+```
+
+**戻り値例**
+```text
+Case: projects/my-sre-prod/cases/12345
+State: OPEN / Priority: P1
+Description: Traffic hitting 503 on us-central1
+Contacts: sre@example.com
+...
+```
+
+### gcp-support-create-case — ケースを新規作成
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| parent | string | いいえ | 現在のプロジェクト | `projects/{id}` もしくは `organizations/{id}`。 |
+| displayName | string | はい | 4 文字以上 | ケースタイトル。 |
+| description | string | はい | 10 文字以上 | 詳細説明。 |
+| classificationId | string | はい |  | `gcp-support-search-classifications` で取得。 |
+| priority | enum[`P0`,`P1`,`P2`,`P3`,`P4`,`PRIORITY_UNSPECIFIED`] | いいえ | `P3` | 優先度。 |
+| timeZone | string | いいえ |  | IANA タイムゾーン。 |
+| languageCode | string | いいえ |  | 例: `ja-JP`。 |
+| contactEmail | string | いいえ | 有効なメール | 主要コンタクト。 |
+| subscriberEmailAddresses | array<string> | いいえ |  | 追加通知先。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-create-case",
+  "arguments": {
+    "displayName": "Cloud Run deploy fails",
+    "description": "New revisions fail with 503 since 09:15 UTC",
+    "classificationId": "100152",
+    "priority": "P1",
+    "contactEmail": "oncall@example.com"
+  }
+}
+```
+
+**戻り値例**
+```text
+Case: projects/my-sre-prod/cases/98765
+State: NEW / Priority: P1
+✅ Support case created successfully in projects/my-sre-prod
+```
+
+### gcp-support-update-case — ケース情報を更新
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | 更新対象のケース。 |
+| displayName | string | いいえ |  | タイトル変更。 |
+| description | string | いいえ |  | 詳細の更新。 |
+| classificationId | string | いいえ |  | 新しい分類 ID。 |
+| priority | enum[`P0`…`PRIORITY_UNSPECIFIED`] | いいえ |  | 優先度変更。 |
+| contactEmail | string | いいえ |  | 主要コンタクトメール。 |
+| subscriberEmailAddresses | array<string> | いいえ |  | 通知先リスト。 |
+| languageCode | string | いいえ |  | 希望言語。 |
+| timeZone | string | いいえ |  | ケースのタイムゾーン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-update-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "priority": "P2",
+    "subscriberEmailAddresses": ["mgr@example.com"]
+  }
+}
+```
+
+**戻り値例**
+```text
+Case: projects/my-sre-prod/cases/98765
+Updated fields: priority=P2, subscribers=1
+✅ Support case projects/my-sre-prod/cases/98765 updated successfully.
+```
+
+### gcp-support-close-case — ケースをクローズ
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | 対象ケース。 |
+| justification | string | いいえ |  | クローズ理由メモ。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-close-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "justification": "Issue resolved after rollback"
+  }
+}
+```
+
+**戻り値例**
+```text
+Case: projects/my-sre-prod/cases/98765
+State: CLOSED
+✅ Support case projects/my-sre-prod/cases/98765 closed.
+Justification: Issue resolved after rollback
+```
+
+### gcp-support-list-comments — コメント一覧
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケースリソース。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大コメント件数。 |
+| pageToken | string | いいえ |  | ページングトークン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-list-comments",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "pageSize": 5
+  }
+}
+```
+
+**戻り値例**
+```text
+# Support Case Comments
+Case: projects/my-sre-prod/cases/98765
+Returned: 3
+- 2025-03-05T04:10Z Google: Please attach stack traces
+- 2025-03-05T04:18Z You: Uploaded logs
+```
+
+### gcp-support-create-comment — コメントを追加
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケースリソース。 |
+| body | string | はい | 1 文字以上 | コメント本文。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-create-comment",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "body": "Attached Cloud Storage link with tcpdump"
+  }
+}
+```
+
+**戻り値例**
+```text
+✅ Comment added to projects/my-sre-prod/cases/98765.
+- 2025-03-05T04:33Z You: Attached Cloud Storage link with tcpdump
+```
+
+### gcp-support-list-attachments — 添付ファイル一覧
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケースリソース。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大取得件数。 |
+| pageToken | string | いいえ |  | ページングトークン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-list-attachments",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765"
+  }
+}
+```
+
+**戻り値例**
+```text
+# Support Case Attachments
+Case: projects/my-sre-prod/cases/98765
+Returned: 2
+1. error-logs.zip (2.4 MB)
+2. tcpdump.har (5.1 MB)
+```
+
+### gcp-support-search-classifications — 分類を検索
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| query | string | はい |  | `id:"100445"` や `displayName:"service account"` など。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大取得件数。 |
+| pageToken | string | いいえ |  | ページングトークン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-search-classifications",
+  "arguments": {
+    "query": "displayName:\"Cloud Run\"",
+    "pageSize": 10
+  }
+}
+```
+
+**戻り値例**
+```text
+# Case Classifications
+Query: displayName:"Cloud Run"
+Returned: 4
+- 100152 Cloud Run > Deployments > 5xx
+...
+```
+
 
 ## Project Utilities
 
@@ -885,3 +1169,50 @@ Current project ID: `my-sre-prod`
 - `my-sre-prod` (current)
 - `analytics-playground`
 ```
+
+## リソースリファレンス
+
+MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-utils-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
+
+### ロギング リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-logging-recent-logs` | `gcp-logs://{projectId}/recent` | `projectId` は省略可。 | `LOG_FILTER` (設定されていれば) を使って最新 50 件のログを要約し、マスク情報を付与。 |
+| `gcp-logging-filtered-logs` | `gcp-logs://{projectId}/filter/{filter}` | `filter` は URL エンコードした Cloud Logging フィルタ。 | 条件に合致した最大 50 件をシビアリティ／リソース情報付きで返却。 |
+
+### Monitoring リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-monitoring-recent-metrics` | `gcp-monitoring://{projectId}/recent` | `MONITORING_FILTER` がなければ CPU メトリクスを使用。 | 直近 1 時間の時系列データを `buildStructuredTextBlock` 形式で要約。 |
+| `gcp-monitoring-filtered-metrics` | `gcp-monitoring://{projectId}/filter/{filter}` | `filter` は URL エンコード済み。取得範囲は常に直近 1 時間。 | 指定フィルタの時系列を同じ構造化フォーマットで返却。 |
+
+### Spanner リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-spanner-database-schema` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/schema` | インスタンス／DB を指定、または既定値に依存。 | テーブル・カラム・インデックス・外部キーまで含む Markdown スキーマ。 |
+| `gcp-spanner-table-preview` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables/{tableName}/preview` | `tableName` は `[A-Za-z][A-Za-z0-9_]*`。件数は `SPANNER_ROW_PREVIEW_LIMIT` に従う。 | プレビュー行と省略メモを含むテーブルダンプ。 |
+| `gcp-spanner-database-tables` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/tables` | ↑と同じ。 | テーブル名とカラム数の一覧、さらに schema/preview へのリンクが付く。 |
+| `gcp-spanner-query-plan` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=<URL-encoded>&mode=explain\|analyze` | `sql` クエリパラメータ必須。`mode=analyze` もしくは `analyze=1` で EXPLAIN ANALYZE。 | 実行/非実行の注記つきでプラン表と分散 JOIN・インデックスの指摘を返却。 |
+| `gcp-spanner-query-stats` | `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-stats` | 既定のインスタンス／DB を使用。 | `buildQueryStatsJson` が生成するレイテンシ・オプティマイザ情報などの JSON。 |
+
+### Trace リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-trace-get-by-id` | `gcp-trace://{projectId}/traces/{traceId}` | `traceId` は 16 進文字列。 | 階層化されたスパン構造を Markdown で表示。 |
+| `gcp-trace-related-logs` | `gcp-trace://{projectId}/traces/{traceId}/logs` | `traceId` でログを突き合わせ。 | トレース ID を含む最大 50 件のログとリソース／ラベル情報。 |
+| `gcp-trace-recent-failed` | `gcp-trace://{projectId}/recent-failed?startTime=<ISO\|1h\|6h\|30m>` | `startTime` は ISO 形式または `1h`,`2d` などの相対表記。 | 指定期間内でエラーになったトレースの表を表示し、各行にリンクを付与。 |
+
+### Error Reporting リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-error-reporting-recent-errors` | `gcp-error-reporting://{projectId}/recent` | 直近 1 時間を解析。 | 優勢なエラーグループの要約と推奨アクションを Markdown で返却。 |
+| `gcp-error-reporting-error-analysis` | `gcp-error-reporting://{projectId}/analysis/{timeRange}` | `timeRange` は `1h`,`6h`,`24h`,`7d`,`30d` など。既定は `1h`。 | 指定期間のエラー統計とリメディエーション提案。 |
+| `gcp-error-reporting-service-errors` | `gcp-error-reporting://{projectId}/service/{serviceName}` | `serviceName` で `serviceFilter.service` を指定。 | 過去 24 時間のサービス単位エラーダイジェスト。 |
+
+### Profiler リソース
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-profiler-all-profiles` | `gcp-profiler://{projectId}/profiles` | Cloud Profiler API への認証が必要。最大 100 件。 | 収集済みプロファイルの Markdown ダイジェストと個別サマリ。 |
+| `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | 同上。 | CPU プロファイルのみを抽出し、ホットスポット分析と改善提案を記載。 |
+| `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | HEAP / HEAP_ALLOC / PEAK_HEAP に限定。 | メモリ使用状況とリーク検知のためのインサイトを提供。 |
+| `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | 最大 200 件のプロファイルを収集。 | 直近のプロファイルから導いた短期・中期・長期のパフォーマンス施策。 |
