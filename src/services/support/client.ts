@@ -89,7 +89,11 @@ export class SupportApiClient {
       logger.error(message);
       throw new GcpMcpError(
         message,
-        response.status === 401 || response.status === 403 ? "PERMISSION_DENIED" : "FAILED_PRECONDITION",
+        response.status === 401
+          ? "UNAUTHENTICATED"
+          : response.status === 403
+            ? "PERMISSION_DENIED"
+            : "FAILED_PRECONDITION",
         response.status,
         errorText || undefined,
       );
