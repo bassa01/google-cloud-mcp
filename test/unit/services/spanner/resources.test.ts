@@ -88,7 +88,8 @@ describe('Spanner resources table preview', () => {
 
     expect(runMock).toHaveBeenCalledWith({
       sql: 'SELECT * FROM `Users` LIMIT @limit',
-      params: { limit: 10 },
+      params: { limit: '10' },
+      types: { limit: 'int64' },
     });
     expect(response.contents[0].text).toContain('Accepted table name format');
   });

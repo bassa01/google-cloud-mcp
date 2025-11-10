@@ -153,7 +153,8 @@ export function registerSpannerResources(server: McpServer): void {
         const sanitizedTableName = `\`${tableNameValue}\``;
         const [result] = await database.run({
           sql: `SELECT * FROM ${sanitizedTableName} LIMIT @limit`,
-          params: { limit: 10 },
+          params: { limit: "10" },
+          types: { limit: "int64" },
         });
 
         if (!result || result.length === 0) {
