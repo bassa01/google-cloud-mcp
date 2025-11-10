@@ -216,7 +216,15 @@ function hasSecondaryIndexes(table: SpannerTable): boolean {
     return false;
   }
 
-  return table.indexes.some(
-    (index) => index.name && index.name.toUpperCase() !== "PRIMARY_KEY",
-  );
+  return table.indexes.some((index) => {
+    if (!index.name) {
+      return false;
+    }
+
+    const normalizedName = index.name.trim().toUpperCase();
+
+    return (
+      normalizedName !== "PRIMARY KEY" && normalizedName !== "PRIMARY_KEY"
+    );
+  });
 }

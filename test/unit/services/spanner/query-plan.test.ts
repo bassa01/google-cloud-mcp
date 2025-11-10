@@ -25,7 +25,7 @@ describe('Spanner Query Plan Utilities', () => {
         {
           name: 'Orders',
           columns: [],
-          indexes: [{ name: 'PRIMARY_KEY', columns: ['id'] }],
+          indexes: [{ name: 'PRIMARY KEY', columns: ['id'] }],
         },
       ],
     };
