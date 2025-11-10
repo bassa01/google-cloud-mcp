@@ -8,6 +8,23 @@ import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { parseRelativeTime } from "../../utils/time.js";
 import { logger } from "../../utils/logger.js";
+import {
+  buildStructuredTextBlock,
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
+
+const QUERY_COUNT_SERIES_LIMIT = resolveBoundedNumber(
+  process.env.SPANNER_QUERY_COUNT_SERIES_LIMIT,
+  5,
+  { min: 1, max: 20 },
+);
+
+const QUERY_COUNT_POINT_LIMIT = resolveBoundedNumber(
+  process.env.SPANNER_QUERY_COUNT_POINT_LIMIT,
+  60,
+  { min: 10, max: 240 },
+);
 
 /**
  * Interface for time series data points
@@ -200,58 +217,73 @@ export function registerSpannerQueryCountTool(server: McpServer): void {
           };
         }
 
-        // Format the results
-        let markdown = `# Spanner Query Count\n\nProject: ${projectId}\n${instanceId ? `\nInstance: ${instanceId}` : ""}\n${databaseId ? `\nDatabase: ${databaseId}` : ""}\n\nQuery Type: ${queryType}\nStatus: ${status}\nTime Range: ${start.toISOString()} to ${end.toISOString()}\nAlignment Period: ${alignmentPeriod}\n\n`;
+        const { displayed: seriesSubset, omitted: seriesOmitted } = previewList(
+          timeSeries,
+          QUERY_COUNT_SERIES_LIMIT,
+        );
 
-        // Create a table for each time series
-        for (const series of timeSeries) {
+        const summaries = seriesSubset.map((series) => {
           const seriesData = series as unknown as TimeSeriesData;
+          const sortedPoints = [...(seriesData.points || [])].sort((a, b) => {
+            const aTime = Number(a.interval.startTime.seconds);
+            const bTime = Number(b.interval.startTime.seconds);
+            return aTime - bTime;
+          });
 
-          // Extract labels for the table header
-          const instanceName =
-            seriesData.resource.labels.instance_id || "unknown";
-          const databaseName = seriesData.metric.labels?.database || "all";
-          const queryTypeValue = seriesData.metric.labels?.query_type || "all";
-          const statusValue = seriesData.metric.labels?.status || "all";
-          const optimizerVersion =
-            seriesData.metric.labels?.optimizer_version || "unknown";
+          const { displayed: pointSubset, omitted: pointOmitted } = previewList(
+            sortedPoints,
+            QUERY_COUNT_POINT_LIMIT,
+          );
 
-          markdown += `## Instance: ${instanceName}, Database: ${databaseName}\n`;
-          markdown += `Query Type: ${queryTypeValue}, Status: ${statusValue}, Optimizer Version: ${optimizerVersion}\n\n`;
-
-          // Table header
-          markdown += "| Timestamp | Query Count |\n";
-          markdown += "|-----------|------------|\n";
-
-          // Table rows
-          if (seriesData.points && seriesData.points.length > 0) {
-            // Sort points by time (oldest first)
-            const sortedPoints = [...seriesData.points].sort((a, b) => {
-              const aTime = Number(a.interval.startTime.seconds);
-              const bTime = Number(b.interval.startTime.seconds);
-              return aTime - bTime;
-            });
-
-            for (const point of sortedPoints) {
-              const timestamp = new Date(
+          return {
+            instance: seriesData.resource.labels.instance_id || "unknown",
+            database: seriesData.metric.labels?.database || "all",
+            queryType: seriesData.metric.labels?.query_type || "all",
+            status: seriesData.metric.labels?.status || "all",
+            optimizerVersion:
+              seriesData.metric.labels?.optimizer_version || "unknown",
+            points: pointSubset.map((point) => ({
+              timestamp: new Date(
                 Number(point.interval.endTime.seconds) * 1000,
-              ).toISOString();
-              const count = point.value.int64Value || "0";
+              ).toISOString(),
+              count:
+                point.value.int64Value ??
+                point.value.doubleValue ??
+                point.value.stringValue ??
+                "0",
+            })),
+            pointsOmitted: pointOmitted,
+          };
+        });
 
-              markdown += `| ${timestamp} | ${count} |\n`;
-            }
-          } else {
-            markdown += "| No data | 0 |\n";
-          }
-
-          markdown += "\n";
+        const noteParts: string[] = [];
+        if (seriesOmitted > 0) {
+          noteParts.push(
+            `Showing ${summaries.length} of ${timeSeries.length} time series (preview limit ${QUERY_COUNT_SERIES_LIMIT}).`,
+          );
         }
+
+        const text = buildStructuredTextBlock({
+          title: "Spanner Query Count",
+          metadata: {
+            projectId,
+            instanceId,
+            databaseId,
+            queryType,
+            status,
+            alignmentPeriod,
+            timeRange: `${start.toISOString()} -> ${end.toISOString()}`,
+          },
+          dataLabel: "series",
+          data: summaries,
+          note: noteParts.length ? noteParts.join(" ") : undefined,
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };

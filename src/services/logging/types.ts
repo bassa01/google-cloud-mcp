@@ -2,6 +2,10 @@
  * Type definitions for Google Cloud Logging service
  */
 import { Logging } from "@google-cloud/logging";
+import {
+  createTextPreview,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
 
 /**
  * Interface for Google Cloud Log Entry
@@ -70,127 +74,101 @@ export function getLoggingClient(): Logging {
  * @param entry The log entry to format
  * @returns A formatted string representation of the log entry with all available fields
  */
-export function formatLogEntry(entry: LogEntry): string {
-  // Safely format the timestamp
-  let timestamp: string;
+export interface LogPayloadSummary {
+  type: "text" | "json" | "proto" | "other";
+  value: unknown;
+  truncated?: boolean;
+}
+
+export interface LogEntrySummary {
+  timestamp: string;
+  severity: string;
+  resource?: {
+    type?: string;
+    labels?: Record<string, string>;
+  };
+  logName?: string;
+  insertId?: string;
+  receiveTimestamp?: string;
+  trace?: string;
+  spanId?: string;
+  traceSampled?: boolean;
+  sourceLocation?: {
+    file?: string;
+    line?: number;
+    function?: string;
+  };
+  httpRequest?: {
+    method?: string;
+    url?: string;
+    status?: number;
+    latency?: string;
+    userAgent?: string;
+    remoteIp?: string;
+  };
+  operation?: {
+    id?: string;
+    producer?: string;
+    first?: boolean;
+    last?: boolean;
+  };
+  labels?: Record<string, string>;
+  payload: LogPayloadSummary;
+  additionalFields?: Record<string, unknown>;
+}
+
+function normaliseTimestamp(input?: string): string {
+  if (!input) {
+    return "unknown";
+  }
+
   try {
-    if (!entry.timestamp) {
-      timestamp = "No timestamp";
-    } else {
-      const date = new Date(entry.timestamp);
-      timestamp = !isNaN(date.getTime())
-        ? date.toISOString()
-        : String(entry.timestamp);
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      return input;
     }
+    return parsed.toISOString();
   } catch {
-    timestamp = String(entry.timestamp || "Invalid timestamp");
+    return input;
+  }
+}
+
+function cleanRecord<T extends Record<string, unknown>>(
+  value?: T,
+): T | undefined {
+  if (!value) {
+    return undefined;
   }
 
-  const severity = entry.severity || "DEFAULT";
-  const resourceType = entry.resource?.type || "unknown";
-  const resourceLabels = entry.resource?.labels
-    ? Object.entries(entry.resource.labels)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(", ")
-    : "";
+  const entries = Object.entries(value).filter(
+    ([, fieldValue]) => fieldValue !== undefined && fieldValue !== null,
+  );
 
-  const resource = resourceLabels
-    ? `${resourceType}(${resourceLabels})`
-    : resourceType;
-
-  // Start building the comprehensive log entry display
-  let result = `## ${timestamp} | ${severity} | ${resource}\n\n`;
-
-  // Basic metadata
-  if (entry.logName) result += `**Log Name:** ${entry.logName}\n`;
-  if (entry.insertId) result += `**Insert ID:** ${entry.insertId}\n`;
-  if (entry.receiveTimestamp) {
-    try {
-      const receiveTime = new Date(entry.receiveTimestamp).toISOString();
-      result += `**Receive Time:** ${receiveTime}\n`;
-    } catch {
-      result += `**Receive Time:** ${entry.receiveTimestamp}\n`;
-    }
+  if (entries.length === 0) {
+    return undefined;
   }
 
-  // Trace context information
-  if (entry.trace) result += `**Trace:** ${entry.trace}\n`;
-  if (entry.spanId) result += `**Span ID:** ${entry.spanId}\n`;
-  if (entry.traceSampled !== undefined)
-    result += `**Trace Sampled:** ${entry.traceSampled}\n`;
+  return Object.fromEntries(entries) as T;
+}
 
-  // Source location if available
-  if (entry.sourceLocation) {
-    result += `**Source Location:**\n`;
-    if (entry.sourceLocation.file)
-      result += `  - File: ${entry.sourceLocation.file}\n`;
-    if (entry.sourceLocation.line)
-      result += `  - Line: ${entry.sourceLocation.line}\n`;
-    if (entry.sourceLocation.function)
-      result += `  - Function: ${entry.sourceLocation.function}\n`;
-  }
+const TEXT_PAYLOAD_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.LOG_TEXT_PAYLOAD_PREVIEW,
+  600,
+  { min: 120, max: 4000 },
+);
 
-  // HTTP request details if available
-  if (entry.httpRequest) {
-    result += `**HTTP Request:**\n`;
-    if (entry.httpRequest.requestMethod)
-      result += `  - Method: ${entry.httpRequest.requestMethod}\n`;
-    if (entry.httpRequest.requestUrl)
-      result += `  - URL: ${entry.httpRequest.requestUrl}\n`;
-    if (entry.httpRequest.status)
-      result += `  - Status: ${entry.httpRequest.status}\n`;
-    if (entry.httpRequest.userAgent)
-      result += `  - User Agent: ${entry.httpRequest.userAgent}\n`;
-    if (entry.httpRequest.remoteIp)
-      result += `  - Remote IP: ${entry.httpRequest.remoteIp}\n`;
-    if (entry.httpRequest.latency)
-      result += `  - Latency: ${entry.httpRequest.latency}\n`;
-    if (entry.httpRequest.requestSize)
-      result += `  - Request Size: ${entry.httpRequest.requestSize}\n`;
-    if (entry.httpRequest.responseSize)
-      result += `  - Response Size: ${entry.httpRequest.responseSize}\n`;
-    if (entry.httpRequest.referer)
-      result += `  - Referer: ${entry.httpRequest.referer}\n`;
-    if (entry.httpRequest.protocol)
-      result += `  - Protocol: ${entry.httpRequest.protocol}\n`;
-    if (entry.httpRequest.cacheHit !== undefined)
-      result += `  - Cache Hit: ${entry.httpRequest.cacheHit}\n`;
-    if (entry.httpRequest.cacheLookup !== undefined)
-      result += `  - Cache Lookup: ${entry.httpRequest.cacheLookup}\n`;
-    if (entry.httpRequest.cacheValidatedWithOriginServer !== undefined) {
-      result += `  - Cache Validated: ${entry.httpRequest.cacheValidatedWithOriginServer}\n`;
-    }
-    if (entry.httpRequest.cacheFillBytes)
-      result += `  - Cache Fill Bytes: ${entry.httpRequest.cacheFillBytes}\n`;
-  }
+export const LOG_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.LOG_OUTPUT_PREVIEW_LIMIT ?? process.env.LOG_OUTPUT_MAX,
+  20,
+  { min: 5, max: 200 },
+);
 
-  // Operation details if available
-  if (entry.operation) {
-    result += `**Operation:**\n`;
-    if (entry.operation.id) result += `  - ID: ${entry.operation.id}\n`;
-    if (entry.operation.producer)
-      result += `  - Producer: ${entry.operation.producer}\n`;
-    if (entry.operation.first !== undefined)
-      result += `  - First: ${entry.operation.first}\n`;
-    if (entry.operation.last !== undefined)
-      result += `  - Last: ${entry.operation.last}\n`;
-  }
+/**
+ * Format a log entry into a compact, machine-friendly summary object.
+ */
+export function formatLogEntry(entry: LogEntry): LogEntrySummary {
+  const payload = buildPayload(entry);
 
-  // Labels if they exist
-  if (entry.labels && Object.keys(entry.labels).length > 0) {
-    try {
-      result += `**Labels:**\n`;
-      Object.entries(entry.labels).forEach(([key, value]) => {
-        result += `  - ${key}: ${value}\n`;
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      result += `**Labels:** [Error formatting labels: ${errorMessage}]\n`;
-    }
-  }
-
-  // Add any additional fields that might be present
   const knownFields = new Set([
     "timestamp",
     "severity",
@@ -208,53 +186,99 @@ export function formatLogEntry(entry: LogEntry): string {
     "httpRequest",
     "operation",
     "receiveTimestamp",
+    "data",
+    "message",
+    "msg",
   ]);
 
   const additionalFields: Record<string, unknown> = {};
-  Object.entries(entry).forEach(([key, value]) => {
+  for (const [key, value] of Object.entries(entry)) {
     if (!knownFields.has(key) && value !== undefined && value !== null) {
       additionalFields[key] = value;
     }
-  });
-
-  if (Object.keys(additionalFields).length > 0) {
-    result += `**Additional Fields:**\n`;
-    try {
-      result += `\`\`\`json\n${JSON.stringify(additionalFields, null, 2)}\n\`\`\`\n`;
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      result += `[Error formatting additional fields: ${errorMessage}]\n`;
-    }
   }
 
-  // Format the main payload
-  result += `\n**Payload:**\n`;
-  try {
-    if (entry.textPayload !== undefined && entry.textPayload !== null) {
-      result += `\`\`\`\n${String(entry.textPayload)}\n\`\`\``;
-    } else if (entry.jsonPayload) {
-      result += `\`\`\`json\n${JSON.stringify(entry.jsonPayload, null, 2)}\n\`\`\``;
-    } else if (entry.protoPayload) {
-      result += `\`\`\`json\n${JSON.stringify(entry.protoPayload, null, 2)}\n\`\`\``;
-    } else {
-      // Check for any other payload-like fields
-      const data = entry.data || entry.message || entry.msg;
-      if (data) {
-        if (typeof data === "string") {
-          result += `\`\`\`\n${data}\n\`\`\``;
-        } else {
-          result += `\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
-        }
-      } else {
-        result += `\`\`\`\n[No payload available]\n\`\`\``;
-      }
-    }
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    result += `\`\`\`\n[Error formatting payload: ${errorMessage}]\n\`\`\``;
+  return {
+    timestamp: normaliseTimestamp(entry.timestamp),
+    severity: entry.severity || "DEFAULT",
+    resource: cleanRecord({
+      type: entry.resource?.type,
+      labels:
+        entry.resource?.labels && Object.keys(entry.resource.labels).length > 0
+          ? entry.resource.labels
+          : undefined,
+    }),
+    logName: entry.logName,
+    insertId: entry.insertId,
+    receiveTimestamp: normaliseTimestamp(entry.receiveTimestamp),
+    trace: entry.trace,
+    spanId: entry.spanId,
+    traceSampled: entry.traceSampled,
+    sourceLocation: cleanRecord(entry.sourceLocation),
+    httpRequest: cleanRecord({
+      method: entry.httpRequest?.requestMethod,
+      url: entry.httpRequest?.requestUrl,
+      status: entry.httpRequest?.status,
+      latency: entry.httpRequest?.latency,
+      userAgent: entry.httpRequest?.userAgent,
+      remoteIp: entry.httpRequest?.remoteIp,
+    }),
+    operation: cleanRecord(entry.operation),
+    labels:
+      entry.labels && Object.keys(entry.labels).length > 0
+        ? entry.labels
+        : undefined,
+    payload,
+    additionalFields:
+      Object.keys(additionalFields).length > 0 ? additionalFields : undefined,
+  };
+}
+
+function buildPayload(entry: LogEntry): LogPayloadSummary {
+  if (entry.textPayload !== undefined && entry.textPayload !== null) {
+    const { text, truncated } = createTextPreview(
+      String(entry.textPayload),
+      TEXT_PAYLOAD_PREVIEW_LIMIT,
+    );
+    return {
+      type: "text",
+      value: text,
+      truncated,
+    };
   }
 
-  return result;
+  if (entry.jsonPayload) {
+    return {
+      type: "json",
+      value: entry.jsonPayload,
+    };
+  }
+
+  if (entry.protoPayload) {
+    return {
+      type: "proto",
+      value: entry.protoPayload,
+    };
+  }
+
+  const data = entry.data || entry.message || entry.msg;
+  if (data) {
+    if (typeof data === "string") {
+      const { text, truncated } = createTextPreview(
+        data,
+        TEXT_PAYLOAD_PREVIEW_LIMIT,
+      );
+      return { type: "text", value: text, truncated };
+    }
+
+    return {
+      type: "json",
+      value: data,
+    };
+  }
+
+  return {
+    type: "other",
+    value: "[no payload available]",
+  };
 }

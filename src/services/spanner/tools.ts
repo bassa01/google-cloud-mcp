@@ -8,6 +8,66 @@ import { getSpannerClient, getSpannerConfig } from "./types.js";
 import { getSpannerSchema } from "./schema.js";
 import { stateManager } from "../../utils/state-manager.js";
 import { logger } from "../../utils/logger.js";
+import {
+  buildStructuredTextBlock,
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
+
+const SPANNER_ROW_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.SPANNER_ROW_PREVIEW_LIMIT,
+  50,
+  { min: 5, max: 200 },
+);
+
+function buildRowsResponse<T>({
+  title,
+  metadata,
+  rows,
+  context,
+  dataLabel = "rows",
+  emptyMessage,
+  additionalNote,
+}: {
+  title: string;
+  metadata: Record<string, unknown>;
+  rows: T[];
+  context?: Record<string, unknown>;
+  dataLabel?: string;
+  emptyMessage?: string;
+  additionalNote?: string;
+}): string {
+  const { displayed, omitted } = previewList(rows, SPANNER_ROW_PREVIEW_LIMIT);
+  const noteParts: string[] = [];
+  if (omitted > 0) {
+    noteParts.push(
+      `Showing ${displayed.length} of ${rows.length} rows (preview limit ${SPANNER_ROW_PREVIEW_LIMIT}).`,
+    );
+  }
+  if (rows.length === 0 && emptyMessage) {
+    noteParts.push(emptyMessage);
+  }
+  if (additionalNote) {
+    noteParts.push(additionalNote);
+  }
+
+  const payload: unknown =
+    context && Object.keys(context).length > 0
+      ? { ...context, rows: displayed }
+      : displayed;
+
+  return buildStructuredTextBlock({
+    title,
+    metadata: {
+      ...metadata,
+      rowsReturned: rows.length,
+      omitted,
+    },
+    dataLabel,
+    data: payload,
+    note: noteParts.length ? noteParts.join(" ") : undefined,
+  });
+}
 
 /**
  * Get detailed schema information for a Spanner database in a format suitable for query generation
@@ -91,51 +151,28 @@ export function registerSpannerTools(server: McpServer): void {
           params: params || {},
         });
 
-        if (!result || result.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Query Results\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\nQuery executed successfully. No results returned.`,
-              },
-            ],
-          };
-        }
-
-        // Convert to markdown table
-        const columns = Object.keys(result[0]);
-
-        let markdown = `# Query Results\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\n`;
-        markdown += `SQL: \`${sql}\`\n\n`;
-        markdown += `Rows: ${result.length}\n\n`;
-
-        // Table header
-        markdown += "| " + columns.join(" | ") + " |\n";
-        markdown += "| " + columns.map(() => "---").join(" | ") + " |\n";
-
-        // Table rows (limit to 100 rows for display)
-        const displayRows = result.slice(0, 100);
-        for (const row of displayRows) {
-          const rowValues = columns.map((col) => {
-            const value = (row as any)[col];
-            if (value === null || value === undefined) return "NULL";
-            if (typeof value === "object") return JSON.stringify(value);
-            return String(value);
-          });
-
-          markdown += "| " + rowValues.join(" | ") + " |\n";
-        }
-
-        if (result.length > 100) {
-          markdown +=
-            "\n*Results truncated. Showing 100 of " + result.length + " rows.*";
-        }
+        const rows = (result as Record<string, unknown>[]) || [];
+        const text = buildRowsResponse({
+          title: "Spanner Query Results",
+          metadata: {
+            projectId,
+            instanceId: config.instanceId,
+            databaseId: config.databaseId,
+          },
+          rows,
+          context: {
+            sql,
+            params: params || {},
+          },
+          dataLabel: "result",
+          emptyMessage: "Query executed successfully, but no rows were returned.",
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };
@@ -187,48 +224,33 @@ export function registerSpannerTools(server: McpServer): void {
               ORDER BY t.table_name`,
         });
 
-        if (!tablesResult || tablesResult.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Spanner Tables\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\nNo tables found in the database.`,
-              },
-            ],
-          };
-        }
+        const tablesData =
+          (tablesResult as Array<Record<string, unknown>>) ?? [];
+        const tables = tablesData.map((row) => ({
+          tableName: (row.table_name as string) || "unknown",
+          columnCount: Number(row.column_count ?? 0),
+        }));
 
-        let markdown = `# Spanner Tables\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\n`;
-
-        // Table header
-        markdown += "| Table Name | Column Count |\n";
-        markdown += "|------------|-------------|\n";
-
-        // Table rows
-        for (const row of tablesResult) {
-          // Access the row properties directly
-
-          // Extract table name and column count
-          const tableName = ((row as any).table_name as string) || "unknown";
-          const columnCount = ((row as any).column_count as number) || 0;
-
-          markdown += `| ${tableName} | ${columnCount} |\n`;
-        }
-
-        // Add resource links for further exploration
-        markdown += "\n## Available Resources\n\n";
-        markdown += `- Schema: \`gcp-spanner://${projectId}/${config.instanceId}/${config.databaseId}/schema\`\n`;
-
-        for (const row of tablesResult) {
-          const tableName = ((row as any).table_name as string) || "unknown";
-          markdown += `- Table Preview: \`gcp-spanner://${projectId}/${config.instanceId}/${config.databaseId}/tables/${tableName}/preview\`\n`;
-        }
+        const text = buildRowsResponse({
+          title: "Spanner Tables",
+          metadata: {
+            projectId,
+            instanceId: config.instanceId,
+            databaseId: config.databaseId,
+          },
+          rows: tables,
+          context: {
+            schemaResource: `gcp-spanner://${projectId}/${config.instanceId}/${config.databaseId}/schema`,
+            tablePreviewTemplate: `gcp-spanner://${projectId}/${config.instanceId}/${config.databaseId}/tables/{table}/preview`,
+          },
+          emptyMessage: "No tables were found in the database.",
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };
@@ -292,42 +314,35 @@ export function registerSpannerTools(server: McpServer): void {
 
         const [instances] = await spanner.getInstances();
 
-        if (!instances || instances.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Spanner Instances\n\nProject: ${projectId}\n\nNo instances found in the project.`,
-              },
-            ],
-          };
-        }
-
-        let markdown = `# Spanner Instances\n\nProject: ${projectId}\n\n`;
-
-        // Table header
-        markdown += "| Instance ID | State | Config | Nodes |\n";
-        markdown += "|-------------|-------|--------|-------|\n";
-
-        // Table rows
-        for (const instance of instances) {
+        const instanceList = instances ?? [];
+        const normalized = instanceList.map((instance) => {
           const metadata = instance.metadata || {};
-          markdown += `| ${instance.id || "unknown"} | ${metadata.state || "unknown"} | ${metadata.config?.split("/").pop() || "unknown"} | ${metadata.nodeCount || "unknown"} |\n`;
-        }
+          return {
+            id: instance.id || "unknown",
+            state: metadata.state || "unknown",
+            config: metadata.config?.split("/").pop() || "unknown",
+            nodeCount: metadata.nodeCount ?? metadata.processingUnits,
+            processingUnits: metadata.processingUnits,
+            displayName: metadata.displayName,
+          };
+        });
 
-        // Add resource links for further exploration
-        markdown += "\n## Available Resources\n\n";
-        markdown += `- All Instances: \`gcp-spanner://${projectId}/instances\`\n`;
-
-        for (const instance of instances) {
-          markdown += `- Databases in ${instance.id}: \`gcp-spanner://${projectId}/${instance.id}/databases\`\n`;
-        }
+        const text = buildRowsResponse({
+          title: "Spanner Instances",
+          metadata: { projectId },
+          rows: normalized,
+          context: {
+            instancesResource: `gcp-spanner://${projectId}/instances`,
+            databaseResourceTemplate: `gcp-spanner://${projectId}/{instance}/databases`,
+          },
+          emptyMessage: "No Spanner instances were found in the project.",
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };
@@ -382,42 +397,40 @@ export function registerSpannerTools(server: McpServer): void {
 
         const [databases] = await instance.getDatabases();
 
-        if (!databases || databases.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Spanner Databases\n\nProject: ${projectId}\nInstance: ${Array.isArray(instanceId) ? instanceId[0] : instanceId}\n\nNo databases found in the instance.`,
-              },
-            ],
-          };
-        }
-
-        let markdown = `# Spanner Databases\n\nProject: ${projectId}\nInstance: ${Array.isArray(instanceId) ? instanceId[0] : instanceId}\n\n`;
-
-        // Table header
-        markdown += "| Database ID | State |\n";
-        markdown += "|-------------|-------|\n";
-
-        // Table rows
-        for (const database of databases) {
+        const databaseList = databases ?? [];
+        const normalized = databaseList.map((database) => {
           const metadata = database.metadata || {};
-          markdown += `| ${database.id || "unknown"} | ${metadata.state || "unknown"} |\n`;
-        }
+          return {
+            id: database.id || "unknown",
+            state: metadata.state || "unknown",
+            createTime: metadata.createTime,
+            encryptionConfig: metadata.encryptionConfig,
+          };
+        });
 
-        // Add resource links for further exploration
-        markdown += "\n## Available Resources\n\n";
+        const resolvedInstanceId = Array.isArray(instanceId)
+          ? instanceId[0]
+          : instanceId;
 
-        for (const database of databases) {
-          markdown += `- Tables in ${database.id}: \`gcp-spanner://${projectId}/${Array.isArray(instanceId) ? instanceId[0] : instanceId}/${database.id}/tables\`\n`;
-          markdown += `- Schema for ${database.id}: \`gcp-spanner://${projectId}/${Array.isArray(instanceId) ? instanceId[0] : instanceId}/${database.id}/schema\`\n`;
-        }
+        const text = buildRowsResponse({
+          title: "Spanner Databases",
+          metadata: {
+            projectId,
+            instanceId: resolvedInstanceId,
+          },
+          rows: normalized,
+          context: {
+            tablesResourceTemplate: `gcp-spanner://${projectId}/${resolvedInstanceId}/{database}/tables`,
+            schemaResourceTemplate: `gcp-spanner://${projectId}/${resolvedInstanceId}/{database}/schema`,
+          },
+          emptyMessage: "No databases were found in the instance.",
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };
@@ -622,57 +635,31 @@ export function registerSpannerTools(server: McpServer): void {
           sql: generatedSql,
         });
 
-        if (!result || result.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Query Results\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\nNatural Language Query: ${query}\n\nGenerated SQL: \`${generatedSql}\`\n\nQuery executed successfully. No results returned.`,
-              },
-            ],
-          };
-        }
-
-        // Convert to markdown table
-        const columns = Object.keys(result[0]);
-
-        let markdown = `# Query Results\n\nProject: ${projectId}\nInstance: ${config.instanceId}\nDatabase: ${config.databaseId}\n\n`;
-        markdown += `Natural Language Query: ${query}\n\n`;
-        markdown += `Generated SQL: \`${generatedSql}\`\n\n`;
-        markdown += `Rows: ${result.length}\n\n`;
-
-        // Table header
-        markdown += "| " + columns.join(" | ") + " |\n";
-        markdown += "| " + columns.map(() => "---").join(" | ") + " |\n";
-
-        // Table rows (limit to 100 rows for display)
-        const displayRows = result.slice(0, 100);
-        for (const row of displayRows) {
-          const rowValues = columns.map((col) => {
-            const value = (row as any)[col];
-            if (value === null || value === undefined) return "NULL";
-            if (typeof value === "object") return JSON.stringify(value);
-            return String(value);
-          });
-
-          markdown += "| " + rowValues.join(" | ") + " |\n";
-        }
-
-        if (result.length > 100) {
-          markdown +=
-            "\n*Results truncated. Showing 100 of " + result.length + " rows.*";
-        }
-
-        // Add a note about using execute-spanner-query for more complex queries
-        markdown += "\n\n## Need a more complex query?\n\n";
-        markdown +=
-          "For more complex queries, use the `execute-spanner-query` tool with a specific SQL statement.";
+        const rows = (result as Record<string, unknown>[]) || [];
+        const text = buildRowsResponse({
+          title: "Spanner Query Results",
+          metadata: {
+            projectId,
+            instanceId: config.instanceId,
+            databaseId: config.databaseId,
+          },
+          rows,
+          context: {
+            naturalLanguageQuery: query,
+            generatedSql,
+          },
+          dataLabel: "result",
+          emptyMessage:
+            "Query executed successfully, but no rows were returned. Use execute-spanner-query for more control.",
+          additionalNote:
+            "Need a more complex query? Use the execute-spanner-query tool with an explicit SQL statement.",
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: markdown,
+              text,
             },
           ],
         };

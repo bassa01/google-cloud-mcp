@@ -8,6 +8,7 @@ import {
 import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { formatTimeSeriesData, getMonitoringClient } from "./types.js";
+import { buildStructuredTextBlock } from "../../utils/output.js";
 
 /**
  * Registers Google Cloud Monitoring resources with the MCP server
@@ -62,12 +63,27 @@ export function registerMonitoringResources(server: McpServer): void {
         }
 
         const formattedData = formatTimeSeriesData(timeSeries);
+        const note =
+          formattedData.omittedSeries > 0
+            ? `Showing ${formattedData.series.length} of ${formattedData.totalSeries} series.`
+            : undefined;
+        const text = buildStructuredTextBlock({
+          title: "Recent Metrics",
+          metadata: {
+            projectId: actualProjectId,
+            filter: defaultFilter,
+            timeRange: `${oneHourAgo.toISOString()} -> ${now.toISOString()}`,
+          },
+          dataLabel: "series",
+          data: formattedData.series,
+          note,
+        });
 
         return {
           contents: [
             {
               uri: uri.href,
-              text: `# Recent Metrics for Project: ${actualProjectId}\n\nFilter: ${defaultFilter}\nTime Range: ${oneHourAgo.toISOString()} to ${now.toISOString()}\n\n${formattedData}`,
+              text,
             },
           ],
         };
@@ -135,12 +151,27 @@ export function registerMonitoringResources(server: McpServer): void {
         }
 
         const formattedData = formatTimeSeriesData(timeSeries);
+        const note =
+          formattedData.omittedSeries > 0
+            ? `Showing ${formattedData.series.length} of ${formattedData.totalSeries} series.`
+            : undefined;
+        const text = buildStructuredTextBlock({
+          title: "Filtered Metrics",
+          metadata: {
+            projectId: actualProjectId,
+            filter: decodedFilter,
+            timeRange: `${oneHourAgo.toISOString()} -> ${now.toISOString()}`,
+          },
+          dataLabel: "series",
+          data: formattedData.series,
+          note,
+        });
 
         return {
           contents: [
             {
               uri: uri.href,
-              text: `# Filtered Metrics for Project: ${actualProjectId}\n\nFilter: ${decodedFilter}\nTime Range: ${oneHourAgo.toISOString()} to ${now.toISOString()}\n\n${formattedData}`,
+              text,
             },
           ],
         };

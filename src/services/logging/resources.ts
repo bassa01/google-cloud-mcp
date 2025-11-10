@@ -7,12 +7,12 @@ import {
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
-import { formatLogEntry, getLoggingClient, LogEntry } from "./types.js";
-import { sanitizeLogEntry } from "./sanitizer.js";
+import { getLoggingClient, LogEntry } from "./types.js";
 import {
   buildRedactionNotice,
   canViewFullLogPayloads,
 } from "./policy.js";
+import { buildLogResponseText } from "./output.js";
 
 /**
  * Registers Google Cloud Logging resources with the MCP server
@@ -47,30 +47,23 @@ export function registerLoggingResources(server: McpServer): void {
         }
 
         const allowFullPayload = canViewFullLogPayloads();
-
-        // Format logs with error handling for each entry
-        const formattedLogs = entries
-          .map((entry) => {
-            try {
-              const safeEntry = sanitizeLogEntry(entry as unknown as LogEntry, {
-                allowFullPayload,
-              });
-              return formatLogEntry(safeEntry);
-            } catch (err: unknown) {
-              const errorMessage =
-                err instanceof Error ? err.message : "Unknown error";
-              return `## Error Formatting Log Entry\n\nAn error occurred while formatting a log entry: ${errorMessage}`;
-            }
-          })
-          .join("\n\n");
-
         const redactionNotice = buildRedactionNotice(allowFullPayload);
+        const text = buildLogResponseText({
+          title: "Recent Logs",
+          metadata: {
+            projectId: actualProjectId,
+            defaultFilter,
+          },
+          entries: (entries as unknown as LogEntry[]) ?? [],
+          allowFullPayload,
+          footnote: redactionNotice,
+        });
 
         return {
           contents: [
             {
               uri: uri.href,
-              text: `# Recent Logs for Project: ${actualProjectId}\n\n${formattedLogs}${redactionNotice}`,
+              text,
             },
           ],
         };
@@ -143,30 +136,23 @@ export function registerLoggingResources(server: McpServer): void {
         }
 
         const allowFullPayload = canViewFullLogPayloads();
-
-        // Format logs with error handling for each entry
-        const formattedLogs = entries
-          .map((entry) => {
-            try {
-              const safeEntry = sanitizeLogEntry(entry as unknown as LogEntry, {
-                allowFullPayload,
-              });
-              return formatLogEntry(safeEntry);
-            } catch (err: unknown) {
-              const errorMessage =
-                err instanceof Error ? err.message : "Unknown error";
-              return `## Error Formatting Log Entry\n\nAn error occurred while formatting a log entry: ${errorMessage}`;
-            }
-          })
-          .join("\n\n");
-
         const redactionNotice = buildRedactionNotice(allowFullPayload);
+        const text = buildLogResponseText({
+          title: "Filtered Logs",
+          metadata: {
+            projectId: actualProjectId,
+            filter: decodedFilter,
+          },
+          entries: (entries as unknown as LogEntry[]) ?? [],
+          allowFullPayload,
+          footnote: redactionNotice,
+        });
 
         return {
           contents: [
             {
               uri: uri.href,
-              text: `# Filtered Logs for Project: ${actualProjectId}\n\nFilter: ${decodedFilter}\n\n${formattedLogs}${redactionNotice}`,
+              text,
             },
           ],
         };
