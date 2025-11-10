@@ -6,6 +6,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Import mocks first
 import '../../../test/mocks/google-cloud-mocks.js';
 
+vi.mock('../../../src/utils/state-manager.js', () => {
+  const mockSetCurrentProjectId = vi.fn().mockResolvedValue(undefined);
+  return {
+    stateManager: {
+      getCurrentProjectId: vi.fn(() => null),
+      setCurrentProjectId: mockSetCurrentProjectId,
+      setAuthInitialized: vi.fn(),
+      isAuthInitialized: vi.fn(() => false),
+      on: vi.fn(),
+      emit: vi.fn(),
+    },
+  };
+});
+
 describe('Authentication', () => {
   beforeEach(() => {
     vi.clearAllMocks();

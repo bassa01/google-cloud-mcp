@@ -248,12 +248,14 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs raw SQL queries safely through parameter binding.
 - `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build summary queries for conversational insights.
+- `gcp-spanner-query-stats` (resource) renders Query Insights data from `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` as AI-readable JSON across 1m/10m/1h windows, ranking fingerprints by latency and CPU.
 - `gcp-spanner-query-plan` (resource) runs EXPLAIN/EXPLAIN ANALYZE via \`gcp-spanner://.../query-plan?sql=SELECT+...\` and calls out distributed joins or missing indexes.
 
 #### Operational tips
 
 - Always scope to production vs. staging instances to avoid cross-environment confusion.
 - Use natural-language helpers to draft queries, then refine them manually when needed.
+- Ensure Cloud Spanner Query Insights is enabled and grant the MCP service account `roles/spanner.databaseReader` so the query-stats resource can pull from the SPANNER_SYS views; if any interval is missing the markdown will note it.
 
 ### Trace
 
@@ -473,6 +475,7 @@ Testing tips:
 | Spanner | `gcp-spanner-execute-query` | Execute parameterised SQL. |
 | Spanner | `gcp-spanner-query-natural-language` | Generate SQL from natural language. |
 | Spanner | `gcp-spanner-query-count` | Quickly calculate row counts. |
+| Spanner | `gcp-spanner-query-stats` (resource) | AI-friendly 1m/10m/1h Query Insights JSON summary. |
 | Spanner | `gcp-spanner-query-plan` (resource) | Inspect EXPLAIN / EXPLAIN ANALYZE output and surface distributed joins or missing indexes. |
 | Trace | `gcp-trace-list-traces` | Surface slow or erroring traces. |
 | Trace | `gcp-trace-get-trace` | Inspect complete trace timelines. |

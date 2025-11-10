@@ -72,6 +72,7 @@ Interact with Google Cloud Spanner databases:
 
 **Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-natural-language`, `gcp-spanner-query-count`
 
+**Resource Highlight:** `gcp-spanner-query-stats` surfaces Query Insights (SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR) as AI-ready JSON, listing 1m/10m/1h latency and CPU leaders for downstream automation.
 **Resources:** `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=SELECT+...` (add `&mode=analyze` for EXPLAIN ANALYZE) to review plans, distributed joins, and missing indexes.
 
 *Example prompts:*

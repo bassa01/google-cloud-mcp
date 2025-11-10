@@ -7,6 +7,7 @@
 // Export types and utilities
 export * from "./types.js";
 export * from "./schema.js";
+export { buildQueryStatsJson } from "./query-stats.js";
 
 // Export resources and tools
 export { registerSpannerResources } from "./resources.js";
