@@ -15,6 +15,22 @@ export interface StructuredOutputOptions<T> {
   space?: number;
 }
 
+export interface PreviewNoteOptions {
+  total: number;
+  displayed: number;
+  label?: string;
+  limit?: number;
+  emptyMessage?: string;
+  omitted?: number;
+}
+
+export interface StructuredResponseOptions<T>
+  extends Omit<StructuredOutputOptions<T>, "note"> {
+  note?: string;
+  preview?: PreviewNoteOptions;
+  additionalNotes?: Array<string | undefined>;
+}
+
 /**
  * Safely stringify arbitrary data, converting unsupported values (e.g. bigint) to strings.
  */
@@ -101,6 +117,55 @@ export function buildStructuredTextBlock<T>({
   return segments.join("\n\n");
 }
 
+export function buildPreviewNote(
+  options?: PreviewNoteOptions,
+): string | undefined {
+  if (!options) {
+    return undefined;
+  }
+
+  const {
+    total,
+    displayed,
+    label = "items",
+    limit,
+    emptyMessage,
+    omitted,
+  } = options;
+
+  if (total === 0) {
+    return emptyMessage || `No ${label} found.`;
+  }
+
+  const omittedCount = Math.max(
+    omitted ?? total - displayed,
+    0,
+  );
+
+  if (omittedCount === 0) {
+    return undefined;
+  }
+
+  const limitDetail = limit ? ` (preview limit ${limit})` : "";
+  return `Showing ${displayed} of ${total} ${label}${limitDetail}.`;
+}
+
+export function buildStructuredResponse<T>({
+  preview,
+  additionalNotes = [],
+  note,
+  ...rest
+}: StructuredResponseOptions<T>): string {
+  const combinedNotes = [buildPreviewNote(preview), note, ...additionalNotes]
+    .filter((value): value is string => Boolean(value && value.trim().length))
+    .join(" ");
+
+  return buildStructuredTextBlock({
+    ...rest,
+    note: combinedNotes.length ? combinedNotes : undefined,
+  });
+}
+
 /**
  * Return a preview subset of an array and how many items were omitted.
  */
@@ -115,6 +180,22 @@ export function previewList<T>(
   return {
     displayed: items.slice(0, maxItems),
     omitted: items.length - maxItems,
+  };
+}
+
+export function previewRecordEntries<T>(
+  record: Record<string, T> | undefined,
+  maxEntries: number,
+): { displayed: Record<string, T>; omitted: number } {
+  if (!record) {
+    return { displayed: {}, omitted: 0 };
+  }
+
+  const entries = Object.entries(record);
+  const { displayed, omitted } = previewList(entries, maxEntries);
+  return {
+    displayed: Object.fromEntries(displayed),
+    omitted,
   };
 }
 

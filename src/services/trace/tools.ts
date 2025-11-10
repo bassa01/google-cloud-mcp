@@ -9,10 +9,49 @@ import {
   buildTraceHierarchy,
   formatTraceData,
   extractTraceIdFromLog,
+  TraceSpan,
+  TraceStatus,
 } from "./types.js";
 import { Logging } from "@google-cloud/logging";
 import { logger } from "../../utils/logger.js";
+import {
+  buildStructuredResponse,
+  createTextPreview,
+  previewList,
+  previewRecordEntries,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
 import { stateManager } from "../../utils/state-manager.js";
+
+const TRACE_SPAN_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.TRACE_SPAN_PREVIEW_LIMIT,
+  50,
+  { min: 10, max: 200 },
+);
+
+const TRACE_TRACE_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.TRACE_TRACE_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const TRACE_LOG_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.TRACE_LOG_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 100 },
+);
+
+const TRACE_ATTRIBUTE_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.TRACE_ATTRIBUTE_PREVIEW_LIMIT,
+  15,
+  { min: 5, max: 50 },
+);
+
+const TRACE_ANALYSIS_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.TRACE_ANALYSIS_PREVIEW_LIMIT,
+  4000,
+  { min: 500, max: 8000 },
+);
 
 /**
  * Registers Google Cloud Trace tools with the MCP server
@@ -147,18 +186,6 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
           }
         }
 
-        // Add additional metadata to the response for better context
-        let responseText = `\`\`\`json\n${JSON.stringify(
-          {
-            traceId: traceId,
-            projectId: actualProjectId,
-            spanCount: traceData.spans.length,
-          },
-          null,
-          2,
-        )}\n\`\`\`\n`;
-
-        // Log the number of spans found
         logger.debug(
           `Found ${traceData.spans.length} spans in trace ${traceId}`,
         );
@@ -166,95 +193,115 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
         try {
           logger.debug("Starting to build trace hierarchy...");
 
-          // Debug: Log each span before processing
           traceData.spans.forEach((span: any, index: number) => {
             logger.debug(`Span ${index} (ID: ${span.spanId}):`);
             logger.debug(`- Name: ${span.name || "undefined"}`);
             logger.debug(`- Parent: ${span.parentSpanId || "None"}`);
             logger.debug(`- Has labels: ${!!span.labels}`);
-            if (span.labels) {
-              logger.debug(`- Label count: ${Object.keys(span.labels).length}`);
-            }
           });
 
-          // Build the trace hierarchy
           const hierarchicalTrace = buildTraceHierarchy(
             actualProjectId.toString(),
             traceId.toString(),
             traceData.spans,
           );
 
-          logger.debug("Trace hierarchy built successfully");
-          logger.debug(
-            `Root spans count: ${hierarchicalTrace.rootSpans.length}`,
+          const formattedTrace = formatTraceData(hierarchicalTrace);
+          const hierarchyPreview = createTextPreview(
+            formattedTrace,
+            TRACE_ANALYSIS_PREVIEW_LIMIT,
           );
 
-          // Format the trace data for display
-          logger.debug("Formatting trace data...");
-          const formattedTrace = formatTraceData(hierarchicalTrace);
+          const { displayed: spanPreview, omitted: spansOmitted } = previewList(
+            hierarchicalTrace.allSpans,
+            TRACE_SPAN_PREVIEW_LIMIT,
+          );
 
-          // Combine the response text with the formatted trace
-          responseText += formattedTrace;
+          const text = buildStructuredResponse({
+            title: "Trace Details",
+            metadata: {
+              projectId: actualProjectId,
+              traceId,
+              spanCount: hierarchicalTrace.allSpans.length,
+            },
+            dataLabel: "trace",
+            data: {
+              summary: {
+                rootSpanCount: hierarchicalTrace.rootSpans.length,
+                failedSpanCount: hierarchicalTrace.allSpans.filter(
+                  (span) => span.status === TraceStatus.ERROR,
+                ).length,
+              },
+              spans: spanPreview.map(summarizeSpan),
+              spansOmitted,
+              hierarchyMarkdown: hierarchyPreview.text,
+              hierarchyTruncated: hierarchyPreview.truncated,
+            },
+            preview: {
+              total: hierarchicalTrace.allSpans.length,
+              displayed: spanPreview.length,
+              omitted: spansOmitted,
+              limit: TRACE_SPAN_PREVIEW_LIMIT,
+              label: "spans",
+            },
+          });
 
-          logger.debug("Trace formatting complete");
+          return {
+            content: [
+              {
+                type: "text",
+                text,
+              },
+            ],
+          };
         } catch (hierarchyError: any) {
-          // If we encounter an error building the hierarchy, log it and provide raw span info
           logger.error(
             `Error building trace hierarchy: ${hierarchyError.message}`,
           );
 
-          // Provide a simplified trace summary
-          responseText += "## Error Building Trace Hierarchy\n\n";
-          responseText += `Error: ${hierarchyError.message}\n\n`;
-          responseText += "## Raw Span Summary\n\n";
+          const fallbackSpans = traceData.spans || [];
+          const { displayed, omitted } = previewList(
+            fallbackSpans,
+            TRACE_SPAN_PREVIEW_LIMIT,
+          );
 
-          // List spans with basic information
-          for (const span of traceData.spans) {
-            const spanId = span.spanId || "Unknown";
-            const name = span.name || "Unknown";
-            const parentId = span.parentSpanId || "None";
-
-            responseText += `- **Span ID**: ${spanId}\n`;
-            responseText += `  - Name: ${name}\n`;
-            responseText += `  - Parent: ${parentId}\n`;
-
-            // Add timing if available
-            if (span.startTime && span.endTime) {
-              const startDate = new Date(span.startTime);
-              const endDate = new Date(span.endTime);
-              const durationMs = endDate.getTime() - startDate.getTime();
-              responseText += `  - Duration: ${durationMs}ms\n`;
-            }
-
-            // Add a few important labels if available
-            if (span.labels) {
-              responseText += `  - Labels: ${Object.keys(span.labels).length} total\n`;
-              const importantLabels = [
-                "/http/method",
-                "/http/path",
-                "/http/status_code",
-                "/component",
-                "g.co/agent",
-              ];
-              for (const key of importantLabels) {
-                if (span.labels[key]) {
-                  responseText += `    - ${key}: ${span.labels[key]}\n`;
-                }
-              }
-            }
-
-            responseText += "\n";
-          }
-        }
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: responseText,
+          const text = buildStructuredResponse({
+            title: "Trace Details (Fallback)",
+            metadata: {
+              projectId: actualProjectId,
+              traceId,
+              error: hierarchyError.message,
             },
-          ],
-        };
+            dataLabel: "spans",
+            data: {
+              spans: displayed.map((span: any) => ({
+                spanId: span.spanId,
+                name: span.name,
+                parentSpanId: span.parentSpanId,
+                startTime: span.startTime,
+                endTime: span.endTime,
+              })),
+              spansOmitted: omitted,
+            },
+            preview: {
+              total: fallbackSpans.length,
+              displayed: displayed.length,
+              omitted,
+              limit: TRACE_SPAN_PREVIEW_LIMIT,
+              label: "spans",
+              emptyMessage: "No spans were available in the fallback payload.",
+            },
+          });
+
+          return {
+            content: [
+              {
+                type: "text",
+                text,
+              },
+            ],
+          };
+        }
       } catch (error: any) {
         // Error handling for get-trace tool
         throw new GcpMcpError(
@@ -846,21 +893,56 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
             };
           }
 
-          // Build the trace hierarchy
           const hierarchicalTrace = buildTraceHierarchy(
             actualProjectId.toString(),
             traceId.toString(),
             traceData.spans,
           );
 
-          // Format the trace data for display
           const formattedTrace = formatTraceData(hierarchicalTrace);
+          const hierarchyPreview = createTextPreview(
+            formattedTrace,
+            TRACE_ANALYSIS_PREVIEW_LIMIT,
+          );
+          const { displayed, omitted } = previewList(
+            hierarchicalTrace.allSpans,
+            TRACE_SPAN_PREVIEW_LIMIT,
+          );
+
+          const text = buildStructuredResponse({
+            title: "Trace Details",
+            metadata: {
+              projectId: actualProjectId,
+              traceId,
+              spanCount: hierarchicalTrace.allSpans.length,
+            },
+            dataLabel: "trace",
+            data: {
+              summary: {
+                rootSpanCount: hierarchicalTrace.rootSpans.length,
+                failedSpanCount: hierarchicalTrace.allSpans.filter(
+                  (span) => span.status === TraceStatus.ERROR,
+                ).length,
+              },
+              spans: displayed.map(summarizeSpan),
+              spansOmitted: omitted,
+              hierarchyMarkdown: hierarchyPreview.text,
+              hierarchyTruncated: hierarchyPreview.truncated,
+            },
+            preview: {
+              total: hierarchicalTrace.allSpans.length,
+              displayed: displayed.length,
+              omitted,
+              limit: TRACE_SPAN_PREVIEW_LIMIT,
+              label: "spans",
+            },
+          });
 
           return {
             content: [
               {
                 type: "text",
-                text: formattedTrace,
+                text,
               },
             ],
           };
@@ -1050,48 +1132,49 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
             };
           }
 
-          // Format the traces for display
-          let markdown = `# Traces Found in Logs\n\n`;
-          markdown += `Project: ${actualProjectId}\n`;
-          markdown += `Log Filter: ${logFilter}\n`;
-          markdown += `Found ${traceMap.size} unique traces in ${entries.length} log entries:\n\n`;
+          const traceResults = Array.from(traceMap.values());
+          const { displayed, omitted } = previewList(
+            traceResults,
+            TRACE_LOG_PREVIEW_LIMIT,
+          );
 
-          // Table header
-          markdown +=
-            "| Trace ID | Timestamp | Severity | Log Name | Message |\n";
-          markdown +=
-            "|----------|-----------|----------|----------|--------|\n";
-
-          // Table rows
-          for (const trace of traceMap.values()) {
-            const traceId = trace.traceId;
-            // Handle timestamp formatting safely
-            let timestamp = trace.timestamp;
-            try {
-              if (
-                timestamp !== "Unknown" &&
-                timestamp !== "Invalid timestamp"
-              ) {
-                timestamp = new Date(trace.timestamp).toISOString();
-              }
-            } catch (e) {
-              // Keep the original timestamp if conversion fails
-            }
-            const severity = trace.severity;
-            const logName = trace.logName.split("/").pop() || trace.logName;
-            const message =
-              trace.message.length > 100
-                ? `${trace.message.substring(0, 100)}...`
-                : trace.message;
-
-            markdown += `| ${traceId} | ${timestamp} | ${severity} | ${logName} | ${message} |\n`;
-          }
+          const text = buildStructuredResponse({
+            title: "Traces Found in Logs",
+            metadata: {
+              projectId: actualProjectId,
+              logFilter,
+              examinedEntries: entries.length,
+              uniqueTraces: traceMap.size,
+            },
+            dataLabel: "traces",
+            data: {
+              traces: displayed.map((trace) => ({
+                traceId: trace.traceId,
+                timestamp: trace.timestamp,
+                severity: trace.severity,
+                logName: trace.logName,
+                message:
+                  trace.message && trace.message.length > 120
+                    ? `${trace.message.slice(0, 120)}...`
+                    : trace.message,
+              })),
+              tracesOmitted: omitted,
+            },
+            preview: {
+              total: traceResults.length,
+              displayed: displayed.length,
+              omitted,
+              limit: TRACE_LOG_PREVIEW_LIMIT,
+              label: "traces",
+              emptyMessage: "No traces found in the selected logs.",
+            },
+          });
 
           return {
             content: [
               {
                 type: "text",
-                text: markdown,
+                text,
               },
             ],
           };
@@ -1323,41 +1406,109 @@ function formatTracesResponse(
   endTime: Date,
   filter?: string,
 ): any {
-  // Format the traces for display
-  let markdown = `# Traces for ${projectId}\n\n`;
-  markdown += `Time Range: ${startTime.toISOString()} to ${endTime.toISOString()}\n`;
-  markdown += `Filter: ${filter || "None"}\n\n`;
-  markdown += `Found ${tracesData.traces.length} traces:\n\n`;
+  const traces = tracesData.traces || [];
+  const { displayed, omitted } = previewList(traces, TRACE_TRACE_PREVIEW_LIMIT);
 
-  // Table header
-  markdown += "| Trace ID | Display Name | Start Time | Duration | Status |\n";
-  markdown += "|----------|--------------|------------|----------|--------|\n";
-
-  // Table rows
-  for (const trace of tracesData.traces) {
-    const traceId = trace.traceId;
-    const displayName = trace.displayName || "Unknown";
-    const startTimeStr = new Date(trace.startTime).toISOString();
-    const duration = calculateDuration(trace.startTime, trace.endTime);
-    const status =
-      trace.status?.code === 0
-        ? "✅ OK"
-        : trace.status?.code > 0
-          ? "❌ ERROR"
-          : "⚪ UNKNOWN";
-
-    markdown += `| \`${traceId}\` | ${displayName} | ${startTimeStr} | ${duration} | ${status} |\n`;
-  }
-
-  markdown +=
-    "\n\nTo view a specific trace, use the `get-trace` tool with the trace ID.";
+  const text = buildStructuredResponse({
+    title: "Trace List",
+    metadata: {
+      projectId,
+      timeRange: `${startTime.toISOString()} -> ${endTime.toISOString()}`,
+      filter,
+      totalTraces: traces.length,
+    },
+    dataLabel: "traces",
+    data: {
+      traces: displayed.map((trace: any) =>
+        summarizeTraceListItem(trace, projectId),
+      ),
+      tracesOmitted: omitted,
+    },
+    preview: {
+      total: traces.length,
+      displayed: displayed.length,
+      omitted,
+      limit: TRACE_TRACE_PREVIEW_LIMIT,
+      label: "traces",
+      emptyMessage: "No traces found matching the criteria.",
+    },
+  });
 
   return {
     content: [
       {
         type: "text",
-        text: markdown,
+        text,
       },
     ],
+  };
+}
+
+interface TraceSpanSummaryPayload {
+  spanId: string;
+  name: string;
+  parentSpanId?: string;
+  startTime: string;
+  endTime: string;
+  durationMs?: number;
+  status: TraceStatus;
+  kind?: string;
+  attributes?: Record<string, string>;
+  attributesOmitted?: number;
+}
+
+function summarizeSpan(span: TraceSpan): TraceSpanSummaryPayload {
+  const { displayed, omitted } = previewRecordEntries(
+    span.attributes,
+    TRACE_ATTRIBUTE_PREVIEW_LIMIT,
+  );
+
+  const durationMs = (() => {
+    const start = new Date(span.startTime).getTime();
+    const end = new Date(span.endTime).getTime();
+    if (Number.isFinite(start) && Number.isFinite(end)) {
+      return end - start;
+    }
+    return undefined;
+  })();
+
+  return {
+    spanId: span.spanId,
+    name: span.displayName,
+    parentSpanId: span.parentSpanId,
+    startTime: span.startTime,
+    endTime: span.endTime,
+    durationMs,
+    status: span.status,
+    kind: span.kind,
+    attributes: Object.keys(displayed).length ? displayed : undefined,
+    attributesOmitted: omitted || undefined,
+  };
+}
+
+interface TraceListItemPayload {
+  traceId: string;
+  projectId: string;
+  displayName?: string;
+  startTime?: string;
+  endTime?: string;
+  duration?: string;
+  spanCount?: number;
+  statusCode?: number;
+}
+
+function summarizeTraceListItem(
+  trace: any,
+  projectId: string,
+): TraceListItemPayload {
+  return {
+    traceId: trace.traceId,
+    projectId,
+    displayName: trace.displayName,
+    startTime: trace.startTime,
+    endTime: trace.endTime,
+    duration: calculateDuration(trace.startTime, trace.endTime),
+    spanCount: Array.isArray(trace.spans) ? trace.spans.length : undefined,
+    statusCode: trace.status?.code,
   };
 }

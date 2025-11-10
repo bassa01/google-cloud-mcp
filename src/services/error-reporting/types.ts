@@ -2,6 +2,7 @@
  * Type definitions for Google Cloud Error Reporting service
  */
 import { initGoogleAuth } from "../../utils/auth.js";
+import { createTextPreview } from "../../utils/output.js";
 
 /**
  * Interface for Google Cloud Error Group (matches REST API schema)
@@ -89,6 +90,35 @@ export interface ListGroupStatsResponse {
   errorGroupStats: ErrorGroupStats[];
   nextPageToken?: string;
   timeRangeBegin?: string;
+}
+
+const ERROR_MESSAGE_PREVIEW_LIMIT = 600;
+
+export interface ErrorGroupSummaryPayload {
+  groupId?: string;
+  name?: string;
+  resolutionStatus?: string;
+  counts: {
+    total?: number;
+    affectedUsers?: number;
+  };
+  firstSeenTime?: string;
+  lastSeenTime?: string;
+  services?: ServiceContext[];
+  representative?: ErrorEventSummaryPayload;
+  trackingIssues?: ErrorGroup["trackingIssues"];
+}
+
+export interface ErrorEventSummaryPayload {
+  eventTime?: string;
+  serviceContext?: ServiceContext;
+  message?: string;
+  messageTruncated?: boolean;
+  context?: {
+    httpRequest?: ErrorContext["httpRequest"];
+    reportLocation?: ErrorContext["reportLocation"];
+    user?: string;
+  };
 }
 
 /**
@@ -195,6 +225,49 @@ export function formatErrorGroupSummary(errorGroup: ErrorGroupStats): string {
   return markdown;
 }
 
+export function summarizeErrorGroup(
+  errorGroup: ErrorGroupStats,
+): ErrorGroupSummaryPayload {
+  return {
+    groupId: errorGroup.group?.groupId ?? errorGroup.group?.name,
+    name: errorGroup.group?.name,
+    resolutionStatus: errorGroup.group?.resolutionStatus,
+    counts: {
+      total: safeNumber(errorGroup.count),
+      affectedUsers: safeNumber(errorGroup.affectedUsersCount),
+    },
+    firstSeenTime: errorGroup.firstSeenTime,
+    lastSeenTime: errorGroup.lastSeenTime,
+    services: errorGroup.affectedServices,
+    representative: errorGroup.representative
+      ? summarizeErrorEvent(errorGroup.representative)
+      : undefined,
+    trackingIssues: errorGroup.group?.trackingIssues,
+  };
+}
+
+export function summarizeErrorEvent(
+  event: ErrorEvent,
+): ErrorEventSummaryPayload {
+  const { text, truncated } = event.message
+    ? createTextPreview(event.message, ERROR_MESSAGE_PREVIEW_LIMIT)
+    : { text: event.message, truncated: false };
+
+  return {
+    eventTime: event.eventTime,
+    serviceContext: event.serviceContext,
+    message: text,
+    messageTruncated: truncated,
+    context: event.context
+      ? {
+          httpRequest: event.context.httpRequest,
+          reportLocation: event.context.reportLocation,
+          user: event.context.user,
+        }
+      : undefined,
+  };
+}
+
 /**
  * Analyses error patterns and suggests remediation
  *
@@ -285,6 +358,15 @@ export function analyseErrorPatternsAndSuggestRemediation(
   }
 
   return analysis;
+}
+
+function safeNumber(value?: string): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 /**
