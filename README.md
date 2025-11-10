@@ -85,16 +85,10 @@ Analyse distributed traces from Google Cloud Trace:
 - "Find logs related to trace xyz789 in project web-backend-456"
 - "Query traces for service checkout-api in project ecommerce-prod-321"
 
-### Support
+## Deep Wiki / 詳細ドキュメント
 
-Manage Google Cloud Support cases, comments, and classifications directly from your MCP client:
-
-**Tools:** `gcp-support-list-cases`, `gcp-support-search-cases`, `gcp-support-get-case`, `gcp-support-create-case`, `gcp-support-update-case`, `gcp-support-close-case`, `gcp-support-list-comments`, `gcp-support-create-comment`, `gcp-support-list-attachments`, `gcp-support-search-classifications`
-
-*Example prompts:*
-- "List open support cases for my project and show their priorities"
-- "Create a P1 support case about a production outage in project critical-prod-123"
-- "Search for storage-related case classifications so I can file the right request"
+- [Deep Dive (English)](docs/deep-dive-en.md)
+- [詳細ガイド (日本語)](docs/deep-dive-ja.md)
 
 ## Quick Start
 
