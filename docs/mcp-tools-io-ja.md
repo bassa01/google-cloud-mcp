@@ -537,12 +537,34 @@ Trace ツールは span/trace プレビューと階層マークダウンを含�
 
 **戻り値例**
 ```text
-Trace: projects/my-sre-prod/traces/4f6c2d9b1a8e5cf2
-Duration: 842 ms
-Root Span: frontend:/orders
-- Span checkout/service (120 ms)
-  - Span charge-card (430 ms)
-...
+Trace Details
+projectId=my-sre-prod | traceId=4f6c2d9b1a8e5cf2 | spanCount=42 | omitted=12
+```
+
+```json
+{
+  "summary": {
+    "rootSpanCount": 1,
+    "failedSpanCount": 3
+  },
+  "spans": [
+    {
+      "spanId": "0001",
+      "name": "frontend:/orders",
+      "startTime": "2025-03-05T03:41:28.000Z",
+      "endTime": "2025-03-05T03:41:29.842Z",
+      "durationMs": 842,
+      "status": "ERROR",
+      "attributes": {
+        "/http/method": "POST",
+        "/http/status_code": "500"
+      }
+    }
+  ],
+  "spansOmitted": 12,
+  "hierarchyMarkdown": "## Trace Details...",
+  "hierarchyTruncated": true
+}
 ```
 
 ### gcp-trace-list-traces — 最近のトレース一覧
@@ -567,12 +589,26 @@ Root Span: frontend:/orders
 
 **戻り値例**
 ```text
-# Trace Search Results
-Project: my-sre-prod
-Time Range: 2025-03-05T02:10:00Z–2025-03-05T04:10:00Z
-| Trace ID | Latency | Root Span | Status |
-| 4f6c2d9b1a8e5cf2 | 842 ms | frontend:/orders | ERROR |
-...
+Trace List
+projectId=my-sre-prod | timeRange=2025-03-05T02:10:00Z -> 2025-03-05T04:10:00Z | filter=status.code != 0 | returned=5
+```
+
+```json
+{
+  "traces": [
+    {
+      "traceId": "4f6c2d9b1a8e5cf2",
+      "displayName": "frontend:/orders",
+      "startTime": "2025-03-05T03:41:28.000Z",
+      "endTime": "2025-03-05T03:41:29.842Z",
+      "duration": "842ms",
+      "spanCount": 42,
+      "statusCode": 13,
+      "projectId": "my-sre-prod"
+    }
+  ],
+  "tracesOmitted": 0
+}
 ```
 
 ### gcp-trace-find-from-logs — ログから Trace ID を抽出
@@ -595,12 +631,23 @@ Time Range: 2025-03-05T02:10:00Z–2025-03-05T04:10:00Z
 
 **戻り値例**
 ```text
-# Traces Found in Logs
-Project: my-sre-prod
-Log Filter: severity>=ERROR ...
-Found 12 unique traces in 37 log entries
-| Trace ID | Timestamp | Severity | Log Name | Message |
-| 4f6c2d9b1a8e5cf2 | 2025-03-05T03:42:10Z | ERROR | run.googleapis.com/request_log | ... |
+Traces Found in Logs
+projectId=my-sre-prod | logFilter=severity>=ERROR ... | uniqueTraces=12 | examinedEntries=37
+```
+
+```json
+{
+  "traces": [
+    {
+      "traceId": "4f6c2d9b1a8e5cf2",
+      "timestamp": "2025-03-05T03:42:10.000Z",
+      "severity": "ERROR",
+      "logName": "run.googleapis.com/request_log",
+      "message": "POST /orders 500 deadline exceeded"
+    }
+  ],
+  "tracesOmitted": 7
+}
 ```
 
 ### gcp-trace-query-natural-language — NL でトレース調査
@@ -621,11 +668,30 @@ Found 12 unique traces in 37 log entries
 
 **戻り値例**
 ```text
-# Trace Trend Summary
-Detected intent: error traces / window=1h / limit=5
-| Trace ID | Timestamp | Service | Status |
-| 4f6c2d9b1a8e5cf2 | 2025-03-05T03:42:10Z | checkout | ERROR |
-...
+Trace Details
+projectId=my-sre-prod | traceId=4f6c2d9b1a8e5cf2 | spanCount=42 | omitted=12
+```
+
+```json
+{
+  "summary": {
+    "rootSpanCount": 1,
+    "failedSpanCount": 3
+  },
+  "spans": [
+    {
+      "spanId": "0001",
+      "name": "frontend:/orders",
+      "startTime": "2025-03-05T03:41:28.000Z",
+      "endTime": "2025-03-05T03:41:29.842Z",
+      "durationMs": 842,
+      "status": "ERROR"
+    }
+  ],
+  "spansOmitted": 12,
+  "hierarchyMarkdown": "## Trace Details...",
+  "hierarchyTruncated": true
+}
 ```
 
 ## Error Reporting
@@ -654,13 +720,33 @@ Error Reporting 系ツールも要約+JSON 形式で返り、`ERROR_REPORTING_*`
 
 **戻り値例**
 ```text
-# Error Groups Analysis
-Project: my-sre-prod
-Time Range: 24h
-Service Filter: checkout
-1. checkout — NullReferenceException — 152 hits
-2. checkout — Timeout contacting inventory — 47 hits
-...
+Error Groups
+projectId=my-sre-prod | timeRange=24h | service=checkout | totalGroups=3 | omitted=1
+```
+
+```json
+{
+  "summary": {
+    "totalGroups": 3,
+    "nextPageToken": "Cg0IARABGAEiB..."
+  },
+  "groups": [
+    {
+      "groupId": "checkout-nullref",
+      "counts": {
+        "total": 152,
+        "affectedUsers": 42
+      },
+      "representative": {
+        "eventTime": "2025-03-05T04:11:27.000Z",
+        "message": "NullReferenceException at cart.ts:118"
+      }
+    }
+  ],
+  "groupsOmitted": 1,
+  "analysisMarkdown": "# Error Analysis...",
+  "analysisTruncated": true
+}
 ```
 
 ### gcp-error-reporting-get-group-details — グループ詳細とイベント
@@ -684,13 +770,38 @@ Service Filter: checkout
 
 **戻り値例**
 ```text
-# Error Group Details
-Group ID: abcdef1234567890
-Project: my-sre-prod
-Time Range: 7d
-## Recent Error Events (5)
-1. 2025/03/04 22:13:42 — checkout v20250304-1 — NullReferenceException at cart.ts:118
-...
+Error Group Details
+projectId=my-sre-prod | groupId=abcdef1234567890 | timeRange=7d | events=5
+```
+
+```json
+{
+  "group": {
+    "name": "projects/my-sre-prod/groups/abcdef1234567890",
+    "resolutionStatus": "OPEN"
+  },
+  "events": [
+    {
+      "eventTime": "2025-03-04T22:13:42.000Z",
+      "serviceContext": {
+        "service": "checkout",
+        "version": "20250304-1"
+      },
+      "message": "NullReferenceException at cart.ts:118",
+      "context": {
+        "httpRequest": {
+          "method": "POST",
+          "url": "https://checkout.example.com/api/cart"
+        }
+      }
+    }
+  ],
+  "eventsOmitted": 0,
+  "investigationSteps": [
+    "Check Cloud Logging for related entries around the error timestamps.",
+    "Review Monitoring dashboards for correlated latency or saturation signals."
+  ]
+}
 ```
 
 ### gcp-error-reporting-analyse-trends — 時系列トレンド分析
@@ -713,15 +824,43 @@ Time Range: 7d
 
 **戻り値例**
 ```text
-# Error Trends Analysis
-Project: my-sre-prod
-Time Range: 7d / Resolution: 1h
-## Summary
-- Total Error Groups: 18
-- Total Errors: 4,832
-## Error Count Over Time
-| Time Period | Error Count |
-...
+Error Trends Analysis
+projectId=my-sre-prod | timeRange=7d | resolution=1h | groups=18
+```
+
+```json
+{
+  "summary": {
+    "totalGroups": 18,
+    "totalErrors": 5120,
+    "averagePerGroup": 284
+  },
+  "timeline": [
+    {
+      "time": "2025-03-04T22:00:00Z",
+      "count": 210
+    }
+  ],
+  "timelineOmitted": 12,
+  "spikes": [
+    {
+      "time": "2025-03-05T03:00:00Z",
+      "count": 640,
+      "multiple": 2.6
+    }
+  ],
+  "topContributors": [
+    {
+      "groupId": "checkout-timeout",
+      "service": "checkout",
+      "message": "Deadline exceeded calling inventory",
+      "count": 480
+    }
+  ],
+  "recommendations": [
+    "Investigate the 3 time windows where error volumes exceeded 2x the rolling average (284)."
+  ]
+}
 ```
 
 ## Profiler
@@ -750,13 +889,27 @@ Profiler も同じサマリ+JSON 形式で、`PROFILER_PROFILE_PREVIEW_LIMIT` / 
 
 **戻り値例**
 ```text
-# Profiler Analysis
-Project: perf-lab
-Profile Type Filter: CPU
-Target Filter: checkout
-1. CPU @ checkout (2025-03-05T03:40Z, duration 10s)
-...
-Next Page Available: token "Cg0IARABGAEiB..."
+Profiler Profiles
+projectId=perf-lab | profileType=CPU | target=checkout | returned=10 | omitted=5
+```
+
+```json
+{
+  "profiles": [
+    {
+      "profileId": "cpu-20250305T0340Z",
+      "profileType": "CPU",
+      "target": "checkout",
+      "startTime": "2025-03-05T03:40:00.000Z",
+      "durationSeconds": 10,
+      "summaryMarkdown": "## Profile: cpu-20250305T0340Z..."
+    }
+  ],
+  "profilesOmitted": 5,
+  "nextPageToken": "Cg0IARABGAEiB...",
+  "analysisMarkdown": "# Profile Analysis and Performance Insights...",
+  "analysisTruncated": true
+}
 ```
 
 ### gcp-profiler-analyse-performance — プロファイル集合を要約
@@ -780,15 +933,35 @@ Next Page Available: token "Cg0IARABGAEiB..."
 
 **戻り値例**
 ```text
-# Profile Performance Analysis
-Project: perf-lab
-Focus: Heap profile (allocation)
-Analysed: 62 profiles
-## Performance Insights
-- Top allocation packages...
-## Actionable Recommendations
-- Increase sampling on checkout-worker
-...
+Profile Performance Analysis
+projectId=perf-lab | profileType=HEAP | target=orders | analysed=62
+```
+
+```json
+{
+  "summary": {
+    "analysedProfiles": 62,
+    "profileTypeDescription": "Heap Memory - Shows memory allocations and usage patterns",
+    "target": "orders"
+  },
+  "sampleProfiles": [
+    {
+      "profileId": "heap-20250305T0200Z",
+      "profileType": "HEAP",
+      "target": "orders",
+      "startTime": "2025-03-05T02:00:00.000Z"
+    }
+  ],
+  "sampleProfilesOmitted": 37,
+  "overviewMarkdown": "# Profile Analysis and Performance Insights...",
+  "overviewTruncated": true,
+  "timelineMarkdown": "### Profile Collection Timeline...",
+  "timelineTruncated": true,
+  "deploymentsMarkdown": "### Deployment Analysis...",
+  "deploymentsTruncated": true,
+  "recommendationsMarkdown": "**Immediate Actions:** ...",
+  "recommendationsTruncated": false
+}
 ```
 
 ### gcp-profiler-compare-trends — 時系列比較
@@ -812,13 +985,27 @@ Analysed: 62 profiles
 
 **戻り値例**
 ```text
-# Profile Trend Analysis
-Project: perf-lab
-Profile Type: CPU
-Analysed: 132 profiles
-## Trend Summary
-- Average CPU: 420 ms → 610 ms (+45%) week-over-week
-- Regression detected after deploy 2025-03-04
+Profile Trend Analysis
+projectId=perf-lab | profileType=CPU | analysed=132
+```
+
+```json
+{
+  "summary": {
+    "analysedProfiles": 132,
+    "profileTypeDescription": "CPU Time - Shows where your application spends CPU time"
+  },
+  "sampleProfiles": [
+    {
+      "profileId": "cpu-20250304T1800Z",
+      "target": "api-gateway",
+      "startTime": "2025-03-04T18:00:00.000Z"
+    }
+  ],
+  "sampleProfilesOmitted": 97,
+  "trendMarkdown": "## Trend Analysis\n### Profile Collection Frequency ...",
+  "trendMarkdownTruncated": true
+}
 ```
 
 ## Support API
@@ -846,18 +1033,387 @@ Support 関連のレスポンスはケース／コメント／添付ファイル
 
 **戻り値例**
 ```text
-# Support Cases
-Parent: projects/my-sre-prod
-Returned: 3
-1. [P1][OPEN] network outage - case/12345
-...
+Support Cases
+parent=projects/my-sre-prod | filter=state=OPEN AND priority=P1 | returned=3 | omitted=2
+```
+
+```json
+{
+  "cases": [
+    {
+      "name": "projects/my-sre-prod/cases/12345",
+      "displayName": "network outage",
+      "priority": "P1",
+      "state": "OPEN",
+      "classification": {
+        "id": "100152",
+        "displayName": "Cloud Run > Deployments"
+      },
+      "description": "Intermittent 503s in us-central1",
+      "descriptionTruncated": false
+    }
+  ],
+  "casesOmitted": 2,
+  "nextPageToken": "AjABCD..."
+}
 ```
 
 ### gcp-support-search-cases — フリーテキスト検索
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
 | parent | string | いいえ | デフォルト | 検索対象。 |
-| query | string | はい |  | `
+| query | string | はい |  | `displayName:"upgrade"` などのフィールド検索も可。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大件数。 |
+| pageToken | string | いいえ |  | 次ページ。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-search-cases",
+  "arguments": {
+    "query": "displayName:incident state=OPEN",
+    "pageSize": 5
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Search
+parent=projects/my-sre-prod | query=displayName:incident state=OPEN | returned=2
+```
+
+```json
+{
+  "cases": [
+    {
+      "name": "projects/my-sre-prod/cases/67890",
+      "displayName": "Incident 500s",
+      "priority": "P2",
+      "state": "OPEN"
+    }
+  ],
+  "casesOmitted": 0
+}
+```
+
+### gcp-support-get-case — ケース詳細を取得
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい | `projects/{id}/cases/{caseId}` | 完全修飾ケース名。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-get-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/12345"
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Details
+caseName=projects/my-sre-prod/cases/12345 | priority=P1 | state=OPEN
+```
+
+```json
+{
+  "case": {
+    "name": "projects/my-sre-prod/cases/12345",
+    "displayName": "Cloud Run deploy fails",
+    "priority": "P1",
+    "state": "OPEN",
+    "classification": {
+      "id": "100152",
+      "displayName": "Cloud Run > Deployments"
+    },
+    "description": "Traffic hitting 503 on us-central1",
+    "contactEmail": "sre@example.com"
+  },
+  "detailsMarkdown": "# Support Case Details..."
+}
+```
+
+### gcp-support-create-case — ケース作成
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| parent | string | いいえ | 現在のプロジェクト | `projects/{id}` または `organizations/{id}`。 |
+| displayName | string | はい | 最低 4 文字 | タイトル。 |
+| description | string | はい | 最低 10 文字 | 詳細。 |
+| classificationId | string | はい |  | `gcp-support-search-classifications` で取得。 |
+| priority | enum[`P0`,`P1`,`P2`,`P3`,`P4`,`PRIORITY_UNSPECIFIED`] | いいえ | `P3` | 優先度。 |
+| timeZone | string | いいえ |  | IANA TZ。 |
+| languageCode | string | いいえ |  | 例: `ja-JP`。 |
+| contactEmail | string | いいえ |  | 主要連絡先。 |
+| subscriberEmailAddresses | array<string> | いいえ |  | 追加通知。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-create-case",
+  "arguments": {
+    "displayName": "Cloud Run deploy fails",
+    "description": "New revisions fail with 503 since 09:15 UTC",
+    "classificationId": "100152",
+    "priority": "P1",
+    "contactEmail": "oncall@example.com"
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Created
+parent=projects/my-sre-prod | case=projects/my-sre-prod/cases/98765 | status=created
+```
+
+```json
+{
+  "case": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "displayName": "Cloud Run deploy fails",
+    "priority": "P1",
+    "state": "NEW"
+  },
+  "detailsMarkdown": "# Support Case Details...",
+  "status": "created"
+}
+```
+
+### gcp-support-update-case — ケース更新
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | 更新対象。 |
+| displayName | string | いいえ |  | タイトル変更。 |
+| description | string | いいえ |  | 説明変更。 |
+| classificationId | string | いいえ |  | 新しい分類 ID。 |
+| priority | enum[...] | いいえ |  | 優先度変更。 |
+| contactEmail | string | いいえ |  | 主要連絡先。 |
+| subscriberEmailAddresses | array<string> | いいえ |  | 通知先。 |
+| languageCode | string | いいえ |  | ロケール。 |
+| timeZone | string | いいえ |  | タイムゾーン。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-update-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "priority": "P2",
+    "subscriberEmailAddresses": ["mgr@example.com"]
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Updated
+caseName=projects/my-sre-prod/cases/98765 | updateMask=priority,subscriberEmailAddresses
+```
+
+```json
+{
+  "case": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "priority": "P2",
+    "subscriberEmailAddresses": ["mgr@example.com"]
+  },
+  "detailsMarkdown": "# Support Case Details...",
+  "status": "updated"
+}
+```
+
+### gcp-support-close-case — ケースをクローズ
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | 対象ケース。 |
+| justification | string | いいえ |  | 閉じる理由。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-close-case",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "justification": "Issue resolved after rollback"
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Closed
+caseName=projects/my-sre-prod/cases/98765 | justification=Issue resolved after rollback
+```
+
+```json
+{
+  "case": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "state": "CLOSED"
+  },
+  "detailsMarkdown": "# Support Case Details...",
+  "status": "closed",
+  "justification": "Issue resolved after rollback"
+}
+```
+
+### gcp-support-list-comments — コメント一覧
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケース名。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大件数。 |
+| pageToken | string | いいえ |  | 次ページ。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-list-comments",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "pageSize": 5
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Comments
+caseName=projects/my-sre-prod/cases/98765 | returned=3 | omitted=2
+```
+
+```json
+{
+  "comments": [
+    {
+      "name": "projects/.../comments/1",
+      "createTime": "2025-03-05T04:10:00.000Z",
+      "creator": { "googleSupport": true },
+      "body": "Please attach stack traces",
+      "bodyTruncated": false
+    }
+  ],
+  "commentsOmitted": 2,
+  "nextPageToken": "BCDE..."
+}
+```
+
+### gcp-support-create-comment — コメント追加
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケース名。 |
+| body | string | はい |  | 本文。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-create-comment",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765",
+    "body": "Attached Cloud Storage link with tcpdump"
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Comment Created
+caseName=projects/my-sre-prod/cases/98765 | status=created
+```
+
+```json
+{
+  "comment": {
+    "name": "projects/.../comments/4",
+    "createTime": "2025-03-05T04:33:00.000Z",
+    "body": "Attached Cloud Storage link with tcpdump"
+  },
+  "status": "created"
+}
+```
+
+### gcp-support-list-attachments — 添付ファイル一覧
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| name | string | はい |  | ケース名。 |
+| pageSize | number | いいえ | 20 (1-100) | 最大件数。 |
+| pageToken | string | いいえ |  | 次ページ。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-list-attachments",
+  "arguments": {
+    "name": "projects/my-sre-prod/cases/98765"
+  }
+}
+```
+
+**戻り値例**
+```text
+Support Case Attachments
+caseName=projects/my-sre-prod/cases/98765 | returned=2
+```
+
+```json
+{
+  "attachments": [
+    {
+      "name": "projects/.../attachments/1",
+      "filename": "error-logs.zip",
+      "mimeType": "application/zip",
+      "sizeBytes": "2400000"
+    },
+    {
+      "name": "projects/.../attachments/2",
+      "filename": "tcpdump.har",
+      "mimeType": "application/json",
+      "sizeBytes": "5100000"
+    }
+  ],
+  "attachmentsOmitted": 0,
+  "markdown": "1. error-logs.zip..."
+}
+```
+
+### gcp-support-search-classifications — 分類検索
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| query | string | はい |  | 例: `id:"100445"` や `displayName:"service account"`。 |
+| pageSize | number | いいえ | 20 (1-100) | 取得件数。 |
+| pageToken | string | いいえ |  | 次ページ。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-support-search-classifications",
+  "arguments": {
+    "query": "displayName:\"Cloud Run\"",
+    "pageSize": 10
+  }
+}
+```
+
+**戻り値例**
+```text
+Case Classifications
+query=displayName:"Cloud Run" | returned=4
+```
+
+```json
+{
+  "classifications": [
+    {
+      "id": "100152",
+      "displayName": "Cloud Run > Deployments > 5xx"
+    }
+  ],
+  "classificationsOmitted": 0,
+  "markdown": "- 100152 Cloud Run > Deployments > 5xx"
+}
+```
 
 ## Project Utilities
 
