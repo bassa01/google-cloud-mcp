@@ -40,6 +40,10 @@ Query and filter log entries from Google Cloud Logging:
 - "Search for logs containing 'timeout' from service my-api in project backend-456"
 - "Query logs for resource type gce_instance in project compute-prod-789"
 
+#### Log redaction policy
+
+All `gcp-logging-*` tools scrub IP addresses, user identifiers, and request bodies before results leave the server. To permit trusted operators to view full payloads, set the comma-separated `LOG_PAYLOAD_FULL_ACCESS_ROLES` environment variable (defaults to `security_admin,compliance_admin,site_reliability_admin`) and provide matching roles through `MCP_USER_ROLES`/`MCP_ACTIVE_ROLES`. A role match is required before payload redaction is lifted.
+
 ### Spanner
 
 Interact with Google Cloud Spanner databases:
