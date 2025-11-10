@@ -221,6 +221,16 @@ pnpm build
 npx -y @modelcontextprotocol/inspector node dist/index.js
 ```
 
+### Standalone invocation
+
+Set `MCP_SERVER_MODE=standalone` to boot the MCP server on demand and exit as soon as the client disconnects. This skips the keep-alive heartbeat and is ideal for Smithery or other launch-per-request hosts.
+
+```bash
+MCP_SERVER_MODE=standalone pnpm start
+```
+
+If you deploy via Smithery, the bundled `smithery.yaml` now accepts `standalone: true` in its configuration block to export the same environment variable automatically.
+
 ## Troubleshooting
 
 ### Server Timeout Issues
