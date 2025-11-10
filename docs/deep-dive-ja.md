@@ -110,6 +110,7 @@ Cloud Profiler のデータを分析し、CPU・ヒープ・ウォールタイ�
 - `gcp-spanner-list-instances`、`gcp-spanner-list-databases`、`gcp-spanner-list-tables` でトポロジーを把握します。
 - `gcp-spanner-execute-query` はパラメータバインド付きで SQL を安全に実行します。
 - `gcp-spanner-query-natural-language` と `gcp-spanner-query-count` は会話的な要約クエリを生成します。
+- `gcp-spanner-query-plan` リソース（\`gcp-spanner://.../query-plan?sql=SELECT+...\`）で EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を把握できます。
 
 **運用のヒント**
 
@@ -212,6 +213,7 @@ Cloud Profiler のデータを分析し、CPU・ヒープ・ウォールタイ�
 | Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行します。 |
 | Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成します。 |
 | Spanner | `gcp-spanner-query-count` | 行数を素早く集計します。 |
+| Spanner | `gcp-spanner-query-plan` （リソース） | EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を特定します。 |
 | Trace | `gcp-trace-list-traces` | 遅延やエラーを含むトレースを検出します。 |
 | Trace | `gcp-trace-get-trace` | トレース全体のタイムラインを調査します。 |
 | Trace | `gcp-trace-find-from-logs` | ログから関連トレースへピボットします。 |

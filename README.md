@@ -46,6 +46,8 @@ Interact with Google Cloud Spanner databases:
 
 **Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-natural-language`, `gcp-spanner-query-count`
 
+**Resources:** `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=SELECT+...` (add `&mode=analyze` for EXPLAIN ANALYZE) to review plans, distributed joins, and missing indexes.
+
 *Example prompts:*
 - "List all databases in Spanner instance my-instance in project ecommerce-prod-123"
 - "Execute SQL: SELECT COUNT(*) FROM users in database user-db in project my-app-456"
