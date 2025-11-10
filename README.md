@@ -6,6 +6,11 @@ A Model Context Protocol server that connects to Google Cloud services to provid
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@krzko/google-cloud-mcp/badge" alt="Google Cloud Server MCP server" />
 </a>
 
+## Requirements
+
+- Node.js 24.11.0 or newer (see `.nvmrc`)
+- pnpm 10.21.0+ via Corepack (`corepack enable && corepack use pnpm@10.21.0`)
+
 ## Services
 
 Supported Google Cloud services:

@@ -4,7 +4,7 @@
 The MCP server starts in `src/index.ts`, which wires prompts, utils, and every service registrar. Keep feature logic inside `src/services/<service>/` and export it through the folder’s `index.ts`. Prompts live in `src/prompts/`, shared auth/logging helpers in `src/utils/`, references in `docs/`, and build output in `dist/` (never edit). Tests mirror runtime code: fast specs under `test/unit/`, protocol flows in `test/integration/`, fixtures in `test/mocks/`, helpers in `test/utils/`.
 
 ## Build, Test, and Development Commands
-- `pnpm install` – install workspace dependencies (Node 18+).
+- `pnpm install` – install workspace dependencies (Node 24.11+ via Corepack).
 - `pnpm dev` – execute `ts-node src/index.ts` for hot iteration.
 - `pnpm build` – compile via `tsc` and copy monitoring prompt assets into `dist/` (run before `pnpm start`).
 - `pnpm start` – launch the compiled MCP server from `dist/index.js`.

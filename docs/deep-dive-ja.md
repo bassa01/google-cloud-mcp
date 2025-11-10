@@ -2,10 +2,11 @@
 
 ## オンボーディングチェックリスト
 
-1. **開発ツールを確認** – Node.js 18.20+ と pnpm 9+ が利用可能か確認します。
+1. **開発ツールを確認** – Node.js 24.11+ と pnpm 10.21+ が利用可能か確認します。
    ```bash
    node -v
-   corepack enable pnpm && pnpm -v
+   corepack enable && corepack use pnpm@10.21.0
+   pnpm -v
    ```
 2. **Google Cloud CLI をセットアップ** – `gcloud components update` を実行し、少なくとも 1 プロジェクトに Viewer 権限を持つアカウントでログインします。
 3. **リポジトリを取得して依存関係を導入** – `git clone` → `pnpm install` を実行し、`pnpm lint` と `pnpm test` が通ることを確認してからブランチを切ります。
@@ -19,8 +20,8 @@
 
 ### 1. 必要なソフトウェア
 
-- **Node.js 18.20 以上** – `package.json` の `engines.node` と合わせます。
-- **pnpm 9 以上** – `corepack enable pnpm` でリポジトリの `packageManager` バージョンと同期します。
+- **Node.js 24.11 以上** – `package.json` の `engines.node` と合わせます。
+- **pnpm 10.21 以上** – `corepack enable && corepack use pnpm@10.21.0` でリポジトリの `packageManager` バージョンと同期します。
 - **Google Cloud CLI** – `gcloud init` で認証・プロジェクト切り替えを行います。
 - **Google Cloud プロジェクト** – Logging / Monitoring / Spanner / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
 
