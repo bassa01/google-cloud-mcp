@@ -384,6 +384,48 @@ Showing 2 of 6 time series.
 ]
 ```
 
+### gcp-spanner-query-plan (resource) — Inspect EXPLAIN / EXPLAIN ANALYZE
+| Parameter | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| projectId | string | no | Defaults to active project | Part of the URI path `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan`. |
+| instanceId | string | no | env/state | Pulled from `SPANNER_INSTANCE` or state manager when omitted. |
+| databaseId | string | no | env/state | Pulled from `SPANNER_DATABASE` or state manager when omitted. |
+| sql | string (query param) | yes | URL-encoded | Provide the SQL statement to wrap with EXPLAIN / EXPLAIN ANALYZE. DML/DDL is blocked. |
+| mode | enum[`explain`,`analyze`] | no | `explain` | Switch between EXPLAIN (plan only) and EXPLAIN ANALYZE (executes query). |
+| analyze | string/bool (query param) | no | false | Alternate flag (`?analyze=1`) when `mode` is unavailable. |
+
+Invoke it with MCP `read_resource`:
+```jsonc
+{
+  "type": "read_resource",
+  "uri": "gcp-spanner://my-sre-prod/main-instance/ledger/query-plan?sql=SELECT+user_id%2C+status+FROM+accounts&mode=analyze"
+}
+```
+
+**Response example**
+```text
+# Spanner Query Plan
+Project: my-sre-prod
+Instance: main-instance
+Database: ledger
+Mode: EXPLAIN ANALYZE
+
+Original SQL:
+SELECT user_id, status FROM accounts LIMIT 25
+
+_Executed with EXPLAIN ANALYZE (query was run to capture timing information)._
+
+## Plan Insights
+- No obvious distributed joins or missing indexes detected based on the current plan and schema.
+Tables referenced: accounts
+
+## Plan Nodes
+| ID | Type | Rows | Executions | Description |
+|----|------|------|------------|-------------|
+| 1 | Distributed Union | 1200 | 1 | ...
+```
+
+
 ## Monitoring
 
 ### gcp-monitoring-query-metrics — Query metrics via filter

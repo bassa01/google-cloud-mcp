@@ -384,6 +384,48 @@ Showing 2 of 6 time series.
 ]
 ```
 
+### gcp-spanner-query-plan（リソース） — EXPLAIN / EXPLAIN ANALYZE を確認
+| パラメータ | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| projectId | string | いいえ | 現在のプロジェクト | URI パス `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan` の一部。 |
+| instanceId | string | いいえ | env/state | 省略時は `SPANNER_INSTANCE` や state manager から補完。 |
+| databaseId | string | いいえ | env/state | 省略時は `SPANNER_DATABASE` や state manager から補完。 |
+| sql | string (query param) | はい | URL エンコード必須 | EXPLAIN / EXPLAIN ANALYZE で評価する SELECT 文。DML/DDL はブロック。 |
+| mode | enum[`explain`,`analyze`] | いいえ | `explain` | EXPLAIN (プランのみ) と EXPLAIN ANALYZE (実行あり) を切り替え。 |
+| analyze | string/bool (query param) | いいえ | false | `mode` の代替。`?analyze=1` のように指定可能。 |
+
+MCP では `read_resource` で呼び出します:
+```jsonc
+{
+  "type": "read_resource",
+  "uri": "gcp-spanner://my-sre-prod/main-instance/ledger/query-plan?sql=SELECT+user_id%2C+status+FROM+accounts&mode=analyze"
+}
+```
+
+**戻り値例**
+```text
+# Spanner Query Plan
+Project: my-sre-prod
+Instance: main-instance
+Database: ledger
+Mode: EXPLAIN ANALYZE
+
+Original SQL:
+SELECT user_id, status FROM accounts LIMIT 25
+
+_EXPLAIN ANALYZE で実行し、タイミング情報を取得しています。_
+
+## Plan Insights
+- 現在のプランとスキーマでは分散 JOIN やインデックス不足は確認されませんでした。
+参照テーブル: accounts
+
+## Plan Nodes
+| ID | Type | Rows | Executions | Description |
+|----|------|------|------------|-------------|
+| 1 | Distributed Union | 1200 | 1 | ...
+```
+
+
 ## Monitoring
 
 ### gcp-monitoring-query-metrics — 任意フィルタでメトリクス取得
