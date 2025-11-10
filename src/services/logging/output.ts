@@ -2,14 +2,15 @@ import { buildStructuredTextBlock, previewList } from "../../utils/output.js";
 import { sanitizeLogEntry } from "./sanitizer.js";
 import {
   formatLogEntry,
-  LogEntry,
   LOG_PREVIEW_LIMIT,
+  LogEntryLike,
+  normalizeLogEntry,
 } from "./types.js";
 
 export interface LogResponseOptions {
   title: string;
   metadata: Record<string, unknown>;
-  entries: LogEntry[];
+  entries: LogEntryLike[];
   allowFullPayload: boolean;
   footnote?: string;
 }
@@ -23,7 +24,8 @@ export function buildLogResponseText({
 }: LogResponseOptions): string {
   const { displayed, omitted } = previewList(entries, LOG_PREVIEW_LIMIT);
   const formattedEntries = displayed.map((entry) => {
-    const safeEntry = sanitizeLogEntry(entry, { allowFullPayload });
+    const normalized = normalizeLogEntry(entry);
+    const safeEntry = sanitizeLogEntry(normalized, { allowFullPayload });
     return formatLogEntry(safeEntry);
   });
 

@@ -1,6 +1,7 @@
 /**
  * Type definitions for Google Cloud Logging service
  */
+import { Buffer } from "node:buffer";
 import { Logging } from "@google-cloud/logging";
 import {
   createTextPreview,
@@ -56,6 +57,8 @@ export interface LogEntry {
   receiveTimestamp?: string;
   [key: string]: unknown;
 }
+
+export type LogEntryLike = LogEntry | Record<string, unknown>;
 
 /**
  * Initialises the Google Cloud Logging client
@@ -281,4 +284,148 @@ function buildPayload(entry: LogEntry): LogPayloadSummary {
     type: "other",
     value: "[no payload available]",
   };
+}
+
+type TimestampValue =
+  | string
+  | Date
+  | {
+      seconds?: number | string;
+      nanos?: number;
+    };
+
+function normaliseTimestampValue(value?: TimestampValue): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "object" && "seconds" in value) {
+    const seconds = Number(value.seconds || 0);
+    const nanos = Number(value.nanos || 0);
+    if (!Number.isNaN(seconds)) {
+      const millis = seconds * 1000 + Math.floor(nanos / 1e6);
+      return new Date(millis).toISOString();
+    }
+  }
+
+  return undefined;
+}
+
+function isBufferLike(value: unknown): value is Buffer {
+  return (
+    typeof Buffer !== "undefined" &&
+    Buffer.isBuffer &&
+    Buffer.isBuffer(value as Buffer)
+  );
+}
+
+function resolvePayloadFromEntry(entry: Record<string, unknown>): {
+  textPayload?: string;
+  jsonPayload?: Record<string, unknown>;
+} {
+  if (typeof entry.textPayload === "string") {
+    return { textPayload: entry.textPayload };
+  }
+
+  const data = entry.data;
+
+  if (typeof data === "string") {
+    return { textPayload: data };
+  }
+
+  if (isBufferLike(data)) {
+    return { textPayload: data.toString("utf8") };
+  }
+
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return { jsonPayload: data as Record<string, unknown> };
+  }
+
+  if (
+    entry.jsonPayload &&
+    typeof entry.jsonPayload === "object" &&
+    !Array.isArray(entry.jsonPayload)
+  ) {
+    return { jsonPayload: entry.jsonPayload as Record<string, unknown> };
+  }
+
+  return {};
+}
+
+function pruneUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.entries(value).reduce((acc, [key, fieldValue]) => {
+    if (fieldValue !== undefined && fieldValue !== null) {
+      acc[key as keyof T] = fieldValue as T[keyof T];
+    }
+    return acc;
+  }, {} as T);
+}
+
+function hasMetadataShape(entry: Record<string, unknown>): boolean {
+  return typeof entry.metadata === "object" && entry.metadata !== null;
+}
+
+export function normalizeLogEntry(entry: LogEntryLike | undefined): LogEntry {
+  if (!entry) {
+    return {
+      severity: "DEFAULT",
+      timestamp: "unknown",
+    };
+  }
+
+  const record = entry as Record<string, unknown>;
+
+  if (!hasMetadataShape(record)) {
+    return entry as LogEntry;
+  }
+
+  const metadata = (record.metadata ?? {}) as Record<string, unknown>;
+  const payload = resolvePayloadFromEntry(record);
+
+  const normalized: LogEntry = pruneUndefined({
+    timestamp:
+      normaliseTimestampValue(metadata.timestamp as TimestampValue) ??
+      normaliseTimestampValue(record.timestamp as TimestampValue),
+    receiveTimestamp:
+      normaliseTimestampValue(metadata.receiveTimestamp as TimestampValue) ??
+      normaliseTimestampValue(record.receiveTimestamp as TimestampValue),
+    severity:
+      (metadata.severity as string) ||
+      (record.severity as string) ||
+      "DEFAULT",
+    resource: (metadata.resource || record.resource) as LogEntry["resource"],
+    logName: (metadata.logName as string) ?? (record.logName as string),
+    insertId: (metadata.insertId as string) ?? (record.insertId as string),
+    trace: (metadata.trace as string) ?? (record.trace as string),
+    spanId: (metadata.spanId as string) ?? (record.spanId as string),
+    traceSampled:
+      (metadata.traceSampled as boolean) ?? (record.traceSampled as boolean),
+    sourceLocation: (metadata.sourceLocation ||
+      record.sourceLocation) as LogEntry["sourceLocation"],
+    httpRequest: (metadata.httpRequest ||
+      record.httpRequest) as LogEntry["httpRequest"],
+    operation: (metadata.operation || record.operation) as LogEntry["operation"],
+    labels: (metadata.labels || record.labels) as LogEntry["labels"],
+    textPayload:
+      payload.textPayload ??
+      (metadata.textPayload as string) ??
+      (record.textPayload as string),
+    jsonPayload:
+      payload.jsonPayload ??
+      (metadata.jsonPayload as Record<string, unknown>) ??
+      (record.jsonPayload as Record<string, unknown>),
+    protoPayload: (metadata.protoPayload ||
+      record.protoPayload) as Record<string, unknown>,
+    data: record.data,
+  });
+
+  return normalized;
 }
