@@ -248,6 +248,7 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs raw SQL queries safely through parameter binding.
 - `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build summary queries for conversational insights.
+- `gcp-spanner-query-plan` (resource) runs EXPLAIN/EXPLAIN ANALYZE via \`gcp-spanner://.../query-plan?sql=SELECT+...\` and calls out distributed joins or missing indexes.
 
 #### Operational tips
 
@@ -471,6 +472,7 @@ Testing tips:
 | Spanner | `gcp-spanner-execute-query` | Execute parameterised SQL. |
 | Spanner | `gcp-spanner-query-natural-language` | Generate SQL from natural language. |
 | Spanner | `gcp-spanner-query-count` | Quickly calculate row counts. |
+| Spanner | `gcp-spanner-query-plan` (resource) | Inspect EXPLAIN / EXPLAIN ANALYZE output and surface distributed joins or missing indexes. |
 | Trace | `gcp-trace-list-traces` | Surface slow or erroring traces. |
 | Trace | `gcp-trace-get-trace` | Inspect complete trace timelines. |
 | Trace | `gcp-trace-find-from-logs` | Pivot from logs to traces. |

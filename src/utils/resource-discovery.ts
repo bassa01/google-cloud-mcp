@@ -46,6 +46,9 @@ Use these resources to explore Google Cloud Spanner databases:
 * **Spanner Instances** - \`gcp-spanner://${projectId}/instances\`
   List all Spanner instances in the project
 
+* **Spanner Query Plans** - \`gcp-spanner://${projectId}/[instance-id]/[database-id]/query-plan?sql=SELECT+...\`
+  Run EXPLAIN or EXPLAIN ANALYZE for a query and highlight distributed joins or missing indexes (append \`?sql=\` with a URL-encoded statement, and \`&mode=analyze\` to execute EXPLAIN ANALYZE).
+
 **Navigation Flow**:
 1. Start with \`gcp-spanner://${projectId}/instances\` to see all available instances
 2. From the instances list, you can navigate to a specific instance's databases
@@ -134,6 +137,10 @@ This page lists all available resources for working with Google Cloud Spanner.
 * **Table Preview** - \`gcp-spanner://${projectId}/[instance-id]/[database-id]/tables/[table-name]/preview\`
   Example: \`gcp-spanner://${projectId}/test-instance/my-database/tables/users/preview\`
 
+### Step 6: Inspect Query Plans
+* **Query Plan (EXPLAIN/ANALYZE)** - \`gcp-spanner://${projectId}/[instance-id]/[database-id]/query-plan?sql=SELECT+...\`
+  Append your URL-encoded SQL after \`?sql=\` and use \`&mode=analyze\` to collect runtime statistics with EXPLAIN ANALYZE.
+
 ## Available Tools
 
 * **natural-language-spanner-query** - Query Spanner using natural language
@@ -164,6 +171,8 @@ This page lists all available resources for working with Google Cloud Spanner.
    \`gcp-spanner://${projectId}/test-instance/my-database/tables/users/preview\`
 
 6. **Execute queries** using the execute-spanner-query tool
+
+7. **Inspect query plans** using \`gcp-spanner://${projectId}/test-instance/my-database/query-plan?sql=SELECT+...\` (URL-encode the SQL and add \`&mode=analyze\` if you need EXPLAIN ANALYZE).
 
 **Note**: Replace 'test-instance', 'my-database', and 'users' with your actual instance ID, database ID, and table name from the previous steps.
 `,

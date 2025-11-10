@@ -245,9 +245,10 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 
 **主要ツール**
 
-- `gcp-spanner-list-instances` / `list-databases` / `list-tables` – インフラ全体をカタログ化。
-- `gcp-spanner-execute-query` – プレースホルダー付きで安全に SQL を実行。
-- `gcp-spanner-query-natural-language` / `query-count` – 会話的に集計やクエリ生成を実施。
+- `gcp-spanner-list-instances`、`gcp-spanner-list-databases`、`gcp-spanner-list-tables` でトポロジーを把握します。
+- `gcp-spanner-execute-query` はパラメータバインド付きで SQL を安全に実行します。
+- `gcp-spanner-query-natural-language` と `gcp-spanner-query-count` は会話的な要約クエリを生成します。
+- `gcp-spanner-query-plan` リソース（\`gcp-spanner://.../query-plan?sql=SELECT+...\`）で EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を把握できます。
 
 **運用ヒント**
 
@@ -470,6 +471,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行。 |
 | Spanner | `gcp-spanner-query-natural-language` | 自然言語から SQL を生成。 |
 | Spanner | `gcp-spanner-query-count` | 行数を即座に集計。 |
+| Spanner | `gcp-spanner-query-plan`  | EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を特定します。 |
 | Trace | `gcp-trace-list-traces` | 遅い/失敗トレースを一覧。 |
 | Trace | `gcp-trace-get-trace` | トレース全体を取得。 |
 | Trace | `gcp-trace-find-from-logs` | ログからトレースへピボット。 |
