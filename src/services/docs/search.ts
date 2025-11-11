@@ -103,9 +103,11 @@ export async function searchGoogleCloudDocs({
   }
 
   const ranked = rankDocsResults(trimmedQuery, catalog.entries, catalog.idf);
+  const limited = ranked.slice(0, maxResults);
+
   return {
-    results: ranked.slice(0, maxResults),
-    approxTotalResults: catalog.entries.length,
+    results: limited,
+    approxTotalResults: ranked.length,
     fetchedResults: catalog.entries.length,
     catalogPath: catalog.path,
     catalogUpdated: catalog.lastModified?.toISOString(),
