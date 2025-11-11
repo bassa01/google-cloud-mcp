@@ -139,7 +139,7 @@ The Google Cloud MCP server exposes Google Cloud Platform (GCP) operations throu
 | --- | --- |
 | `src/index.ts` | Boots the MCP server, registers services, and wires shared infrastructure such as logging. |
 | `src/services/*` | Implements service-specific tool definitions, data mappers, and domain logic (for example, Monitoring metric queries). |
-| `src/prompts/*` | Stores reusable prompt templates for generative query helpers such as natural-language Spanner searches. |
+| `src/prompts/*` | Stores reusable prompt templates for log reviews, monitoring summaries, and other guided analyses. |
 | `src/utils/*` | Helper utilities for authentication, request shaping, and result pagination shared by multiple services. |
 | `test/*` | Mirrors runtime code with Vitest so behaviour stays locked down by automated suites. |
 
@@ -215,11 +215,9 @@ Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, 
 
 - `gcp-monitoring-query-metrics` – Executes Cloud Monitoring metric filters and returns label/value pairs ready to port into PromQL.
 - `gcp-monitoring-list-metric-types` – Discovers metric type URIs for services such as Compute Engine or Cloud Run.
-- `gcp-monitoring-query-natural-language` – Converts plain-language prompts into metric filters you can refine into PromQL selectors.
 
 ### Operational tips
 
-- Use `gcp-monitoring-list-metric-types` before natural-language queries to confirm metric availability.
 - Provide alignment windows (e.g., 5m, 1h) to match dashboard expectations.
 - Request aggregations (`mean`, `max`, `percentile`) to reduce result volume.
 - When you need full PromQL expressions, pair these discovery tools with Managed Service for Prometheus or the `projects.timeSeries.query` API.
@@ -247,14 +245,14 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with parameter binding and blocks mutating statements before they reach Spanner.
-- `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build conversational summaries; the NL helper emits read-only SQL and applies the same guard as `gcp-spanner-execute-query`.
+- `gcp-spanner-query-count` build conversational summaries; the NL helper emits read-only SQL and applies the same guard as `gcp-spanner-execute-query`.
 - `gcp-spanner-query-stats` (resource) renders Query Insights data from `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` as AI-readable JSON across 1m/10m/1h windows, ranking fingerprints by latency and CPU.
 - `gcp-spanner-query-plan` (resource) runs EXPLAIN/EXPLAIN ANALYZE via \`gcp-spanner://.../query-plan?sql=SELECT+...\` and calls out distributed joins or missing indexes.
 
 #### Operational tips
 
 - Always scope to production vs. staging instances to avoid cross-environment confusion.
-- Use natural-language helpers to draft queries, then refine them manually when needed.
+- Sketch queries in your MCP client or editor first, then paste explicit SQL into `execute-query` for validation.
 - Ensure Cloud Spanner Query Insights is enabled and grant the MCP service account `roles/spanner.databaseReader` so the query-stats resource can pull from the SPANNER_SYS views; if any interval is missing the markdown will note it.
 
 ### Trace
@@ -266,7 +264,6 @@ Trace utilities focus on distributed tracing diagnostics, correlating with loggi
 - `gcp-trace-list-traces` – Lists traces by latency, span count, or time range.
 - `gcp-trace-get-trace` – Retrieves full trace timelines for root-cause analysis.
 - `gcp-trace-find-from-logs` – Cross-references log entries to locate related traces.
-- `gcp-trace-query-natural-language` – Generates advanced filters from descriptive prompts.
 
 #### Operational tips
 
@@ -466,7 +463,6 @@ Testing tips:
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
-| Monitoring | `gcp-monitoring-query-natural-language` | Translate natural language into metric filters for PromQL-ready selectors. |
 | Profiler | `gcp-profiler-list-profiles` | Locate CPU, heap, or wall-time profiles. |
 | Profiler | `gcp-profiler-analyse-performance` | Summarise profiler hotspots. |
 | Profiler | `gcp-profiler-compare-trends` | Compare profile sets across releases. |
@@ -474,14 +470,12 @@ Testing tips:
 | Spanner | `gcp-spanner-list-databases` | List databases within an instance. |
 | Spanner | `gcp-spanner-list-tables` | Reveal table schemas. |
 | Spanner | `gcp-spanner-execute-query` | Execute parameterised SQL. |
-| Spanner | `gcp-spanner-query-natural-language` | Generate read-only SQL from natural language (guarded like `gcp-spanner-execute-query`). |
 | Spanner | `gcp-spanner-query-count` | Quickly calculate row counts. |
 | Spanner | `gcp-spanner-query-stats` (resource) | AI-friendly 1m/10m/1h Query Insights JSON summary. |
 | Spanner | `gcp-spanner-query-plan` (resource) | Inspect EXPLAIN / EXPLAIN ANALYZE output and surface distributed joins or missing indexes. |
 | Trace | `gcp-trace-list-traces` | Surface slow or erroring traces. |
 | Trace | `gcp-trace-get-trace` | Inspect complete trace timelines. |
 | Trace | `gcp-trace-find-from-logs` | Pivot from logs to traces. |
-| Trace | `gcp-trace-query-natural-language` | Build trace filters conversationally. |
 | Support | `gcp-support-list-cases` | List support cases for the active project. |
 | Support | `gcp-support-search-cases` | Full-text search across support cases. |
 | Support | `gcp-support-get-case` | Retrieve a single case with metadata and SLA details. |

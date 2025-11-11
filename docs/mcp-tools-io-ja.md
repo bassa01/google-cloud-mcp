@@ -311,43 +311,6 @@ projectId=prod-data | instance=main-instance
 }
 ```
 
-### gcp-spanner-query-natural-language — 自然言語→SQL 補助
-
-| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
-| --- | --- | --- | --- | --- |
-| query | string | はい |  | 「orders テーブルの件数を知りたい」など、読み取り専用の要件を自然文で記述。 |
-| instanceId | string | いいえ | state/env | 対象インスタンス。 |
-| databaseId | string | いいえ | state/env | 対象 DB。 |
-
-**呼び出し例**
-```jsonc
-{
-  "name": "gcp-spanner-query-natural-language",
-  "arguments": {
-    "query": "List the first 20 orders with total > 100 USD"
-  }
-}
-```
-
-⚠️ 生成される SQL も `gcp-spanner-execute-query` と同じ読み取り専用ガードを通過します。DML/DDL や複数ステートメントが検出された場合は Spanner へ送信される前にブロックされます。
-
-**戻り値例**
-```text
-Spanner Query Results
-projectId=prod-data | instance=main-instance | database=ledger
-```
-
-```json
-{
-  "naturalLanguageQuery": "List the first 20 orders with total > 100 USD",
-  "generatedSql": "SELECT * FROM orders WHERE total > 100 LIMIT 20",
-  "rows": [
-    { "order_id": "ORD-1001", "total": 240.15, "status": "PENDING" },
-    { "...": "..." }
-  ]
-}
-```
-
 ### gcp-spanner-query-count — クエリ回数の指標
 
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
@@ -530,48 +493,6 @@ projectId=sre-metrics | filter="spanner"
 ]
 ```
 
-### gcp-monitoring-query-natural-language — 自然言語でメトリクス検索
-
-| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
-| --- | --- | --- | --- | --- |
-| query | string | はい |  | 「Spanner の CPU 使用率を見せて」など自然文。 |
-| startTime | string | いいえ | `1h` 相当 | NL から解釈できない場合の開始。 |
-| endTime | string | いいえ | 現在時刻 | 期間終了。 |
-| alignmentPeriod | string | いいえ | 未指定 | `60s` など。 |
-
-**呼び出し例**
-```jsonc
-{
-  "name": "gcp-monitoring-query-natural-language",
-  "arguments": {
-    "query": "Show App Engine latency by region for the last day",
-    "alignmentPeriod": "5m"
-  }
-}
-```
-
-**戻り値例**
-```text
-Natural Language Query Results
-projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/http/server/response_latencies" | timeRange=2025-03-04T00:00:00Z -> 2025-03-05T00:00:00Z
-```
-
-```json
-{
-  "query": "Show App Engine latency by region for the last day",
-  "series": [
-    {
-      "metricType": "appengine.googleapis.com/http/server/response_latencies",
-      "metricLabels": { "region": "us-central" },
-      "points": [
-        { "timestamp": "2025-03-04T12:00:00Z", "value": 320.5 },
-        { "...": "..." }
-      ]
-    }
-  ]
-}
-```
-
 ## Trace
 
 Trace ツールは span/trace プレビューと階層マークダウンを含む JSON を返し、`TRACE_*` プレビュー変数でスパン件数や属性数を調整できます。
@@ -707,51 +628,6 @@ projectId=my-sre-prod | logFilter=severity>=ERROR ... | uniqueTraces=12 | examin
     }
   ],
   "tracesOmitted": 7
-}
-```
-
-### gcp-trace-query-natural-language — NL でトレース調査
-
-| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
-| --- | --- | --- | --- | --- |
-| query | string | はい |  | 例: "Show failed traces from last day"。Trace ID が含まれる場合は直接 get-trace を実行。 |
-| projectId | string | いいえ | デフォルト | 任意で上書き。 |
-
-**呼び出し例**
-```jsonc
-{
-  "name": "gcp-trace-query-natural-language",
-  "arguments": {
-    "query": "Find the last 5 traces with errors in checkout within the past hour"
-  }
-}
-```
-
-**戻り値例**
-```text
-Trace Details
-projectId=my-sre-prod | traceId=4f6c2d9b1a8e5cf2 | spanCount=42 | omitted=12
-```
-
-```json
-{
-  "summary": {
-    "rootSpanCount": 1,
-    "failedSpanCount": 3
-  },
-  "spans": [
-    {
-      "spanId": "0001",
-      "name": "frontend:/orders",
-      "startTime": "2025-03-05T03:41:28.000Z",
-      "endTime": "2025-03-05T03:41:29.842Z",
-      "durationMs": 842,
-      "status": "ERROR"
-    }
-  ],
-  "spansOmitted": 12,
-  "hierarchyMarkdown": "## Trace Details...",
-  "hierarchyTruncated": true
 }
 ```
 

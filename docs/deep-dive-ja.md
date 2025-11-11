@@ -139,7 +139,7 @@ Google Cloud MCP サーバーは Google Cloud Platform (GCP) の操作を Model 
 | --- | --- |
 | `src/index.ts` | MCP サーバーを起動し、サービス登録やロギングなど共通基盤を初期化します。 |
 | `src/services/*` | サービス固有のツール定義、データ変換、ドメインロジック (例: Monitoring の指標クエリ) を実装します。 |
-| `src/prompts/*` | Spanner の自然言語検索など生成的ヘルパー向けの再利用可能なプロンプトテンプレートを格納します。 |
+| `src/prompts/*` | ログ調査や Monitoring サマリーなど汎用ヘルパー向けのプロンプトテンプレートを格納します。 |
 | `src/utils/*` | 認証、リクエスト整形、共通のページネーション処理を行うユーティリティ群です。 |
 | `test/*` | ランタイムコードと 1:1 に対応する Vitest スイートです。 |
 
@@ -215,7 +215,6 @@ Cloud Monitoring 指標を簡潔に取得し、PromQL への移行中でも CPU�
 
 - `gcp-monitoring-query-metrics` – Cloud Monitoring のフィルター式を実行し、PromQL に転用しやすいラベル/値を返します。
 - `gcp-monitoring-list-metric-types` – Compute Engine や Cloud Run などのメトリクスタイプを調査。
-- `gcp-monitoring-query-natural-language` – 自然文プロンプトをメトリックフィルターへ変換し、PromQL セレクターのたたき台を生成。
 
 **運用ヒント**
 
@@ -247,14 +246,14 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 
 - `gcp-spanner-list-instances` / `gcp-spanner-list-databases` / `gcp-spanner-list-tables` – インフラ全体をカタログ化。
 - `gcp-spanner-execute-query` – SELECT / WITH / EXPLAIN / SHOW / DESCRIBE といった読み取り専用 SQL のみ受け付け、破壊的クエリは実行前にブロック。
-- `gcp-spanner-query-natural-language` / `gcp-spanner-query-count` – 会話的に集計やクエリ生成を実施し、NL ヘルパーも読み取り専用ガードで検証。
+- `gcp-spanner-query-count` – 会話的に集計やクエリ生成を実施する
 - `gcp-spanner-query-stats` – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすい JSON で提示。
 - `gcp-spanner-query-plan` （\`gcp-spanner://.../query-plan?sql=SELECT+...\`）で EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を把握。
 
 **運用ヒント**
 
 - 本番とステージングを明示的に分けて実行し、環境混在を避ける。
-- 自然言語ヘルパーでたたき台を作り、必要に応じて手動で調整。
+- クエリはテキストで下書きし、`execute-query` へ貼り付けて安全に実行。
 - Query Insights を有効化し、MCP のサービスアカウントに `roles/spanner.databaseReader` 以上を付与すると `SPANNER_SYS` ビューを読み取れます。未取得のウィンドウは Markdown 上で `n/a` として明示されます。
 
 ### Trace
@@ -266,7 +265,6 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 - `gcp-trace-list-traces` – 遅延・スパン数・期間でトレースを一覧。
 - `gcp-trace-get-trace` – トレース全体を取得して原因分析。
 - `gcp-trace-find-from-logs` – ログとトレースをクロスリファレンス。
-- `gcp-trace-query-natural-language` – 自然文から高度なフィルターを構築。
 
 **運用ヒント**
 
@@ -465,7 +463,6 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
 | Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
-| Monitoring | `gcp-monitoring-query-natural-language` | 自然言語からメトリクスフィルターを生成。 |
 | Profiler | `gcp-profiler-list-profiles` | CPU/Heap/Wall-time プロファイル一覧。 |
 | Profiler | `gcp-profiler-analyse-performance` | ホットスポットの要約。 |
 | Profiler | `gcp-profiler-compare-trends` | リリース間の比較。 |
@@ -473,14 +470,12 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Spanner | `gcp-spanner-list-databases` | データベース一覧。 |
 | Spanner | `gcp-spanner-list-tables` | テーブルスキーマ表示。 |
 | Spanner | `gcp-spanner-execute-query` | パラメータ化された SQL を実行。 |
-| Spanner | `gcp-spanner-query-natural-language` | 自然言語から読み取り専用 SQL を生成（`gcp-spanner-execute-query` と同じガードを適用）。 |
 | Spanner | `gcp-spanner-query-count` | 行数を即座に集計。 |
 | Spanner | `gcp-spanner-query-stats` | Query Insights を 1m/10m/1h JSON で要約。 |
 | Spanner | `gcp-spanner-query-plan`  | EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を特定。 |
 | Trace | `gcp-trace-list-traces` | 遅い/失敗トレースを一覧。 |
 | Trace | `gcp-trace-get-trace` | トレース全体を取得。 |
 | Trace | `gcp-trace-find-from-logs` | ログからトレースへピボット。 |
-| Trace | `gcp-trace-query-natural-language` | 会話的にトレースフィルターを構築。 |
 | Support | `gcp-support-list-cases` | 対象プロジェクトのケース一覧。 |
 | Support | `gcp-support-search-cases` | フリーテキスト検索。 |
 | Support | `gcp-support-get-case` | 単一ケース詳細。 |
