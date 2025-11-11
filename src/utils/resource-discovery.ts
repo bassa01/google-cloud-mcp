@@ -90,7 +90,6 @@ Use these resources to explore Google Cloud Monitoring:
 
 In addition to these resources, the following tools are available:
 
-* **natural-language-spanner-query** - Query Spanner using natural language
 * **execute-spanner-query** - Execute SQL queries against Spanner databases
 * **list-spanner-tables** - List tables in a Spanner database
 * **list-spanner-instances** - List Spanner instances in the project
@@ -143,7 +142,6 @@ This page lists all available resources for working with Google Cloud Spanner.
 
 ## Available Tools
 
-* **natural-language-spanner-query** - Query Spanner using natural language
 * **execute-spanner-query** - Execute SQL queries against Spanner databases
 * **list-spanner-tables** - List tables in a Spanner database
 * **list-spanner-instances** - List Spanner instances in the project

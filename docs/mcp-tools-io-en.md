@@ -303,42 +303,6 @@ projectId=prod-data | instance=main-instance
 }
 ```
 
-### gcp-spanner-query-natural-language — NL helper
-| Field | Type | Required | Default / Constraints | Description |
-| --- | --- | --- | --- | --- |
-| query | string | yes |  | Describe the desired read-only result (“List top 20 orders over $100”). |
-| instanceId | string | no | env/state | Target instance. |
-| databaseId | string | no | env/state | Target database. |
-
-**Call example**
-```jsonc
-{
-  "name": "gcp-spanner-query-natural-language",
-  "arguments": {
-    "query": "List the first 20 orders with total > 100 USD"
-  }
-}
-```
-
-⚠️ Generated SQL is validated with the same read-only guard as `gcp-spanner-execute-query`; any DML/DDL or multi-statement output is blocked before hitting Spanner.
-
-**Response example**
-```text
-Spanner Query Results
-projectId=prod-data | instance=main-instance | database=ledger
-```
-
-```json
-{
-  "naturalLanguageQuery": "List the first 20 orders with total > 100 USD",
-  "generatedSql": "SELECT * FROM orders WHERE total > 100 LIMIT 20",
-  "rows": [
-    { "order_id": "ORD-1001", "total": 240.15, "status": "PENDING" },
-    { "...": "..." }
-  ]
-}
-```
-
 ### gcp-spanner-query-count — Query count metric
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
@@ -516,47 +480,6 @@ projectId=sre-metrics | filter="spanner"
 ]
 ```
 
-### gcp-monitoring-query-natural-language — NL metric query
-| Field | Type | Required | Default / Constraints | Description |
-| --- | --- | --- | --- | --- |
-| query | string | yes |  | e.g., “Show App Engine latency by region for the last day.” |
-| startTime | string | no | `1h` | Relative/ISO override. |
-| endTime | string | no | now | End timestamp. |
-| alignmentPeriod | string | no | unset | `<number><s|m|h|d>`. |
-
-**Call example**
-```jsonc
-{
-  "name": "gcp-monitoring-query-natural-language",
-  "arguments": {
-    "query": "Show App Engine latency by region for the last day",
-    "alignmentPeriod": "5m"
-  }
-}
-```
-
-**Response example**
-```text
-Natural Language Query Results
-projectId=sre-metrics | generatedFilter=metric.type="appengine.googleapis.com/http/server/response_latencies" | timeRange=2025-03-04T00:00:00Z -> 2025-03-05T00:00:00Z
-```
-
-```json
-{
-  "query": "Show App Engine latency by region for the last day",
-  "series": [
-    {
-      "metricType": "appengine.googleapis.com/http/server/response_latencies",
-      "metricLabels": { "region": "us-central" },
-      "points": [
-        { "timestamp": "2025-03-04T12:00:00Z", "value": 320.5 },
-        { "...": "..." }
-      ]
-    }
-  ]
-}
-```
-
 ## Trace
 
 Trace tools now emit structured span/trace previews with optional hierarchy markdown; adjust coverage via the `TRACE_*` preview settings.
@@ -690,31 +613,6 @@ projectId=my-sre-prod | logFilter=severity>=ERROR ... | uniqueTraces=12 | examin
   ],
   "tracesOmitted": 7
 }
-```
-
-### gcp-trace-query-natural-language — NL trace analysis
-| Field | Type | Required | Default / Constraints | Description |
-| --- | --- | --- | --- | --- |
-| query | string | yes |  | e.g., “Find the last 5 failed checkout traces.” Trace IDs inside the query trigger direct fetches. |
-| projectId | string | no | active project | Optional override. |
-
-**Call example**
-```jsonc
-{
-  "name": "gcp-trace-query-natural-language",
-  "arguments": {
-    "query": "Find the last 5 traces with errors in checkout within the past hour"
-  }
-}
-```
-
-**Response example**
-```text
-# Trace Trend Summary
-Detected intent: error traces / window=1h / limit=5
-| Trace ID | Timestamp | Service | Status |
-| 4f6c2d9b1a8e5cf2 | 2025-03-05T03:42:10Z | checkout | ERROR |
-...
 ```
 
 ## Error Reporting

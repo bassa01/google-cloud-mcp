@@ -7,7 +7,6 @@ import { getProjectId } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { formatTimeSeriesData, getMonitoringClient } from "./types.js";
 import { parseRelativeTime } from "../../utils/time.js";
-import { metricsLookup } from "./metrics_lookup.js";
 import {
   buildStructuredTextBlock,
   createTextPreview,
@@ -21,13 +20,6 @@ import {
 export async function registerMonitoringTools(
   server: McpServer,
 ): Promise<void> {
-  // Initialize the metrics lookup service
-  try {
-    await metricsLookup.initialize();
-  } catch {
-    // Failed to initialize metrics lookup service - continuing anyway
-    // Continue even if metrics lookup initialization fails
-  }
   // Tool to query metrics with a custom filter and time range
   server.tool(
     "gcp-monitoring-query-metrics",
@@ -354,158 +346,6 @@ export async function registerMonitoringTools(
           `Failed to list metric types: ${errorMessage}`,
           errorCode,
           statusCode,
-        );
-      }
-    },
-  );
-
-  // Tool to query metrics using natural language
-  server.tool(
-    "gcp-monitoring-query-natural-language",
-    {
-      query: z
-        .string()
-        .describe(
-          "Natural language description of the query you want to execute",
-        ),
-      startTime: z
-        .string()
-        .optional()
-        .describe(
-          'Start time in ISO format or relative time (e.g., "1h", "2d")',
-        ),
-      endTime: z
-        .string()
-        .optional()
-        .describe("End time in ISO format (defaults to now)"),
-      alignmentPeriod: z
-        .string()
-        .optional()
-        .describe('Alignment period (e.g., "60s", "300s")'),
-    },
-    async ({ query, startTime, endTime, alignmentPeriod }) => {
-      try {
-        const projectId = await getProjectId();
-
-        // Use the metrics lookup to suggest a filter based on the natural language query
-        const suggestedFilter = metricsLookup.suggestFilter(query);
-
-        if (!suggestedFilter) {
-          throw new GcpMcpError(
-            "Could not determine an appropriate metric filter from your query. Please try a more specific query that mentions a metric type.",
-            "INVALID_ARGUMENT",
-            400,
-          );
-        }
-
-        // Use default time range if not specified
-        const start = startTime
-          ? parseRelativeTime(startTime)
-          : parseRelativeTime("1h");
-        const end = endTime ? parseRelativeTime(endTime) : new Date();
-
-        const client = getMonitoringClient();
-
-        // Build request
-        const request: any = {
-          name: `projects/${projectId}`,
-          filter: suggestedFilter,
-          interval: {
-            startTime: {
-              seconds: Math.floor(start.getTime() / 1000),
-              nanos: 0,
-            },
-            endTime: {
-              seconds: Math.floor(end.getTime() / 1000),
-              nanos: 0,
-            },
-          },
-        };
-
-        // Add alignment if specified
-        if (alignmentPeriod) {
-          // Parse alignment period (e.g., "60s" -> 60 seconds)
-          const match = alignmentPeriod.match(/^(\d+)([smhd])$/);
-          if (!match) {
-            throw new GcpMcpError(
-              'Invalid alignment period format. Use format like "60s", "5m", "1h".',
-              "INVALID_ARGUMENT",
-              400,
-            );
-          }
-
-          const value = parseInt(match[1]);
-          const unit = match[2];
-          let seconds = value;
-
-          switch (unit) {
-            case "m": // minutes
-              seconds = value * 60;
-              break;
-            case "h": // hours
-              seconds = value * 60 * 60;
-              break;
-            case "d": // days
-              seconds = value * 60 * 60 * 24;
-              break;
-          }
-
-          request.aggregation = {
-            alignmentPeriod: {
-              seconds: seconds,
-            },
-            perSeriesAligner: "ALIGN_MEAN",
-          };
-        }
-
-        const [timeSeries] = await client.listTimeSeries(request);
-
-        if (!timeSeries || timeSeries.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Natural Language Query Results\n\nProject: ${projectId}\nQuery: ${query}\nGenerated Filter: ${suggestedFilter}\nTime Range: ${start.toISOString()} to ${end.toISOString()}\n\nNo metrics found matching the filter.\n\nTry refining your query to be more specific about the metric type, resource type, or labels.`,
-              },
-            ],
-          };
-        }
-
-        const formattedData = formatTimeSeriesData(timeSeries);
-        const note =
-          formattedData.omittedSeries > 0
-            ? `Showing ${formattedData.series.length} of ${formattedData.totalSeries} series.`
-            : undefined;
-        const text = buildStructuredTextBlock({
-          title: "Natural Language Query Results",
-          metadata: {
-            projectId,
-            generatedFilter: suggestedFilter,
-            timeRange: `${start.toISOString()} -> ${end.toISOString()}`,
-            alignment: alignmentPeriod,
-          },
-          dataLabel: "result",
-          data: {
-            query,
-            series: formattedData.series,
-          },
-          note,
-        });
-
-        return {
-          content: [
-            {
-              type: "text",
-              text,
-            },
-          ],
-        };
-      } catch (error: any) {
-        // Error handling for natural-language-metrics-query tool
-        throw new GcpMcpError(
-          `Failed to execute natural language query: ${error.message}`,
-          error.code || "UNKNOWN",
-          error.statusCode || 500,
         );
       }
     },

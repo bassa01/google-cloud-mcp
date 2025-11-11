@@ -93,7 +93,7 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT` | `20` items | Caps case-classification search results. |
 | `SUPPORT_DESCRIPTION_PREVIEW_LIMIT` | `600` characters | Truncates case descriptions and comment bodies. |
 | `TRACE_SPAN_PREVIEW_LIMIT` | `50` spans | Maximum spans returned per trace. |
-| `TRACE_TRACE_PREVIEW_LIMIT` | `20` traces | Caps multi-trace listings (list/natural-language). |
+| `TRACE_TRACE_PREVIEW_LIMIT` | `20` traces | Caps multi-trace listings for trace list operations. |
 | `TRACE_LOG_PREVIEW_LIMIT` | `20` traces | Limits traces returned from log correlation searches. |
 | `TRACE_ATTRIBUTE_PREVIEW_LIMIT` | `15` attributes | Attribute keys retained per span summary. |
 | `TRACE_ANALYSIS_PREVIEW_LIMIT` | `4000` characters | Truncates hierarchy markdown embedded in trace responses. |
@@ -104,10 +104,9 @@ Each response clearly reports how many rows/series were omitted so that automati
 
 Interact with Google Cloud Spanner databases:
 
-**Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-natural-language`, `gcp-spanner-query-count`
+**Tools:** `gcp-spanner-execute-query`, `gcp-spanner-list-tables`, `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, `gcp-spanner-query-count`
 
 > `gcp-spanner-execute-query` enforces read-only SQL; only SELECT/WITH/EXPLAIN/SHOW/DESCRIBE statements are permitted and all DML/DDL is blocked before reaching Spanner.
-> `gcp-spanner-query-natural-language` generates the same read-only SQL and blocks any unsafe statements before execution.
 
 **Resource Highlight:** `gcp-spanner-query-stats` surfaces Query Insights (SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR) as AI-ready JSON, listing 1m/10m/1h latency and CPU leaders for downstream automation.
 **Resources:** `gcp-spanner://{projectId}/{instanceId}/{databaseId}/query-plan?sql=SELECT+...` (add `&mode=analyze` for EXPLAIN ANALYZE) to review plans, distributed joins, and missing indexes.
@@ -121,7 +120,7 @@ Interact with Google Cloud Spanner databases:
 
 Retrieve and analyse metrics from Google Cloud Monitoring:
 
-**Tools:** `gcp-monitoring-query-metrics`, `gcp-monitoring-list-metric-types`, `gcp-monitoring-query-natural-language`
+**Tools:** `gcp-monitoring-query-metrics`, `gcp-monitoring-list-metric-types`
 
 *Example prompts:*
 - "Show me CPU utilisation metrics for project web-app-prod-123 for the last 6 hours"
@@ -145,7 +144,7 @@ Profiler responses share the summary + JSON shape used elsewhere in the server, 
 
 Analyse distributed traces from Google Cloud Trace:
 
-**Tools:** `gcp-trace-get-trace`, `gcp-trace-list-traces`, `gcp-trace-find-from-logs`, `gcp-trace-query-natural-language`
+**Tools:** `gcp-trace-get-trace`, `gcp-trace-list-traces`, `gcp-trace-find-from-logs`
 
 Trace responses now include metadata lines (project/time window/filter) plus JSON payloads containing span/trace previews and optional hierarchy markdown; tune them with the `TRACE_*_PREVIEW_LIMIT` variables.
 
@@ -175,7 +174,7 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 
 ## Quick Start
 
-Once configured, you can interact with Google Cloud services using natural language:
+Once configured, you can interact with Google Cloud services via the MCP tools:
 
 ```
 "Show me errors from project ecommerce-api-456 in the last hour"
