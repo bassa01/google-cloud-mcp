@@ -7,10 +7,10 @@ import { getProjectId, initGoogleAuth } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import {
   analyseErrorPatternsAndSuggestRemediation,
-  ErrorGroupStats,
   summarizeErrorGroup,
   summarizeErrorEvent,
 } from "./types.js";
+import type { ErrorEvent, ErrorGroupStats } from "./types.js";
 import {
   buildStructuredResponse,
   createTextPreview,
@@ -368,13 +368,15 @@ export function registerErrorReportingTools(server: McpServer): void {
         }
 
         const data = await response.json();
-        const errorEvents = data.errorEvents || [];
+        const errorEvents: ErrorEvent[] = Array.isArray(data.errorEvents)
+          ? data.errorEvents
+          : [];
         const eventPreviewLimit = Math.min(
           ERROR_EVENT_PREVIEW_LIMIT,
           actualPageSize,
         );
         const { displayed: previewedEvents, omitted: eventsOmitted } =
-          previewList(errorEvents, eventPreviewLimit);
+          previewList<ErrorEvent>(errorEvents, eventPreviewLimit);
 
         const text = buildStructuredResponse({
           title: "Error Group Details",
