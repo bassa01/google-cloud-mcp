@@ -170,7 +170,7 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 
 ### Documentation Search
 
-Find the closest official Google Cloud documentation for natural-language prompts without leaving your network. Instead of proxying live traffic, the docs tool scores entries from a local JSON catalog (`docs/catalog/google-cloud-docs.json` by default). Update that file whenever you need new coverage—either manually or via whatever internal crawler you trust—and the MCP server will answer entirely offline.
+Find the closest official Google Cloud documentation for natural-language prompts without leaving your network. Instead of proxying live traffic, the docs tool scores entries from a local JSON catalog (`docs/catalog/google-cloud-docs.json` by default) using TF‑IDF + cosine similarity, so query intent matters more than naive string overlap. Update that file whenever you need new coverage—either manually or via whatever internal crawler you trust—and the MCP server will answer entirely offline.
 
 **Tools:** `google-cloud-docs-search`
 

@@ -28,20 +28,27 @@ When the catalog loads (`src/services/docs/search.ts`):
 2. **Tokenization**: we split normalized text on Unicode punctuation/separators and deduplicate tokens. If a string contains no ASCII/word boundaries (e.g., Japanese), we fall back to bigrams so overlap scoring still works.
 3. **Caching**: Each entry stores the raw values, normalized strings, and token arrays (`title`, `summary`, `tags`, `product`, plus a combined vector) for reuse across queries.
 
-## Scoring Algorithm
+## Scoring Algorithm (TF‑IDF + Cosine)
 
-For each query:
+1. **Vectorization**
+   - During catalog load we build a vocabulary over each entry's combined tokens (title + summary + tags + product).
+   - Document frequency (`df`) counts the number of entries containing each token.
+   - We compute smoothed inverse document frequency: `idf = ln((N + 1) / (df + 1)) + 1`.
+   - Each entry stores TF‑IDF weights per token (`tf = count / totalTokens`, `weight = tf * idf`) plus the vector norm for cosine similarity.
 
-1. The query string is normalized exactly like catalog text (lowercase, whitespace collapse, punctuation stripping) and tokenized.
-2. Every catalog entry receives individual similarity scores:
-   - `titleScore`: overlap between query tokens and title tokens (weight 0.50).
-   - `summaryScore`: overlap vs. summary tokens (weight 0.25).
-   - `tagsScore`: overlap vs. tag tokens (weight 0.15).
-   - `productScore`: overlap vs. product tokens (weight 0.05).
-3. **Overlap metric** uses a simple recall/precision blend: `0.7 * recall + 0.3 * precision`. If the overlap is zero, we fall back to substring similarity (exact containment yields a ratio between 0 and 1).
-4. **Recency boost**: if `lastReviewed` is provided, entries newer than ~2 years get up to +0.04 in score, decaying linearly toward zero after ~730 days.
-5. **Tag hint**: if any tag literal already appears in the normalized query string, we add +0.05.
-6. Final score = weighted sum above (clamped via `Number.toFixed(4)` for readability). Results are sorted by score desc, then title lexicographically for stability, and ranked (1-indexed).
+2. **Query processing**
+   - The query is normalized/tokenized the same way as catalog text.
+   - Tokens are turned into a TF‑IDF vector using the catalog's `idf` table.
+
+3. **Similarity**
+   - Primary score = cosine similarity between the query vector and each entry vector (clamped to 0‑1). If the query vector has no overlap with the catalog vocabulary, we fall back to the historical lexical-overlap score (precision/recall blend) so typo-heavy queries still get a signal.
+
+4. **Light boosts**
+   - Recency: up to +0.06 if `lastReviewed` is within ~2 years.
+   - Tag hint: +0.02 if any tag literal already appears in the normalized query string.
+
+5. **Final score**
+   - `score = cosineOrLexical * 0.92 + recencyBoost + tagHint`, rounded to 4 decimals. Ties break lexicographically by title for deterministic output.
 
 ## Result Metadata
 
@@ -61,4 +68,3 @@ Every tool response includes:
 ## Testing Helpers
 
 Unit tests (`test/unit/services/docs/search.test.ts`) use `test/mocks/docs-catalog.sample.json` plus `__clearDocsCatalogCacheForTests()` to exercise the search logic without touching the real catalog.
-

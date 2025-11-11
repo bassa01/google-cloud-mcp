@@ -45,12 +45,17 @@ interface CatalogEntry extends RawCatalogEntry {
     product: string[];
     combined: string[];
   };
+  vector: {
+    weights: Map<string, number>;
+    norm: number;
+  };
 }
 
 interface CatalogCache {
   path: string;
   entries: CatalogEntry[];
   lastModified?: Date;
+  idf: Map<string, number>;
 }
 
 let catalogCache: CatalogCache | undefined;
@@ -97,7 +102,7 @@ export async function searchGoogleCloudDocs({
     );
   }
 
-  const ranked = rankDocsResults(trimmedQuery, catalog.entries);
+  const ranked = rankDocsResults(trimmedQuery, catalog.entries, catalog.idf);
   return {
     results: ranked.slice(0, maxResults),
     approxTotalResults: catalog.entries.length,
@@ -147,12 +152,18 @@ async function loadCatalog(): Promise<CatalogCache> {
     .map((raw, index) => normalizeCatalogEntry(raw as RawCatalogEntry, index))
     .filter((entry): entry is CatalogEntry => Boolean(entry));
 
+  const idf = buildIdf(entries);
+  entries.forEach((entry) => {
+    entry.vector = buildEntryVector(entry, idf);
+  });
+
   const fileStats = await stat(resolvedPath).catch(() => undefined);
 
   catalogCache = {
     path: resolvedPath,
     entries,
     lastModified: fileStats?.mtime,
+    idf,
   };
 
   logger.debug(
@@ -225,6 +236,10 @@ function normalizeCatalogEntry(
           .join(" "),
       ),
     },
+    vector: {
+      weights: new Map(),
+      norm: 1,
+    },
   };
 
   return entry;
@@ -242,52 +257,30 @@ function isAllowedGoogleHost(candidateUrl: string): boolean {
 export function rankDocsResults(
   query: string,
   entries: CatalogEntry[],
+  idf: Map<string, number>,
 ): RankedDocResult[] {
   const normalizedQuery = normalizeForScoring(query);
   const queryTokens = tokenizeText(normalizedQuery);
+  const queryVector = buildQueryVector(queryTokens, idf);
 
   const scored = entries.map((entry) => {
-    const titleScore = computeOverlapScore(
+    const cosineScore = computeCosineSimilarity(queryVector, entry.vector);
+    const lexicalScore = cosineScore > 0 ? cosineScore : computeOverlapScore(
       queryTokens,
-      entry.tokens.title,
+      entry.tokens.combined,
       normalizedQuery,
-      entry.normalized.title,
+      entry.tokens.combined.join(" "),
     );
-    const summaryScore = computeOverlapScore(
-      queryTokens,
-      entry.tokens.summary,
-      normalizedQuery,
-      entry.normalized.summary,
-    );
-    const tagsScore = computeOverlapScore(
-      queryTokens,
-      entry.tokens.tags,
-      normalizedQuery,
-      entry.normalized.tags,
-    );
-    const productScore = computeOverlapScore(
-      queryTokens,
-      entry.tokens.product,
-      normalizedQuery,
-      entry.normalized.product,
-    );
-    const recencyScore = computeRecencyBoost(entry.lastReviewed);
-
-    const positionBoost = entry.tags.some((tag) => normalizedQuery.includes(tag.toLowerCase()))
-      ? 0.05
+    const recencyScore = computeRecencyBoost(entry.lastReviewed) * 0.06;
+    const tagHint = entry.tags.some((tag) => normalizedQuery.includes(tag.toLowerCase()))
+      ? 0.02
       : 0;
 
-    const score =
-      titleScore * 0.5 +
-      summaryScore * 0.25 +
-      tagsScore * 0.15 +
-      productScore * 0.05 +
-      recencyScore * 0.04 +
-      positionBoost;
+    const finalScore = Number((lexicalScore * 0.92 + recencyScore + tagHint).toFixed(4));
 
     return {
       entry,
-      score: Number(score.toFixed(4)),
+      score: finalScore,
     };
   });
 
@@ -400,4 +393,102 @@ export function tokenizeText(value: string): string[] {
 
 export function __clearDocsCatalogCacheForTests(): void {
   catalogCache = undefined;
+}
+
+function buildIdf(entries: CatalogEntry[]): Map<string, number> {
+  const docFreq = new Map<string, number>();
+  for (const entry of entries) {
+    const uniqueTokens = new Set(entry.tokens.combined);
+    for (const token of uniqueTokens) {
+      docFreq.set(token, (docFreq.get(token) || 0) + 1);
+    }
+  }
+
+  const totalDocs = Math.max(entries.length, 1);
+  const idf = new Map<string, number>();
+  for (const [token, df] of docFreq.entries()) {
+    const weight = Math.log((totalDocs + 1) / (df + 1)) + 1;
+    idf.set(token, Number(weight.toFixed(6)));
+  }
+  return idf;
+}
+
+function buildEntryVector(
+  entry: CatalogEntry,
+  idf: Map<string, number>,
+): { weights: Map<string, number>; norm: number } {
+  const counts = new Map<string, number>();
+  for (const token of entry.tokens.combined) {
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+
+  const weights = new Map<string, number>();
+  let sumSquares = 0;
+  const tokenCount = entry.tokens.combined.length || 1;
+
+  for (const [token, count] of counts.entries()) {
+    const idfWeight = idf.get(token);
+    if (!idfWeight) {
+      continue;
+    }
+    const tf = count / tokenCount;
+    const weight = tf * idfWeight;
+    weights.set(token, weight);
+    sumSquares += weight * weight;
+  }
+
+  const norm = sumSquares > 0 ? Math.sqrt(sumSquares) : 1;
+  return { weights, norm };
+}
+
+function buildQueryVector(
+  tokens: string[],
+  idf: Map<string, number>,
+): { weights: Map<string, number>; norm: number } {
+  const counts = new Map<string, number>();
+  for (const token of tokens) {
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+
+  const weights = new Map<string, number>();
+  let sumSquares = 0;
+  const tokenCount = tokens.length || 1;
+
+  for (const [token, count] of counts.entries()) {
+    const idfWeight = idf.get(token);
+    if (!idfWeight) {
+      continue;
+    }
+    const tf = count / tokenCount;
+    const weight = tf * idfWeight;
+    weights.set(token, weight);
+    sumSquares += weight * weight;
+  }
+
+  const norm = sumSquares > 0 ? Math.sqrt(sumSquares) : 0;
+  return { weights, norm };
+}
+
+function computeCosineSimilarity(
+  queryVector: { weights: Map<string, number>; norm: number },
+  entryVector: { weights: Map<string, number>; norm: number },
+): number {
+  if (queryVector.norm === 0 || entryVector.norm === 0) {
+    return 0;
+  }
+
+  let dot = 0;
+  for (const [token, weight] of queryVector.weights.entries()) {
+    const entryWeight = entryVector.weights.get(token);
+    if (entryWeight) {
+      dot += weight * entryWeight;
+    }
+  }
+
+  if (dot === 0) {
+    return 0;
+  }
+
+  const cosine = dot / (queryVector.norm * entryVector.norm);
+  return Number(Math.min(Math.max(cosine, 0), 1).toFixed(4));
 }
