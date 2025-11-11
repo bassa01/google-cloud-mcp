@@ -203,6 +203,7 @@ Only Google-owned domains are accepted, so typos or third-party links are skippe
 
 - [Deep Dive (English)](docs/deep-dive-en.md)
 - [詳細ガイド (日本語)](docs/deep-dive-ja.md)
+- [Offline Docs Search](docs/offline-docs-search.md)
 
 ## Quick Start
 
