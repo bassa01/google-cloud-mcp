@@ -24,6 +24,7 @@ Supported Google Cloud services:
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
+- [x] [Documentation Search](https://cloud.google.com/docs)
 
 ### Selecting active services
 
@@ -167,10 +168,42 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 - "Add an update to projects/foo/cases/1234567890123456789 summarizing the mitigation"
 - "Search classifications for 'service account access'"
 
+### Documentation Search
+
+Find the closest official Google Cloud documentation for natural-language prompts without leaving your network. Instead of proxying live traffic, the docs tool scores entries from a local JSON catalog (`docs/catalog/google-cloud-docs.json` by default) using TF‑IDF + cosine similarity, so query intent matters more than naive string overlap. Update that file whenever you need new coverage—either manually or via whatever internal crawler you trust—and the MCP server will answer entirely offline.
+
+**Tools:** `google-cloud-docs-search`
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
+| `GOOGLE_CLOUD_DOCS_CATALOG` | `docs/catalog/google-cloud-docs.json` | Override the local JSON catalog path if you maintain a custom index elsewhere. |
+
+To extend the catalog, add entries shaped like:
+
+```json
+{
+  "title": "Cloud Run resource limits",
+  "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+  "summary": "Lists CPU, memory, and request limits for Cloud Run services and jobs.",
+  "tags": ["cloud run", "limits", "cpu", "memory"],
+  "product": "cloud-run",
+  "lastReviewed": "2025-06-30"
+}
+```
+
+Only Google-owned domains are accepted, so typos or third-party links are skipped automatically.
+
+*Example prompts:*
+- "Find the best doc that teaches how to trigger Cloud Run from Cloud Storage events"
+- "What's the official guidance for securing Memorystore for Redis?"
+- "日本語ドキュメントで Cloud Logging の料金を確認して"
+
 ## Deep Wiki / 詳細ドキュメント
 
 - [Deep Dive (English)](docs/deep-dive-en.md)
 - [詳細ガイド (日本語)](docs/deep-dive-ja.md)
+- [Offline Docs Search](docs/offline-docs-search.md)
 
 ## Quick Start
 

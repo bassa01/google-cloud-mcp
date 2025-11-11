@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Cloud Run request concurrency",
+    "url": "https://cloud.google.com/run/docs/configuring/concurrency",
+    "summary": "Configure how many simultaneous requests each container instance handles.",
+    "tags": ["cloud run", "concurrency", "scaling"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-08-18"
+  },
+  {
+    "title": "Cloud Spanner SQL best practices",
+    "url": "https://cloud.google.com/spanner/docs/sql-best-practices",
+    "summary": "Query tuning tips and anti-patterns for Cloud Spanner.",
+    "tags": ["spanner", "best practices"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-09-01"
+  },
+  {
+    "title": "Cloud Run service configuration overview",
+    "url": "https://cloud.google.com/run/docs/configuring/overview",
+    "summary": "Configure revisions, environment variables, and deployment rollouts.",
+    "tags": ["cloud run", "configuration"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-09-12"
+  }
+]

@@ -13,6 +13,7 @@ export const SERVICE_NAMES = [
   "error-reporting",
   "profiler",
   "support",
+  "docs",
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -46,6 +47,10 @@ const aliasEntries: Array<[string, ServiceName]> = [
   ["profile", "profiler"],
   ["support", "support"],
   ["cases", "support"],
+  ["docs", "docs"],
+  ["documentation", "docs"],
+  ["google-docs", "docs"],
+  ["cloud-docs", "docs"],
 ];
 
 const SERVICE_ALIAS_LOOKUP = new Map<string, ServiceName>(aliasEntries);

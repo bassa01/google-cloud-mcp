@@ -31,6 +31,7 @@ import {
   registerProfilerTools,
 } from "./services/profiler/index.js";
 import { registerSupportTools } from "./services/support/index.js";
+import { registerDocsTools } from "./services/docs/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
@@ -266,6 +267,13 @@ async function main(): Promise<void> {
         label: "Google Cloud Support",
         register: async () => {
           registerSupportTools(server);
+        },
+      },
+      {
+        name: "docs",
+        label: "Google Cloud Documentation",
+        register: async () => {
+          registerDocsTools(server);
         },
       },
     ];
