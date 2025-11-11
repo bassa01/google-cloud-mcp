@@ -1443,7 +1443,7 @@ query=displayName:"Cloud Run" | returned=4
 
 ## Project Utilities
 
-### gcp-utils-set-project-id — Set default project
+### gcp-projects-set-project-id — Set default project
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
 | project_id | string | yes |  | Project used by subsequent tools. |
@@ -1451,7 +1451,7 @@ query=displayName:"Cloud Run" | returned=4
 **Call example**
 ```jsonc
 {
-  "name": "gcp-utils-set-project-id",
+  "name": "gcp-projects-set-project-id",
   "arguments": { "project_id": "my-sre-prod" }
 }
 ```
@@ -1462,14 +1462,14 @@ query=displayName:"Cloud Run" | returned=4
 Default Google Cloud project ID has been set to: `my-sre-prod`
 ```
 
-### gcp-utils-get-project-id — Show current project
+### gcp-projects-get-project-id — Show current project
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
 | (none) | — | — | — | No arguments required. |
 
 **Call example**
 ```jsonc
-{ "name": "gcp-utils-get-project-id", "arguments": {} }
+{ "name": "gcp-projects-get-project-id", "arguments": {} }
 ```
 
 **Response example**
@@ -1483,7 +1483,7 @@ Current project ID: `my-sre-prod`
 
 ## Resource Reference
 
-MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted otherwise, placeholders such as `{projectId}`, `{instanceId}`, or `{databaseId}` can be omitted to fall back to the defaults established via `gcp-utils-set-project-id` or Google Cloud authentication context.
+MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted otherwise, placeholders such as `{projectId}`, `{instanceId}`, or `{databaseId}` can be omitted to fall back to the defaults established via `gcp-projects-set-project-id` or Google Cloud authentication context.
 
 ### Logging Resources
 | Resource | URI template | Parameters | Response |
