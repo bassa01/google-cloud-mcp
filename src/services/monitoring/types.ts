@@ -71,25 +71,41 @@ export function formatTimeSeriesData(
       METRIC_POINT_PREVIEW_LIMIT,
     );
 
+    const metricType =
+      typeof series.metric?.type === "string" ? series.metric.type : undefined;
+    const metricLabels =
+      series.metric?.labels && Object.keys(series.metric.labels).length > 0
+        ? (series.metric.labels as Record<string, string>)
+        : undefined;
+    const resourceLabels =
+      series.resource?.labels && Object.keys(series.resource.labels).length > 0
+        ? (series.resource.labels as Record<string, string>)
+        : undefined;
+    const resourceSummary =
+      series.resource && (series.resource.type || resourceLabels)
+        ? {
+            type:
+              typeof series.resource.type === "string"
+                ? series.resource.type
+                : undefined,
+            labels: resourceLabels,
+          }
+        : undefined;
+    const metricKind =
+      series.metricKind !== null && series.metricKind !== undefined
+        ? String(series.metricKind)
+        : undefined;
+    const valueType =
+      series.valueType !== null && series.valueType !== undefined
+        ? String(series.valueType)
+        : undefined;
+
     return {
-      metricType: series.metric?.type,
-      metricLabels:
-        series.metric?.labels && Object.keys(series.metric.labels).length > 0
-          ? series.metric.labels
-          : undefined,
-      resource:
-        series.resource && (series.resource.type || series.resource.labels)
-          ? {
-              type: series.resource?.type,
-              labels:
-                series.resource?.labels &&
-                Object.keys(series.resource.labels).length > 0
-                  ? series.resource.labels
-                  : undefined,
-            }
-          : undefined,
-      metricKind: series.metricKind,
-      valueType: series.valueType,
+      metricType,
+      metricLabels,
+      resource: resourceSummary,
+      metricKind,
+      valueType,
       points: pointSubset.map((point) => ({
         timestamp: toTimestamp(point.interval?.endTime),
         value: extractPointValue(point.value),
@@ -160,25 +176,38 @@ function toTimestamp(
 }
 
 function extractPointValue(
-  value?: google.monitoring.v3.TypedValue | null,
+  value?:
+    | google.monitoring.v3.ITypedValue
+    | google.monitoring.v3.TypedValue
+    | null,
 ): string | number | boolean | Record<string, unknown> {
   if (!value) {
     return "N/A";
   }
 
-  if (value.boolValue !== undefined) {
+  if (value.boolValue !== undefined && value.boolValue !== null) {
     return value.boolValue;
   }
 
-  if (value.doubleValue !== undefined) {
+  if (value.doubleValue !== undefined && value.doubleValue !== null) {
     return Number(value.doubleValue);
   }
 
-  if (value.int64Value !== undefined) {
-    return value.int64Value;
+  if (value.int64Value !== undefined && value.int64Value !== null) {
+    if (
+      typeof value.int64Value === "object" &&
+      "toString" in value.int64Value &&
+      typeof value.int64Value.toString === "function"
+    ) {
+      return value.int64Value.toString();
+    }
+    const numericValue = Number(value.int64Value);
+    return Number.isNaN(numericValue)
+      ? String(value.int64Value)
+      : numericValue;
   }
 
-  if (value.stringValue !== undefined) {
+  if (value.stringValue !== undefined && value.stringValue !== null) {
     return value.stringValue;
   }
 
