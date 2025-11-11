@@ -78,5 +78,53 @@
     "tags": ["spanner", "release notes", "changelog"],
     "product": "cloud-spanner",
     "lastReviewed": "2025-11-07"
+  },
+  {
+    "title": "Cloud Logging overview",
+    "url": "https://cloud.google.com/logging/docs/overview",
+    "summary": "Explains Cloud Logging architecture, log buckets, routing, and ingestion limits with links to common configuration tasks.",
+    "tags": ["cloud logging", "overview", "log buckets", "routing"],
+    "product": "cloud-logging",
+    "lastReviewed": "2025-10-28"
+  },
+  {
+    "title": "Cloud Logging sinks and routing",
+    "url": "https://cloud.google.com/logging/docs/routing/overview",
+    "summary": "Describes how to create log sinks, choose destinations such as BigQuery, Cloud Storage, Pub/Sub, and manage exclusions.",
+    "tags": ["cloud logging", "sinks", "routing", "exports"],
+    "product": "cloud-logging",
+    "lastReviewed": "2025-09-19"
+  },
+  {
+    "title": "Cloud Logging pricing",
+    "url": "https://cloud.google.com/logging/pricing",
+    "summary": "Lists ingestion, storage, and regional pricing details for Cloud Logging plus retention controls to manage costs.",
+    "tags": ["cloud logging", "pricing", "retention", "cost"],
+    "product": "cloud-logging",
+    "lastReviewed": "2025-10-01"
+  },
+  {
+    "title": "BigQuery SQL reference",
+    "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
+    "summary": "Complete syntax reference for BigQuery Standard SQL including statements, operators, and data definition commands.",
+    "tags": ["bigquery", "sql", "reference", "queries"],
+    "product": "bigquery",
+    "lastReviewed": "2025-10-15"
+  },
+  {
+    "title": "BigQuery best practices",
+    "url": "https://cloud.google.com/bigquery/docs/best-practices-performance-overview",
+    "summary": "Recommendations for partitioning, clustering, caching, and query tuning to improve BigQuery performance and cost.",
+    "tags": ["bigquery", "best practices", "performance", "cost"],
+    "product": "bigquery",
+    "lastReviewed": "2025-08-30"
+  },
+  {
+    "title": "BigQuery storage and pricing",
+    "url": "https://cloud.google.com/bigquery/pricing",
+    "summary": "Pricing model for BigQuery storage and analysis, including edition comparisons, reservations, and free tiers.",
+    "tags": ["bigquery", "pricing", "storage", "reservations"],
+    "product": "bigquery",
+    "lastReviewed": "2025-11-02"
   }
 ]
