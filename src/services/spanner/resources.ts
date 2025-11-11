@@ -90,7 +90,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-schema resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-database-schema resource`,
           );
         } catch (error) {
           logger.error(
@@ -150,7 +150,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-query-plan resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-query-plan resource`,
           );
         } catch (error) {
           logger.error(
@@ -196,7 +196,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for spanner-query-plan`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-query-plan`,
         );
         const instanceRef = spanner.instance(config.instanceId);
         const databaseRef = instanceRef.database(config.databaseId);
@@ -328,7 +328,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for spanner-tables`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-table-preview`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -410,7 +410,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-query-stats resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-query-stats resource`,
           );
         } catch (error) {
           logger.error(
@@ -430,7 +430,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for spanner-query-stats`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-query-stats`,
         );
         const databaseHandle = spanner
           .instance(config.instanceId)
@@ -487,7 +487,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-tables resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-database-tables resource`,
           );
         } catch (error) {
           logger.error(
@@ -507,7 +507,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for spanner-tables`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-database-tables`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -593,7 +593,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-instances resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-list-instances resource`,
           );
         } catch (error) {
           logger.error(
@@ -608,7 +608,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId}`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-list-instances`,
         );
 
         const [instances] = await spanner.getInstances();
@@ -680,7 +680,7 @@ export function registerSpannerResources(server: McpServer): void {
             throw new Error("Project ID could not be determined");
           }
           logger.debug(
-            `Using project ID: ${actualProjectId} for spanner-databases resource`,
+            `Using project ID: ${actualProjectId} for gcp-spanner-list-databases resource`,
           );
         } catch (error) {
           logger.error(
@@ -703,7 +703,7 @@ export function registerSpannerResources(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for spanner-databases`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-list-databases`,
         );
         const instance = spanner.instance(
           Array.isArray(instanceId) ? instanceId[0] : instanceId,

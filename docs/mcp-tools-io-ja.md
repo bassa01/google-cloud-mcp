@@ -1494,7 +1494,7 @@ query=displayName:"Cloud Run" | returned=4
 
 ## Project Utilities
 
-### gcp-utils-set-project-id — 既定プロジェクト設定
+### gcp-resource-manager-set-project-id — 既定プロジェクト設定
 
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
@@ -1503,7 +1503,7 @@ query=displayName:"Cloud Run" | returned=4
 **呼び出し例**
 ```jsonc
 {
-  "name": "gcp-utils-set-project-id",
+  "name": "gcp-resource-manager-set-project-id",
   "arguments": { "project_id": "my-sre-prod" }
 }
 ```
@@ -1514,7 +1514,7 @@ query=displayName:"Cloud Run" | returned=4
 Default Google Cloud project ID has been set to: `my-sre-prod`
 ```
 
-### gcp-utils-get-project-id — 既定プロジェクト確認
+### gcp-resource-manager-get-project-id — 既定プロジェクト確認
 
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
@@ -1522,7 +1522,7 @@ Default Google Cloud project ID has been set to: `my-sre-prod`
 
 **呼び出し例**
 ```jsonc
-{ "name": "gcp-utils-get-project-id", "arguments": {} }
+{ "name": "gcp-resource-manager-get-project-id", "arguments": {} }
 ```
 
 **戻り値例**
@@ -1536,7 +1536,7 @@ Current project ID: `my-sre-prod`
 
 ## リソースリファレンス
 
-MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-utils-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
+MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-resource-manager-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
 
 ### ロギング リソース
 

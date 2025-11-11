@@ -39,7 +39,7 @@ describe('Monitoring Tools', () => {
       );
     });
 
-    it('should handle list-metric-types tool execution', async () => {
+    it('should handle gcp-monitoring-list-metric-types tool execution', async () => {
       const { registerMonitoringTools } = await import('../../../../src/services/monitoring/tools.js');
       
       mockMonitoringClient.listMetricDescriptors.mockResolvedValue([[{

@@ -219,7 +219,7 @@ Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, 
 
 ### Operational tips
 
-- Use `list-metric-types` before natural-language queries to confirm metric availability.
+- Use `gcp-monitoring-list-metric-types` before natural-language queries to confirm metric availability.
 - Provide alignment windows (e.g., 5m, 1h) to match dashboard expectations.
 - Request aggregations (`mean`, `max`, `percentile`) to reduce result volume.
 - When you need full PromQL expressions, pair these discovery tools with Managed Service for Prometheus or the `projects.timeSeries.query` API.
@@ -247,7 +247,7 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with parameter binding and blocks mutating statements before they reach Spanner.
-- `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build conversational summaries; the NL helper emits read-only SQL and applies the same guard as `execute-query`.
+- `gcp-spanner-query-natural-language` and `gcp-spanner-query-count` build conversational summaries; the NL helper emits read-only SQL and applies the same guard as `gcp-spanner-execute-query`.
 - `gcp-spanner-query-stats` (resource) renders Query Insights data from `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` as AI-readable JSON across 1m/10m/1h windows, ranking fingerprints by latency and CPU.
 - `gcp-spanner-query-plan` (resource) runs EXPLAIN/EXPLAIN ANALYZE via \`gcp-spanner://.../query-plan?sql=SELECT+...\` and calls out distributed joins or missing indexes.
 
@@ -474,7 +474,7 @@ Testing tips:
 | Spanner | `gcp-spanner-list-databases` | List databases within an instance. |
 | Spanner | `gcp-spanner-list-tables` | Reveal table schemas. |
 | Spanner | `gcp-spanner-execute-query` | Execute parameterised SQL. |
-| Spanner | `gcp-spanner-query-natural-language` | Generate read-only SQL from natural language (guarded like `execute-query`). |
+| Spanner | `gcp-spanner-query-natural-language` | Generate read-only SQL from natural language (guarded like `gcp-spanner-execute-query`). |
 | Spanner | `gcp-spanner-query-count` | Quickly calculate row counts. |
 | Spanner | `gcp-spanner-query-stats` (resource) | AI-friendly 1m/10m/1h Query Insights JSON summary. |
 | Spanner | `gcp-spanner-query-plan` (resource) | Inspect EXPLAIN / EXPLAIN ANALYZE output and surface distributed joins or missing indexes. |

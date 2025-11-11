@@ -289,7 +289,7 @@ export function registerSpannerQueryCountTool(server: McpServer): void {
         };
       } catch (error: any) {
         logger.error(
-          `Error in spanner-query-count tool: ${error instanceof Error ? error.message : String(error)}`,
+          `Error in gcp-spanner-query-count tool: ${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
       }

@@ -113,7 +113,7 @@ describe('Spanner Tools', () => {
       );
     });
 
-    it('should handle execute-spanner-query tool execution', async () => {
+    it('should handle gcp-spanner-execute-query tool execution', async () => {
       const { registerSpannerTools } = await import('../../../../src/services/spanner/tools.js');
       
       registerSpannerTools(mockServer as any);
@@ -245,7 +245,7 @@ describe('Spanner Tools', () => {
       expect(result.content?.[0]?.text).toContain('Blocked unsafe SQL');
     });
 
-    it('should handle list-spanner-databases tool execution', async () => {
+    it('should handle gcp-spanner-list-databases tool execution', async () => {
       const { registerSpannerTools } = await import('../../../../src/services/spanner/tools.js');
       
       registerSpannerTools(mockServer as any);
