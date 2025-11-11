@@ -150,7 +150,10 @@ export class TransportManager {
       }
 
       // Security: Rate limiting check
-      const rateLimitCheck = this.securityValidator.checkRateLimit(clientId);
+      const rateLimitCheck = this.securityValidator.checkRateLimit(
+        clientId,
+        `${req.method ?? "UNKNOWN"}:${req.url ?? "/"}`,
+      );
       if (!rateLimitCheck.allowed) {
         this.securityValidator.logSecurityEvent(
           "rate_limit_exceeded",
@@ -261,8 +264,72 @@ export class TransportManager {
 
     // MCP Requirement: Validate Accept headers for SSE support
     const acceptHeader = req.headers.accept;
-    const supportsJson = acceptHeader?.includes("application/json");
-    const supportsEventStream = acceptHeader?.includes("text/event-stream");
+    const parsedAcceptValues = acceptHeader
+      ? acceptHeader
+          .split(",")
+          .map((value) => value.split(";")[0].trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
+    const acceptsType = (mimeType: string): boolean => {
+      if (!acceptHeader) {
+        return mimeType === "application/json";
+      }
+
+      const [targetType, targetSubtype] = mimeType.toLowerCase().split("/");
+
+      return parsedAcceptValues.some((value) => {
+        if (value === "*/*") {
+          return true;
+        }
+
+        const [type, subtype] = value.split("/");
+
+        if (!type || !subtype) {
+          return false;
+        }
+
+        if (type === "*" && subtype === "*") {
+          return true;
+        }
+
+        if (type === targetType && (subtype === targetSubtype || subtype === "*")) {
+          return true;
+        }
+
+        if (type === "*" && targetSubtype === subtype) {
+          return true;
+        }
+
+        return false;
+      });
+    };
+
+    const supportsJson = acceptHeader ? acceptsType("application/json") : true;
+    const supportsEventStream = acceptHeader ? acceptsType("text/event-stream") : false;
+
+    if (acceptHeader && !supportsJson && !supportsEventStream) {
+      this.securityValidator.logSecurityEvent(
+        "unsupported_accept",
+        {
+          clientIp: req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+          accept: acceptHeader,
+          clientId,
+        },
+        "medium",
+      );
+      res.writeHead(406, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32600, message: "Unsupported Accept header" },
+        }),
+      );
+      req.destroy();
+      return;
+    }
 
     req.on("data", (chunk) => {
       body += chunk.toString("utf8"); // Ensure UTF-8 encoding per MCP spec
@@ -280,6 +347,7 @@ export class TransportManager {
             {
               clientIp: req.connection.remoteAddress,
               userAgent: req.headers["user-agent"],
+              clientId,
               message:
                 typeof message === "object"
                   ? JSON.stringify(message).substring(0, 200)
@@ -309,6 +377,7 @@ export class TransportManager {
             {
               clientIp: req.connection.remoteAddress,
               userAgent: req.headers["user-agent"],
+              clientId,
               method: this.securityValidator.sanitiseInput(message.method),
             },
             "high",
@@ -341,6 +410,9 @@ export class TransportManager {
           res.end(JSON.stringify({ acknowledged: true }));
         }
       } catch (error) {
+        this.logger.warn(
+          `Failed to process JSON-RPC payload: ${error instanceof Error ? error.message : String(error)}`,
+        );
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({

@@ -38,7 +38,10 @@ export interface SecurityValidator {
   validateRequestHeaders(
     headers: Record<string, string | string[] | undefined>,
   ): { valid: boolean; errors: string[] };
-  checkRateLimit(clientId: string): { allowed: boolean; retryAfter?: number };
+  checkRateLimit(
+    clientId: string,
+    endpoint?: string,
+  ): { allowed: boolean; retryAfter?: number };
   sanitiseInput(input: string): string;
   validateMethodName(method: string): boolean;
   logSecurityEvent(

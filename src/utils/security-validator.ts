@@ -7,11 +7,21 @@
 import { SecurityValidator } from "./interfaces.js";
 import { logger } from "./logger.js";
 
+const CONTROL_CHAR_PATTERN = /\p{Cc}/gu;
+
 /**
  * Security validator implementation for MCP compliance
  */
+type RateLimitEntry = {
+  windowStart: number;
+  count: number;
+  cleanupTimer: ReturnType<typeof setTimeout>;
+};
+
 export class McpSecurityValidator implements SecurityValidator {
   private allowedOrigins: string[];
+  // TODO: Allow injecting a persistent rate limit store (e.g., Redis) for distributed deployments.
+  private rateLimitState = new Map<string, RateLimitEntry>();
 
   constructor(
     allowedOrigins: string[] = ["http://localhost", "https://localhost"],
@@ -147,15 +157,58 @@ export class McpSecurityValidator implements SecurityValidator {
   /**
    * Rate limiting check (simple implementation)
    */
-  checkRateLimit(clientId: string): { allowed: boolean; retryAfter?: number } {
-    // This is a simplified implementation
-    // In production, use Redis or similar for distributed rate limiting
+  checkRateLimit(
+    clientId: string,
+    endpoint: string = "global",
+  ): { allowed: boolean; retryAfter?: number } {
     const now = Date.now();
-    const windowMs = 60000; // 1 minute window
+    const windowMs = 60_000; // 1 minute window
     const maxRequests = 100; // 100 requests per minute
 
-    // For now, always allow (implement proper rate limiting in production)
+    const rateLimitKey = `${clientId}:${endpoint}`;
+    let state = this.rateLimitState.get(rateLimitKey);
+
+    if (!state) {
+      state = {
+        windowStart: now,
+        count: 0,
+        cleanupTimer: this.scheduleRateLimitCleanup(rateLimitKey, windowMs),
+      };
+    }
+
+    if (now - state.windowStart >= windowMs) {
+      state.windowStart = now;
+      state.count = 0;
+      clearTimeout(state.cleanupTimer);
+      state.cleanupTimer = this.scheduleRateLimitCleanup(rateLimitKey, windowMs);
+    }
+
+    state.count += 1;
+    this.rateLimitState.set(rateLimitKey, state);
+
+    if (state.count > maxRequests) {
+      const retryAfterSeconds = Math.ceil(
+        (state.windowStart + windowMs - now) / 1000,
+      );
+      return { allowed: false, retryAfter: Math.max(retryAfterSeconds, 1) };
+    }
+
     return { allowed: true };
+  }
+
+  private scheduleRateLimitCleanup(
+    key: string,
+    windowMs: number,
+  ): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.rateLimitState.delete(key);
+    }, windowMs);
+
+    if (typeof timer.unref === "function") {
+      timer.unref();
+    }
+
+    return timer;
   }
 
   /**
@@ -165,7 +218,7 @@ export class McpSecurityValidator implements SecurityValidator {
     // Remove potentially dangerous characters
     return input
       .replace(/[<>'"&]/g, "") // Basic XSS prevention
-      .replace(/[\x00-\x1f\x7f-\x9f]/g, "") // Remove control characters
+      .replace(CONTROL_CHAR_PATTERN, "") // Remove control characters (Cc category)
       .trim()
       .substring(0, 1000); // Limit length
   }

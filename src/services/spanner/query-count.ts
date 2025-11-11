@@ -120,7 +120,7 @@ export function registerSpannerQueryCountTool(server: McpServer): void {
         endTime,
         alignmentPeriod,
       },
-      context,
+      _context,
     ) => {
       try {
         const projectId = await getProjectId();
