@@ -325,7 +325,7 @@ async function main(): Promise<void> {
     await server.connect(transport);
 
     const existingCloseHandler = transport.onclose?.bind(transport);
-    transport.onclose = (event) => {
+    transport.onclose = () => {
       if (isStandaloneMode) {
         logger.info(
           "Standalone mode enabled; transport closed so the server will exit",
@@ -335,7 +335,7 @@ async function main(): Promise<void> {
         logger.info("STDIO transport closed; waiting in daemon mode");
       }
 
-      existingCloseHandler?.(event);
+      existingCloseHandler?.();
     };
 
     logger.info("Server started successfully and ready to handle requests");
