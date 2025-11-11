@@ -22,13 +22,13 @@ describe('Project Tools', () => {
       registerProjectTools(mockServer as any);
       
       expect(mockServer.registerTool).toHaveBeenCalledWith(
-        'gcp-projects-set-project-id',
+        'gcp-resource-manager-set-project-id',
         expect.any(Object),
         expect.any(Function)
       );
       
       expect(mockServer.registerTool).toHaveBeenCalledWith(
-        'gcp-projects-get-project-id',
+        'gcp-resource-manager-get-project-id',
         expect.any(Object),
         expect.any(Function)
       );
@@ -40,7 +40,7 @@ describe('Project Tools', () => {
       registerProjectTools(mockServer as any);
       
       const toolCall = mockServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-projects-set-project-id'
+        call => call[0] === 'gcp-resource-manager-set-project-id'
       );
       
       expect(toolCall).toBeDefined();
@@ -59,7 +59,7 @@ describe('Project Tools', () => {
       registerProjectTools(mockServer as any);
       
       const toolCall = mockServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-projects-get-project-id'
+        call => call[0] === 'gcp-resource-manager-get-project-id'
       );
       
       expect(toolCall).toBeDefined();
@@ -78,7 +78,7 @@ describe('Project Tools', () => {
       registerProjectTools(mockServer as any);
       
       const toolCall = mockServer.registerTool.mock.calls.find(
-        call => call[0] === 'gcp-projects-set-project-id'
+        call => call[0] === 'gcp-resource-manager-set-project-id'
       );
       
       const toolHandler = toolCall![2];

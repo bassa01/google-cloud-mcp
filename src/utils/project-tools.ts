@@ -17,7 +17,7 @@ import { logger } from "./logger.js";
 export function registerProjectTools(server: McpServer): void {
   // Tool to set the default project ID
   server.registerTool(
-    "gcp-projects-set-project-id",
+    "gcp-resource-manager-set-project-id",
     {
       title: "Set Project ID",
       description:
@@ -56,7 +56,7 @@ export function registerProjectTools(server: McpServer): void {
 
   // Tool to get the current project ID
   server.registerTool(
-    "gcp-projects-get-project-id",
+    "gcp-resource-manager-get-project-id",
     {
       title: "Get Project ID",
       description:
