@@ -1,0 +1,82 @@
+[
+  {
+    "title": "Cloud Run service configuration overview",
+    "url": "https://cloud.google.com/run/docs/configuring/overview",
+    "summary": "Explains how to configure Cloud Run services, including revisions, deployment parameters, environment variables, and common rollout workflows.",
+    "tags": ["cloud run", "configuration", "revisions", "deployment"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-09-12"
+  },
+  {
+    "title": "Cloud Run container concurrency",
+    "url": "https://cloud.google.com/run/docs/configuring/concurrency",
+    "summary": "Details how Cloud Run concurrency works, default values, and how to choose the right setting for latency vs. cost.",
+    "tags": ["cloud run", "concurrency", "scaling", "performance"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-08-18"
+  },
+  {
+    "title": "Cloud Run resource limits",
+    "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+    "summary": "Lists CPU, memory, and request limits for Cloud Run services and jobs, plus guidance on tuning resources per revision.",
+    "tags": ["cloud run", "limits", "cpu", "memory"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-06-30"
+  },
+  {
+    "title": "Create triggers from Cloud Storage events (Cloud Run)",
+    "url": "https://cloud.google.com/run/docs/triggering/storage-triggers",
+    "summary": "Shows how to connect Cloud Storage change notifications to Cloud Run services with Eventarc, including IAM and filtering setup.",
+    "tags": ["cloud run", "eventarc", "cloud storage", "triggers"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-05-02"
+  },
+  {
+    "title": "Cloud Run release notes",
+    "url": "https://cloud.google.com/run/docs/release-notes",
+    "summary": "Chronological list of Cloud Run feature launches, region roll-outs, and behavior changes across revisions and jobs.",
+    "tags": ["cloud run", "release notes", "changelog"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-11-04"
+  },
+  {
+    "title": "Cloud Spanner SQL reference",
+    "url": "https://cloud.google.com/spanner/docs/reference/standard-sql/query-syntax",
+    "summary": "Canonical reference for Cloud Spanner SQL syntax, supported functions, query hints, and deviations from ANSI SQL.",
+    "tags": ["spanner", "sql", "reference", "queries"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-10-10"
+  },
+  {
+    "title": "Cloud Spanner DML statements",
+    "url": "https://cloud.google.com/spanner/docs/dml-sql",
+    "summary": "Describes how to run INSERT, UPDATE, DELETE, and aborted transaction retries while respecting Spanner read-write semantics.",
+    "tags": ["spanner", "dml", "transactions", "mutations"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-07-22"
+  },
+  {
+    "title": "Cloud Spanner best practices for SQL",
+    "url": "https://cloud.google.com/spanner/docs/sql-best-practices",
+    "summary": "Guidance on query optimization, parameterization, interleaved tables, and execution plans to avoid common Spanner anti-patterns.",
+    "tags": ["spanner", "best practices", "performance", "query tuning"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-09-01"
+  },
+  {
+    "title": "Cloud Spanner query execution plans",
+    "url": "https://cloud.google.com/spanner/docs/query-plan-details",
+    "summary": "Explains how to capture and interpret query plans, including distributed stages, to diagnose slow Spanner SQL statements.",
+    "tags": ["spanner", "query plan", "debugging", "explain"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-08-05"
+  },
+  {
+    "title": "Cloud Spanner release notes",
+    "url": "https://cloud.google.com/spanner/docs/release-notes",
+    "summary": "Up-to-date changelog for Cloud Spanner features, query engine improvements, and regional availability changes.",
+    "tags": ["spanner", "release notes", "changelog"],
+    "product": "cloud-spanner",
+    "lastReviewed": "2025-11-07"
+  }
+]

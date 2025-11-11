@@ -11,8 +11,6 @@ const DOCS_TOOL_DEFAULT_LIMIT = resolveBoundedNumber(
   { min: 1, max: 10 },
 );
 
-const LANGUAGE_PATTERN = /^[a-z]{2}(?:-[a-z]{2})?$/i;
-
 const docsSearchSchema = z.object({
   query: z
     .string()
@@ -23,57 +21,46 @@ const docsSearchSchema = z.object({
     .min(1)
     .max(10)
     .default(DOCS_TOOL_DEFAULT_LIMIT),
-  language: z
-    .string()
-    .regex(
-      LANGUAGE_PATTERN,
-      "Use a BCP-47 language tag like en, ja, or pt-BR.",
-    )
-    .optional(),
 });
 
 export function registerDocsTools(server: McpServer): void {
   server.tool(
     "google-cloud-docs-search",
     docsSearchSchema,
-    async ({ query, maxResults, language }) => {
+    async ({ query, maxResults }) => {
       const resolvedLimit = maxResults ?? DOCS_TOOL_DEFAULT_LIMIT;
 
       try {
         const searchResult = await searchGoogleCloudDocs({
           query,
           maxResults: resolvedLimit,
-          language,
         });
 
         const summary = buildStructuredResponse({
           title: "Google Cloud Docs Search",
           metadata: {
             query,
-            language: searchResult.language,
             requested: resolvedLimit,
             returned: searchResult.results.length,
-            parsed: searchResult.fetchedResults,
-            approxMatches: searchResult.approxTotalResults,
+            catalogEntries: searchResult.approxTotalResults,
+            catalogPath: searchResult.catalogPath,
+            catalogUpdated: searchResult.catalogUpdated,
           },
           preview: {
-            total: searchResult.approxTotalResults ?? searchResult.results.length,
+            total: searchResult.approxTotalResults,
             displayed: searchResult.results.length,
             label: "results",
             limit: resolvedLimit,
             omitted: Math.max(
-              (searchResult.approxTotalResults || searchResult.fetchedResults) - searchResult.results.length,
+              searchResult.approxTotalResults - searchResult.results.length,
               0,
             ),
           },
           dataLabel: "results",
           data: searchResult.results,
           additionalNotes: [
-            searchResult.approxTotalResults
-              ? `Google Cloud's site search reported approximately ${searchResult.approxTotalResults.toLocaleString()} matches.`
-              : undefined,
-            "Ranking blends Google Cloud relevance with local lexical matching to reduce false positives.",
-            `Source URL: ${searchResult.searchUrl}`,
+            "Matches are computed locally from docs/catalog/google-cloud-docs.json.",
+            "Update that catalog file or set GOOGLE_CLOUD_DOCS_CATALOG to point at your own JSON index when new docs launch.",
           ],
         });
 
@@ -89,7 +76,7 @@ export function registerDocsTools(server: McpServer): void {
         logger.error(
           `google-cloud-docs-search failed: ${error instanceof Error ? error.message : String(error)}`,
         );
-        return buildDocsErrorResponse(error, query, language);
+        return buildDocsErrorResponse(error, query);
       }
     },
   );
@@ -98,7 +85,6 @@ export function registerDocsTools(server: McpServer): void {
 function buildDocsErrorResponse(
   error: unknown,
   query: string,
-  language?: string,
 ): {
   content: Array<{ type: "text"; text: string }>;
   isError: true;
@@ -108,7 +94,6 @@ function buildDocsErrorResponse(
     title: "Google Cloud Docs Search Error",
     metadata: {
       query,
-      language,
       code: details.code,
     },
     dataLabel: "error",

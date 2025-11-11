@@ -170,17 +170,29 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 
 ### Documentation Search
 
-Find the closest official Google Cloud documentation for natural-language prompts without juggling API credentials. The docs tool proxy-scrapes the public site search endpoint, parses the rendered results, and re-ranks them locally with token overlap scoring so intent-heavy queries surface ahead of simple string matches.
+Find the closest official Google Cloud documentation for natural-language prompts without leaving your network. Instead of proxying live traffic, the docs tool scores entries from a local JSON catalog (`docs/catalog/google-cloud-docs.json` by default). Update that file whenever you need new coverage—either manually or via whatever internal crawler you trust—and the MCP server will answer entirely offline.
 
 **Tools:** `google-cloud-docs-search`
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
-| `GOOGLE_CLOUD_DOCS_LANGUAGE` | `en` | Sets the `hl` parameter so you can bias search toward Japanese (`ja`), German (`de`), etc. |
-| `GOOGLE_CLOUD_DOCS_PROXY` | `https://r.jina.ai` | Override if you operate your own Readability proxy or must route traffic internally. |
-| `GOOGLE_CLOUD_DOCS_TIMEOUT_MS` | `12000` | Abort doc searches that take too long. |
-| `GOOGLE_CLOUD_DOCS_MAX_FETCH` | `30` | Upper bound on candidates fetched from the rendered results before local re-ranking. |
+| `GOOGLE_CLOUD_DOCS_CATALOG` | `docs/catalog/google-cloud-docs.json` | Override the local JSON catalog path if you maintain a custom index elsewhere. |
+
+To extend the catalog, add entries shaped like:
+
+```json
+{
+  "title": "Cloud Run resource limits",
+  "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+  "summary": "Lists CPU, memory, and request limits for Cloud Run services and jobs.",
+  "tags": ["cloud run", "limits", "cpu", "memory"],
+  "product": "cloud-run",
+  "lastReviewed": "2025-06-30"
+}
+```
+
+Only Google-owned domains are accepted, so typos or third-party links are skipped automatically.
 
 *Example prompts:*
 - "Find the best doc that teaches how to trigger Cloud Run from Cloud Storage events"
