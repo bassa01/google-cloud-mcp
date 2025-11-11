@@ -90,12 +90,12 @@ Use these resources to explore Google Cloud Monitoring:
 
 In addition to these resources, the following tools are available:
 
-* **execute-spanner-query** - Execute SQL queries against Spanner databases
-* **list-spanner-tables** - List tables in a Spanner database
-* **list-spanner-instances** - List Spanner instances in the project
-* **list-spanner-databases** - List databases in a Spanner instance
-* **list-metric-types** - List available metric types in Google Cloud Monitoring
-* **spanner-query-count** - Get query count metrics for Spanner databases
+* **gcp-spanner-execute-query** - Execute SQL queries against Spanner databases
+* **gcp-spanner-list-tables** - List tables in a Spanner database
+* **gcp-spanner-list-instances** - List Spanner instances in the project
+* **gcp-spanner-list-databases** - List databases in a Spanner instance
+* **gcp-monitoring-list-metric-types** - List available metric types in Google Cloud Monitoring
+* **gcp-spanner-query-count** - Get query count metrics for Spanner databases
 
 For detailed information about each tool, use the MCP protocol's tool discovery mechanism.
 `,
@@ -142,11 +142,11 @@ This page lists all available resources for working with Google Cloud Spanner.
 
 ## Available Tools
 
-* **execute-spanner-query** - Execute SQL queries against Spanner databases
-* **list-spanner-tables** - List tables in a Spanner database
-* **list-spanner-instances** - List Spanner instances in the project
-* **list-spanner-databases** - List databases in a Spanner instance
-* **spanner-query-count** - Get query count metrics for Spanner databases
+* **gcp-spanner-execute-query** - Execute SQL queries against Spanner databases
+* **gcp-spanner-list-tables** - List tables in a Spanner database
+* **gcp-spanner-list-instances** - List Spanner instances in the project
+* **gcp-spanner-list-databases** - List databases in a Spanner instance
+* **gcp-spanner-query-count** - Get query count metrics for Spanner databases
 
 ## Usage Example
 
@@ -168,7 +168,7 @@ This page lists all available resources for working with Google Cloud Spanner.
    After finding a table name (e.g., 'users') from step 3, access:
    \`gcp-spanner://${projectId}/test-instance/my-database/tables/users/preview\`
 
-6. **Execute queries** using the execute-spanner-query tool
+6. **Execute queries** using the gcp-spanner-execute-query tool
 
 7. **Inspect query plans** using \`gcp-spanner://${projectId}/test-instance/my-database/query-plan?sql=SELECT+...\` (URL-encode the SQL and add \`&mode=analyze\` if you need EXPLAIN ANALYZE).
 
@@ -232,14 +232,14 @@ This page lists all available resources for working with Google Cloud Monitoring
 
 ## Available Tools
 
-* **list-metric-types** - List available metric types in Google Cloud Monitoring
-* **spanner-query-count** - Get query count metrics for Spanner databases
+* **gcp-monitoring-list-metric-types** - List available metric types in Google Cloud Monitoring
+* **gcp-spanner-query-count** - Get query count metrics for Spanner databases
 
 ## Usage Tips
 
 1. Start by exploring available metric types
 2. Use filters to narrow down to specific metrics
-3. Use the spanner-query-count tool for detailed Spanner metrics
+3. Use the gcp-spanner-query-count tool for detailed Spanner metrics
 `,
           },
         ],

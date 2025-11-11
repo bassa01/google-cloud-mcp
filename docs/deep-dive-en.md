@@ -218,7 +218,6 @@ Monitoring tools query Cloud Monitoring metrics so you can inspect CPU, memory, 
 
 ### Operational tips
 
-- Use `list-metric-types` to confirm metric availability before crafting filters.
 - Provide alignment windows (e.g., 5m, 1h) to match dashboard expectations.
 - Request aggregations (`mean`, `max`, `percentile`) to reduce result volume.
 - When you need full PromQL expressions, pair these discovery tools with Managed Service for Prometheus or the `projects.timeSeries.query` API.
@@ -246,7 +245,7 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 
 - `gcp-spanner-list-instances`, `gcp-spanner-list-databases`, and `gcp-spanner-list-tables` catalogue your topology.
 - `gcp-spanner-execute-query` runs read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with parameter binding and blocks mutating statements before they reach Spanner.
-- `gcp-spanner-query-count` samples request volumes through the Spanner query-count metrics API.
+- `gcp-spanner-query-count` build conversational summaries; the NL helper emits read-only SQL and applies the same guard as `gcp-spanner-execute-query`.
 - `gcp-spanner-query-stats` (resource) renders Query Insights data from `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` as AI-readable JSON across 1m/10m/1h windows, ranking fingerprints by latency and CPU.
 - `gcp-spanner-query-plan` (resource) runs EXPLAIN/EXPLAIN ANALYZE via \`gcp-spanner://.../query-plan?sql=SELECT+...\` and calls out distributed joins or missing indexes.
 

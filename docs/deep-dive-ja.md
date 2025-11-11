@@ -218,7 +218,7 @@ Cloud Monitoring 指標を簡潔に取得し、PromQL への移行中でも CPU�
 
 **運用ヒント**
 
-- 先に `list-metric-types` を実行して利用可能なメトリクスを確認。
+- 先に `gcp-monitoring-list-metric-types` を実行して利用可能なメトリクスを確認。
 - 5m / 1h などのアライメントウィンドウを指定し、ダッシュボードと揃えます。
 - `mean` / `max` / `percentile` などの集計を付与して結果を圧縮。
 - Managed Service for Prometheus や `projects.timeSeries.query` API と組み合わせ、完全な PromQL 実行を行います。
@@ -244,9 +244,9 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 
 **主要ツール**
 
-- `gcp-spanner-list-instances` / `list-databases` / `list-tables` – インフラ全体をカタログ化。
+- `gcp-spanner-list-instances` / `gcp-spanner-list-databases` / `gcp-spanner-list-tables` – インフラ全体をカタログ化。
 - `gcp-spanner-execute-query` – SELECT / WITH / EXPLAIN / SHOW / DESCRIBE といった読み取り専用 SQL のみ受け付け、破壊的クエリは実行前にブロック。
-- `gcp-spanner-query-count` – query-count メトリクス API から読み取りリクエスト量を集計。
+- `gcp-spanner-query-count` – 会話的に集計やクエリ生成を実施する
 - `gcp-spanner-query-stats` – `SPANNER_SYS.QUERY_STATS_TOP_MINUTE/10MINUTE/HOUR` を読み、1m/10m/1h のレイテンシー/CPU トップクエリを AI が扱いやすい JSON で提示。
 - `gcp-spanner-query-plan` （\`gcp-spanner://.../query-plan?sql=SELECT+...\`）で EXPLAIN / EXPLAIN ANALYZE を実行し、分散 JOIN やインデックス不足を把握。
 

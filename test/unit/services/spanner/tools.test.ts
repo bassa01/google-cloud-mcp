@@ -61,7 +61,7 @@ describe('Spanner Tools', () => {
       );
     });
 
-    it('should handle execute-spanner-query tool execution', async () => {
+    it('should handle gcp-spanner-execute-query tool execution', async () => {
       const { registerSpannerTools } = await import('../../../../src/services/spanner/tools.js');
       
       registerSpannerTools(mockServer as any);

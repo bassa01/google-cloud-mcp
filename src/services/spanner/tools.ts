@@ -99,7 +99,7 @@ export function registerSpannerTools(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for execute-spanner-query`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-execute-query`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -167,7 +167,7 @@ export function registerSpannerTools(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for execute-spanner-query`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-list-tables`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -268,7 +268,7 @@ export function registerSpannerTools(server: McpServer): void {
         });
 
         logger.debug(
-          `Using Spanner client with explicit project ID: ${projectId} for list-spanner-instances`,
+          `Using Spanner client with explicit project ID: ${projectId} for gcp-spanner-list-instances`,
         );
 
         const [instances] = await spanner.getInstances();
@@ -348,7 +348,7 @@ export function registerSpannerTools(server: McpServer): void {
         });
 
         logger.debug(
-          `Using Spanner client with project ID: ${projectId} for list-spanner-databases`,
+          `Using Spanner client with project ID: ${projectId} for gcp-spanner-list-databases`,
         );
         const instance = spanner.instance(
           Array.isArray(instanceId) ? instanceId[0] : instanceId,
