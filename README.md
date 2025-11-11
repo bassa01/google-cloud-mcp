@@ -76,7 +76,7 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | --- | --- | --- |
 | `LOG_OUTPUT_PREVIEW_LIMIT` (alias `LOG_OUTPUT_MAX`) | `20` entries | Caps how many log entries are returned per call. |
 | `LOG_TEXT_PAYLOAD_PREVIEW` | `600` characters | Truncates long `textPayload` values with an ellipsis. |
-| `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `execute-query`, `list-*`, and NL query outputs. |
+| `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-spanner-execute-query`, `list-*`, and NL query outputs. |
 | `SPANNER_QUERY_COUNT_SERIES_LIMIT` | `5` series | Maximum Spanner query-count time series per response. |
 | `SPANNER_QUERY_COUNT_POINT_LIMIT` | `60` points | Per-series datapoint cap for query-count results. |
 | `MONITORING_SERIES_PREVIEW_LIMIT` | `5` series | Maximum Monitoring time series per response. |

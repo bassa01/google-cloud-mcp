@@ -142,7 +142,7 @@ export function registerSpannerTools(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for execute-spanner-query`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-execute-query`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -210,7 +210,7 @@ export function registerSpannerTools(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for execute-spanner-query`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-execute-query`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -311,7 +311,7 @@ export function registerSpannerTools(server: McpServer): void {
         });
 
         logger.debug(
-          `Using Spanner client with explicit project ID: ${projectId} for list-spanner-instances`,
+          `Using Spanner client with explicit project ID: ${projectId} for gcp-spanner-list-instances`,
         );
 
         const [instances] = await spanner.getInstances();
@@ -391,7 +391,7 @@ export function registerSpannerTools(server: McpServer): void {
         });
 
         logger.debug(
-          `Using Spanner client with project ID: ${projectId} for list-spanner-databases`,
+          `Using Spanner client with project ID: ${projectId} for gcp-spanner-list-databases`,
         );
         const instance = spanner.instance(
           Array.isArray(instanceId) ? instanceId[0] : instanceId,
@@ -502,7 +502,7 @@ export function registerSpannerTools(server: McpServer): void {
         });
 
         logger.debug(
-          `Using Spanner client with project ID: ${projectId} for execute-spanner-query`,
+          `Using Spanner client with project ID: ${projectId} for gcp-spanner-execute-query`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
@@ -619,13 +619,13 @@ export function registerSpannerTools(server: McpServer): void {
             generatedSql = countQueries.join(" UNION ALL ");
           }
         }
-        // For more complex queries, provide schema information and ask the user to use execute-spanner-query
+        // For more complex queries, provide schema information and ask the user to use gcp-spanner-execute-query
         else {
           return {
             content: [
               {
                 type: "text",
-                text: `# Complex Query Detected\n\nYour query requires a custom SQL statement. Here's the database schema to help you formulate your query:\n\n\`\`\`\n${schemaInfo}\n\`\`\`\n\nPlease use the \`execute-spanner-query\` tool with a specific SQL statement to query this data.\n\nExample:\n\`\`\`sql\nSELECT * FROM [table_name] WHERE [condition] LIMIT 100\n\`\`\``,
+                text: `# Complex Query Detected\n\nYour query requires a custom SQL statement. Here's the database schema to help you formulate your query:\n\n\`\`\`\n${schemaInfo}\n\`\`\`\n\nPlease use the \`gcp-spanner-execute-query\` tool with a specific SQL statement to query this data.\n\nExample:\n\`\`\`sql\nSELECT * FROM [table_name] WHERE [condition] LIMIT 100\n\`\`\``,
               },
             ],
           };
@@ -659,9 +659,9 @@ export function registerSpannerTools(server: McpServer): void {
           },
           dataLabel: "result",
           emptyMessage:
-            "Query executed successfully, but no rows were returned. Use execute-spanner-query for more control.",
+            "Query executed successfully, but no rows were returned. Use gcp-spanner-execute-query for more control.",
           additionalNote:
-            "Need a more complex query? Use the execute-spanner-query tool with an explicit SQL statement.",
+            "Need a more complex query? Use the gcp-spanner-execute-query tool with an explicit SQL statement.",
         });
 
         return {
@@ -680,7 +680,7 @@ export function registerSpannerTools(server: McpServer): void {
           content: [
             {
               type: "text",
-              text: `# Query Error\n\nFailed to execute query: ${error.message}\n\nIf this is a complex query, please use the \`execute-spanner-query\` tool with a specific SQL statement.`,
+              text: `# Query Error\n\nFailed to execute query: ${error.message}\n\nIf this is a complex query, please use the \`gcp-spanner-execute-query\` tool with a specific SQL statement.`,
             },
           ],
         };
