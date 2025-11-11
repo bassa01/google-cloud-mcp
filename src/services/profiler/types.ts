@@ -123,6 +123,38 @@ export function formatProfileSummary(profile: Profile): string {
   return summary;
 }
 
+export interface ProfileSummaryPayload {
+  profileId?: string;
+  name?: string;
+  profileType?: ProfileType;
+  target?: string;
+  projectId?: string;
+  startTime?: string;
+  duration?: string;
+  durationSeconds?: number;
+  labels?: Record<string, string>;
+  deploymentLabels?: Record<string, string>;
+  summaryMarkdown?: string;
+}
+
+export function summarizeProfile(profile: Profile): ProfileSummaryPayload {
+  return {
+    profileId: profile.name?.split("/").pop(),
+    name: profile.name,
+    profileType: profile.profileType,
+    target: profile.deployment?.target,
+    projectId: profile.deployment?.projectId,
+    startTime: profile.startTime,
+    duration: profile.duration,
+    durationSeconds: parseDurationSeconds(profile.duration),
+    labels: hasEntries(profile.labels) ? profile.labels : undefined,
+    deploymentLabels: hasEntries(profile.deployment?.labels)
+      ? profile.deployment?.labels
+      : undefined,
+    summaryMarkdown: formatProfileSummary(profile),
+  };
+}
+
 /**
  * Gets a human-readable description for profile types
  */
@@ -248,6 +280,27 @@ export function analyseProfilePatterns(profiles: Profile[]): string {
   analysis += getPerformanceRecommendations(profiles, typeDistribution);
 
   return analysis;
+}
+
+function parseDurationSeconds(duration?: string): number | undefined {
+  if (!duration) {
+    return undefined;
+  }
+
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+  if (!match) {
+    return undefined;
+  }
+
+  const hours = match[1] ? Number(match[1]) : 0;
+  const minutes = match[2] ? Number(match[2]) : 0;
+  const seconds = match[3] ? Number(match[3]) : 0;
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function hasEntries(record?: Record<string, string>): record is Record<string, string> {
+  return Boolean(record && Object.keys(record).length > 0);
 }
 
 /**

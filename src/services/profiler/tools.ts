@@ -6,13 +6,46 @@ import { z } from "zod";
 import { getProjectId, initGoogleAuth } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import {
-  formatProfileSummary,
   analyseProfilePatterns,
   getProfileTypeDescription,
   Profile,
   ProfileType,
   ListProfilesResponse,
+  summarizeProfile,
 } from "./types.js";
+import {
+  buildStructuredResponse,
+  createTextPreview,
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
+
+const PROFILE_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.PROFILER_PROFILE_PREVIEW_LIMIT,
+  25,
+  { min: 5, max: 100 },
+);
+
+const PROFILER_ANALYSIS_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.PROFILER_ANALYSIS_PREVIEW_LIMIT,
+  4000,
+  { min: 500, max: 8000 },
+);
+
+function previewMarkdown(markdown?: string): {
+  text?: string;
+  truncated: boolean;
+} {
+  if (!markdown) {
+    return { text: undefined, truncated: false };
+  }
+
+  const { text, truncated } = createTextPreview(
+    markdown,
+    PROFILER_ANALYSIS_PREVIEW_LIMIT,
+  );
+  return { text, truncated };
+}
 
 /**
  * Registers Google Cloud Profiler tools with the MCP server
@@ -119,50 +152,49 @@ export function registerProfilerTools(server: McpServer): void {
           );
         }
 
-        if (!profiles || profiles.length === 0) {
-          let filterText = "";
-          if (profileType) filterText += `Profile Type: ${profileType}\n`;
-          if (target) filterText += `Target: ${target}\n`;
+        const normalizedProfiles = profiles || [];
+        const { displayed, omitted } = previewList(
+          normalizedProfiles,
+          PROFILE_PREVIEW_LIMIT,
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Profiles\n\nProject: ${projectId}\n${filterText}${data.nextPageToken ? `Page Token: ${pageToken || "first"}\n` : ""}No profiles found.`,
-              },
-            ],
-          };
-        }
+        const analysisPreview = previewMarkdown(
+          analyseProfilePatterns(normalizedProfiles),
+        );
 
-        // Generate analysis and insights
-        const analysis = analyseProfilePatterns(profiles);
-
-        let content = `# Profiler Analysis\n\nProject: ${projectId}\n`;
-        if (profileType)
-          content += `Profile Type Filter: ${getProfileTypeDescription(profileType)}\n`;
-        if (target) content += `Target Filter: ${target}\n`;
-        if (data.nextPageToken)
-          content += `Next Page Available: Use token "${data.nextPageToken}"\n`;
-        if (data.skippedProfiles)
-          content += `Skipped Profiles: ${data.skippedProfiles}\n`;
-        content += `\n${analysis}\n\n`;
-
-        content += `## Detailed Profile List\n\n`;
-
-        profiles.forEach((profile, index) => {
-          content += `### ${index + 1}. ${formatProfileSummary(profile)}\n`;
+        const text = buildStructuredResponse({
+          title: "Profiler Profiles",
+          metadata: {
+            projectId,
+            pageSize: actualPageSize,
+            profileType,
+            target,
+            nextPageToken: data.nextPageToken,
+          },
+          dataLabel: "result",
+          data: {
+            profiles: displayed.map(summarizeProfile),
+            profilesOmitted: omitted,
+            nextPageToken: data.nextPageToken,
+            skippedProfiles: data.skippedProfiles,
+            analysisMarkdown: analysisPreview.text,
+            analysisTruncated: analysisPreview.truncated,
+          },
+          preview: {
+            total: normalizedProfiles.length,
+            displayed: displayed.length,
+            omitted,
+            limit: PROFILE_PREVIEW_LIMIT,
+            label: "profiles",
+            emptyMessage: "No profiles found for the specified criteria.",
+          },
         });
-
-        // Add pagination info if available
-        if (data.nextPageToken) {
-          content += `\n---\n\n**Pagination:** Use page token "${data.nextPageToken}" to get the next ${actualPageSize} results.\n`;
-        }
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };
@@ -270,52 +302,68 @@ export function registerProfilerTools(server: McpServer): void {
           );
         }
 
-        if (!profiles || profiles.length === 0) {
-          let filterText = "No profiles found for analysis";
-          if (profileType) filterText += ` with profile type: ${profileType}`;
-          if (target) filterText += ` and target: ${target}`;
+        const normalizedProfiles = profiles || [];
+        const { displayed, omitted } = previewList(
+          normalizedProfiles,
+          PROFILE_PREVIEW_LIMIT,
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Profile Performance Analysis\n\nProject: ${projectId}\n\n${filterText}.`,
-              },
-            ],
-          };
-        }
+        const overview = previewMarkdown(
+          analyseProfilePatterns(normalizedProfiles),
+        );
+        const timeDistribution = previewMarkdown(
+          analyseProfileTimeDistribution(normalizedProfiles),
+        );
+        const deploymentAnalysis = previewMarkdown(
+          analyseDeploymentPatterns(normalizedProfiles),
+        );
+        const recommendations = previewMarkdown(
+          getActionableRecommendations(normalizedProfiles, profileType),
+        );
 
-        // Generate comprehensive analysis
-        let content = `# Profile Performance Analysis\n\nProject: ${projectId}\n`;
-        if (profileType)
-          content += `Focus: ${getProfileTypeDescription(profileType)}\n`;
-        if (target) content += `Target: ${target}\n`;
-        content += `Analysed: ${profiles.length} profiles\n\n`;
-
-        // Get detailed analysis
-        const analysis = analyseProfilePatterns(profiles);
-        content += analysis;
-
-        // Add performance insights specific to the analysis
-        content += `\n## Performance Insights\n\n`;
-
-        // Analyse profile collection patterns
-        const timeDistribution = analyseProfileTimeDistribution(profiles);
-        content += timeDistribution;
-
-        // Analyse deployment patterns
-        const deploymentAnalysis = analyseDeploymentPatterns(profiles);
-        content += deploymentAnalysis;
-
-        // Add actionable recommendations
-        content += `\n## Actionable Recommendations\n\n`;
-        content += getActionableRecommendations(profiles, profileType);
+        const text = buildStructuredResponse({
+          title: "Profile Performance Analysis",
+          metadata: {
+            projectId,
+            profileType,
+            target,
+            pageSize: actualPageSize,
+          },
+          dataLabel: "analysis",
+          data: {
+            summary: {
+              analysedProfiles: normalizedProfiles.length,
+              profileTypeDescription: profileType
+                ? getProfileTypeDescription(profileType)
+                : undefined,
+              target,
+            },
+            sampleProfiles: displayed.map(summarizeProfile),
+            sampleProfilesOmitted: omitted,
+            overviewMarkdown: overview.text,
+            overviewTruncated: overview.truncated,
+            timelineMarkdown: timeDistribution.text,
+            timelineTruncated: timeDistribution.truncated,
+            deploymentsMarkdown: deploymentAnalysis.text,
+            deploymentsTruncated: deploymentAnalysis.truncated,
+            recommendationsMarkdown: recommendations.text,
+            recommendationsTruncated: recommendations.truncated,
+          },
+          preview: {
+            total: normalizedProfiles.length,
+            displayed: displayed.length,
+            omitted,
+            limit: PROFILE_PREVIEW_LIMIT,
+            label: "profiles",
+            emptyMessage: "No profiles available for performance analysis.",
+          },
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };
@@ -420,33 +468,52 @@ export function registerProfilerTools(server: McpServer): void {
           );
         }
 
-        if (!profiles || profiles.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Profile Trend Analysis\n\nProject: ${projectId}\n\nNo profiles found for trend analysis.`,
-              },
-            ],
-          };
-        }
+        const normalizedProfiles = profiles || [];
+        const { displayed, omitted } = previewList(
+          normalizedProfiles,
+          PROFILE_PREVIEW_LIMIT,
+        );
+        const trendAnalysis = previewMarkdown(
+          analyseProfileTrends(normalizedProfiles),
+        );
 
-        // Generate trend analysis
-        let content = `# Profile Trend Analysis\n\nProject: ${projectId}\n`;
-        if (profileType)
-          content += `Profile Type: ${getProfileTypeDescription(profileType)}\n`;
-        if (target) content += `Target: ${target}\n`;
-        content += `Analysed: ${profiles.length} profiles\n\n`;
-
-        // Analyse trends over time
-        const trendAnalysis = analyseProfileTrends(profiles);
-        content += trendAnalysis;
+        const text = buildStructuredResponse({
+          title: "Profile Trend Analysis",
+          metadata: {
+            projectId,
+            profileType,
+            target,
+            pageSize: actualPageSize,
+          },
+          dataLabel: "analysis",
+          data: {
+            summary: {
+              analysedProfiles: normalizedProfiles.length,
+              profileTypeDescription: profileType
+                ? getProfileTypeDescription(profileType)
+                : undefined,
+              target,
+            },
+            sampleProfiles: displayed.map(summarizeProfile),
+            sampleProfilesOmitted: omitted,
+            trendMarkdown: trendAnalysis.text,
+            trendMarkdownTruncated: trendAnalysis.truncated,
+          },
+          preview: {
+            total: normalizedProfiles.length,
+            displayed: displayed.length,
+            omitted,
+            limit: PROFILE_PREVIEW_LIMIT,
+            label: "profiles",
+            emptyMessage: "No profiles available for trend analysis.",
+          },
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };

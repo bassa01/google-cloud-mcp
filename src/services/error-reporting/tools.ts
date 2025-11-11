@@ -6,10 +6,66 @@ import { z } from "zod";
 import { getProjectId, initGoogleAuth } from "../../utils/auth.js";
 import { GcpMcpError } from "../../utils/error.js";
 import {
-  formatErrorGroupSummary,
   analyseErrorPatternsAndSuggestRemediation,
   ErrorGroupStats,
+  summarizeErrorGroup,
+  summarizeErrorEvent,
 } from "./types.js";
+import {
+  buildStructuredResponse,
+  createTextPreview,
+  previewList,
+  resolveBoundedNumber,
+} from "../../utils/output.js";
+
+const ERROR_GROUP_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.ERROR_REPORTING_GROUP_PREVIEW_LIMIT,
+  20,
+  { min: 5, max: 50 },
+);
+
+const ERROR_EVENT_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.ERROR_REPORTING_EVENT_PREVIEW_LIMIT,
+  10,
+  { min: 3, max: 50 },
+);
+
+const ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT,
+  4000,
+  { min: 500, max: 8000 },
+);
+
+const ERROR_TREND_TIMESLOT_LIMIT = resolveBoundedNumber(
+  process.env.ERROR_REPORTING_TREND_POINTS_LIMIT,
+  40,
+  { min: 10, max: 200 },
+);
+
+const ERROR_TREND_MESSAGE_PREVIEW_LIMIT = 240;
+
+function previewMarkdown(markdown?: string): {
+  text?: string;
+  truncated: boolean;
+} {
+  if (!markdown) {
+    return { text: undefined, truncated: false };
+  }
+
+  const { text, truncated } = createTextPreview(
+    markdown,
+    ERROR_REPORTING_ANALYSIS_PREVIEW_LIMIT,
+  );
+  return { text, truncated };
+}
+
+const DEFAULT_INVESTIGATION_STEPS = [
+  "Check Cloud Logging for related entries around the error timestamps.",
+  "Review Monitoring dashboards for correlated latency or saturation signals.",
+  "Audit recent deployments or configuration changes that align with the errors.",
+  "Examine user agents, IPs, or request parameters for repeating patterns.",
+  "Inspect distributed traces (if available) to follow the failing request path.",
+];
 
 /**
  * Registers Google Cloud Error Reporting tools with the MCP server
@@ -128,39 +184,56 @@ export function registerErrorReportingTools(server: McpServer): void {
         }
 
         const data = await response.json();
-        const errorGroupStats = data.errorGroupStats || [];
+        const errorGroupStats = (data.errorGroupStats || []) as ErrorGroupStats[];
+        const groupPreviewLimit = Math.min(
+          ERROR_GROUP_PREVIEW_LIMIT,
+          actualPageSize,
+        );
+        const { displayed, omitted } = previewList(
+          errorGroupStats,
+          groupPreviewLimit,
+        );
 
-        if (!errorGroupStats || errorGroupStats.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Error Groups\n\nProject: ${projectId}\nTime Range: ${actualTimeRange}\n${serviceFilter ? `Service Filter: ${serviceFilter}\n` : ""}\nNo error groups found.`,
-              },
-            ],
-          };
-        }
+        const analysisPreview = previewMarkdown(
+          analyseErrorPatternsAndSuggestRemediation(errorGroupStats),
+        );
 
-        // errorGroupStats should already match our ErrorGroupStats interface
-        const errorSummaries: ErrorGroupStats[] = errorGroupStats;
-
-        // Generate analysis and recommendations
-        const analysis =
-          analyseErrorPatternsAndSuggestRemediation(errorSummaries);
-
-        let content = `# Error Groups Analysis\n\nProject: ${projectId}\nTime Range: ${actualTimeRange}\n${serviceFilter ? `Service Filter: ${serviceFilter}\n` : ""}\n\n${analysis}\n\n`;
-
-        content += `## Detailed Error Groups\n\n`;
-
-        errorSummaries.forEach((errorSummary, index) => {
-          content += `### ${index + 1}. ${formatErrorGroupSummary(errorSummary)}\n`;
+        const text = buildStructuredResponse({
+          title: "Error Groups",
+          metadata: {
+            projectId,
+            timeRange: actualTimeRange,
+            serviceFilter,
+            order: actualOrder,
+            pageSize: actualPageSize,
+            nextPageToken: data.nextPageToken,
+          },
+          dataLabel: "result",
+          data: {
+            summary: {
+              totalGroups: errorGroupStats.length,
+              nextPageToken: data.nextPageToken,
+            },
+            groups: displayed.map(summarizeErrorGroup),
+            groupsOmitted: omitted,
+            analysisMarkdown: analysisPreview.text,
+            analysisTruncated: analysisPreview.truncated,
+          },
+          preview: {
+            total: errorGroupStats.length,
+            displayed: displayed.length,
+            omitted,
+            limit: groupPreviewLimit,
+            label: "error groups",
+            emptyMessage: "No error groups found.",
+          },
         });
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };
@@ -296,100 +369,50 @@ export function registerErrorReportingTools(server: McpServer): void {
 
         const data = await response.json();
         const errorEvents = data.errorEvents || [];
+        const eventPreviewLimit = Math.min(
+          ERROR_EVENT_PREVIEW_LIMIT,
+          actualPageSize,
+        );
+        const { displayed: previewedEvents, omitted: eventsOmitted } =
+          previewList(errorEvents, eventPreviewLimit);
 
-        // Start building content with group details
-        let content = `# Error Group Details\n\n`;
-
-        // Add group information
-        content += `**Group ID:** ${groupId}\n`;
-        content += `**Project:** ${projectId}\n`;
-        content += `**Group Name:** ${groupData.name || "Unknown"}\n`;
-        if (groupData.resolutionStatus) {
-          content += `**Resolution Status:** ${groupData.resolutionStatus}\n`;
-        }
-        if (groupData.trackingIssues && groupData.trackingIssues.length > 0) {
-          content += `**Tracking Issues:** ${groupData.trackingIssues.length} linked\n`;
-        }
-        content += `**Time Range:** ${actualTimeRange}\n\n`;
-
-        if (!errorEvents || errorEvents.length === 0) {
-          content += `## Recent Error Events\n\nNo error events found for this group in the specified time range.`;
-          return {
-            content: [
-              {
-                type: "text",
-                text: content,
-              },
-            ],
-          };
-        }
-
-        content += `## Recent Error Events (${errorEvents.length})\n\n`;
-
-        errorEvents.forEach((event: any, index: number) => {
-          content += `### Event ${index + 1}\n\n`;
-          content += `**Time:** ${new Date(event.eventTime).toLocaleString()}\n`;
-          content += `**Service:** ${event.serviceContext?.service || "Unknown"}`;
-          if (event.serviceContext?.version) {
-            content += ` (v${event.serviceContext.version})`;
-          }
-          content += `\n\n`;
-          content += `**Message:** ${event.message}\n\n`;
-
-          if (event.context?.httpRequest) {
-            const req = event.context.httpRequest;
-            content += `**HTTP Request:**\n`;
-            if (req.method && req.url) {
-              content += `- ${req.method} ${req.url}\n`;
-            }
-            if (req.responseStatusCode) {
-              content += `- Status: ${req.responseStatusCode}\n`;
-            }
-            if (req.userAgent) {
-              content += `- User Agent: ${req.userAgent}\n`;
-            }
-            if (req.remoteIp) {
-              content += `- Remote IP: ${req.remoteIp}\n`;
-            }
-            content += `\n`;
-          }
-
-          if (event.context?.reportLocation) {
-            const loc = event.context.reportLocation;
-            content += `**Source Location:**\n`;
-            if (loc.filePath) {
-              content += `- File: ${loc.filePath}`;
-              if (loc.lineNumber) {
-                content += `:${loc.lineNumber}`;
-              }
-              content += `\n`;
-            }
-            if (loc.functionName) {
-              content += `- Function: ${loc.functionName}\n`;
-            }
-            content += `\n`;
-          }
-
-          if (event.context?.user) {
-            content += `**User:** ${event.context.user}\n\n`;
-          }
-
-          content += `---\n\n`;
+        const text = buildStructuredResponse({
+          title: "Error Group Details",
+          metadata: {
+            projectId,
+            groupId,
+            timeRange: actualTimeRange,
+            pageSize: actualPageSize,
+            nextPageToken: data.nextPageToken,
+          },
+          dataLabel: "details",
+          data: {
+            group: {
+              name: groupData.name,
+              resolutionStatus: groupData.resolutionStatus,
+              trackingIssues: groupData.trackingIssues,
+            },
+            events: previewedEvents.map(summarizeErrorEvent),
+            eventsOmitted,
+            nextPageToken: data.nextPageToken,
+            investigationSteps: DEFAULT_INVESTIGATION_STEPS,
+          },
+          preview: {
+            total: errorEvents.length,
+            displayed: previewedEvents.length,
+            omitted: eventsOmitted,
+            limit: eventPreviewLimit,
+            label: "events",
+            emptyMessage:
+              "No error events found for this group in the specified time range.",
+          },
         });
-
-        // Add investigation suggestions
-        content += `## Investigation Steps\n\n`;
-        content += `1. **Check Logs:** Use Cloud Logging to find related log entries around the error times\n`;
-        content += `2. **Monitor Metrics:** Review monitoring dashboards for correlated performance metrics\n`;
-        content += `3. **Recent Changes:** Check recent deployments and configuration changes\n`;
-        content += `4. **Pattern Analysis:** Look for patterns in user agents, IP addresses, or request parameters\n`;
-        content += `5. **Trace Analysis:** If available, examine distributed traces for request flow\n\n`;
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };
@@ -523,128 +546,126 @@ export function registerErrorReportingTools(server: McpServer): void {
         }
 
         const data = await response.json();
-        const errorGroupStats = data.errorGroupStats || [];
+        const errorGroupStats = (data.errorGroupStats || []) as ErrorGroupStats[];
 
-        if (!errorGroupStats || errorGroupStats.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `# Error Trends Analysis\n\nProject: ${projectId}\nTime Range: ${actualTimeRange}\n${serviceFilter ? `Service Filter: ${serviceFilter}\n` : ""}\nResolution: ${actualResolution}\n\nNo error data found for trend analysis.`,
-              },
-            ],
-          };
-        }
+        const groupPreview = previewList(
+          errorGroupStats,
+          ERROR_GROUP_PREVIEW_LIMIT,
+        );
 
-        let content = `# Error Trends Analysis\n\nProject: ${projectId}\nTime Range: ${actualTimeRange}\n${serviceFilter ? `Service Filter: ${serviceFilter}\n` : ""}\nResolution: ${actualResolution}\n\n`;
-
-        // Aggregate trends across all error groups
         const timeSlots = new Map<string, number>();
         let totalErrors = 0;
-        const totalGroups = errorGroupStats.length;
 
-        errorGroupStats.forEach((stat: any) => {
-          const count = parseInt(stat.count || "0");
+        errorGroupStats.forEach((stat) => {
+          const count = parseCount(stat.count);
           totalErrors += count;
 
-          if (stat.timedCounts) {
-            stat.timedCounts.forEach((timedCount: any) => {
-              const timeKey = timedCount.startTime;
-              const currentCount = timeSlots.get(timeKey) || 0;
-              timeSlots.set(
-                timeKey,
-                currentCount + parseInt(timedCount.count || "0"),
-              );
-            });
-          }
+          (stat.timedCounts || []).forEach((timedCount) => {
+            if (!timedCount.startTime) {
+              return;
+            }
+            const slotCount = parseCount(timedCount.count);
+            timeSlots.set(
+              timedCount.startTime,
+              (timeSlots.get(timedCount.startTime) || 0) + slotCount,
+            );
+          });
         });
 
-        content += `## Summary\n\n`;
-        content += `- **Total Error Groups:** ${totalGroups}\n`;
-        content += `- **Total Errors:** ${totalErrors.toLocaleString()}\n`;
-        content += `- **Average per Group:** ${Math.round(totalErrors / totalGroups).toLocaleString()}\n\n`;
-
-        // Sort time slots chronologically
         const sortedTimeSlots = Array.from(timeSlots.entries()).sort(
           ([a], [b]) => new Date(a).getTime() - new Date(b).getTime(),
         );
 
-        // Initialize variables for recommendations
-        let averageErrors = 0;
-        let spikes: Array<[string, number]> = [];
-
-        if (sortedTimeSlots.length > 0) {
-          content += `## Error Count Over Time\n\n`;
-          content += `| Time Period | Error Count |\n`;
-          content += `|-------------|-------------|\n`;
-
-          sortedTimeSlots.forEach(([time, count]) => {
-            const timeStr = new Date(time).toLocaleString();
-            content += `| ${timeStr} | ${count.toLocaleString()} |\n`;
-          });
-
-          content += `\n`;
-
-          // Identify spikes (errors significantly above average)
-          averageErrors = totalErrors / sortedTimeSlots.length;
-          spikes = sortedTimeSlots.filter(
-            ([, count]) => count > averageErrors * 2,
-          );
-
-          if (spikes.length > 0) {
-            content += `## Error Spikes Detected\n\n`;
-            content += `*Time periods with error counts > 2x average (${Math.round(averageErrors)})*\n\n`;
-            spikes.forEach(([time, count]) => {
-              const timeStr = new Date(time).toLocaleString();
-              const multiplier = Math.round((count / averageErrors) * 10) / 10;
-              content += `- **${timeStr}:** ${count.toLocaleString()} errors (${multiplier}x average)\n`;
-            });
-            content += `\n`;
-          }
-        }
-
-        // Top error groups contributing to trends
-        content += `## Top Contributing Error Groups\n\n`;
-        const topErrors = errorGroupStats.slice(0, 5).map((stat: any) => ({
-          service: stat.representative?.serviceContext?.service || "Unknown",
-          message: stat.representative?.message || "No message",
-          count: parseInt(stat.count || "0"),
-          groupId: stat.group?.groupId || "unknown",
+        const timelinePreview = previewList(
+          sortedTimeSlots,
+          ERROR_TREND_TIMESLOT_LIMIT,
+        );
+        const timeline = timelinePreview.displayed.map(([time, count]) => ({
+          time,
+          count,
         }));
 
-        topErrors.forEach(
-          (
-            error: {
-              service: string;
-              message: string;
-              count: number;
-              groupId: string;
-            },
-            index: number,
-          ) => {
-            const percentage = Math.round((error.count / totalErrors) * 100);
-            content += `${index + 1}. **${error.service}** (${percentage}% of total)\n`;
-            content += `   - ${error.message}\n`;
-            content += `   - ${error.count.toLocaleString()} occurrences\n`;
-            content += `   - Group ID: ${error.groupId}\n\n`;
-          },
+        const averageErrors =
+          sortedTimeSlots.length > 0
+            ? totalErrors / sortedTimeSlots.length
+            : 0;
+
+        const spikes = averageErrors
+          ? sortedTimeSlots
+              .filter(([, count]) => count > averageErrors * 2)
+              .map(([time, count]) => ({
+                time,
+                count,
+                multiple: Number((count / averageErrors).toFixed(1)),
+              }))
+          : [];
+
+        const topErrors = errorGroupStats.slice(0, 5).map((stat) => {
+          const { text } = createTextPreview(
+            stat.representative?.message || "No message",
+            ERROR_TREND_MESSAGE_PREVIEW_LIMIT,
+          );
+          const count = parseCount(stat.count);
+          return {
+            groupId: stat.group?.groupId ?? stat.group?.name,
+            service: stat.representative?.serviceContext?.service || "Unknown",
+            message: text,
+            count,
+            percentage:
+              totalErrors > 0
+                ? Math.round((count / totalErrors) * 100)
+                : undefined,
+          };
+        });
+
+        const recommendations = buildTrendRecommendations(
+          spikes.length,
+          topErrors.length,
+          averageErrors,
+          actualResolution,
         );
 
-        // Recommendations based on trends
-        content += `## Recommendations\n\n`;
-        if (spikes.length > 0) {
-          content += `- **Investigate Error Spikes:** Focus on the ${spikes.length} time periods with significantly elevated error rates\n`;
-          content += `- **Correlate with Deployments:** Check if error spikes align with recent deployments or configuration changes\n`;
-        }
-        content += `- **Monitor Top Contributors:** The top ${Math.min(3, topErrors.length)} error groups account for the majority of errors\n`;
-        content += `- **Set Up Alerting:** Configure alerts for error rates exceeding ${Math.round(averageErrors * 1.5)} errors per ${resolution}\n`;
-        content += `- **Review Patterns:** Look for recurring patterns in error timing to identify systemic issues\n`;
+        const text = buildStructuredResponse({
+          title: "Error Trends Analysis",
+          metadata: {
+            projectId,
+            timeRange: actualTimeRange,
+            serviceFilter,
+            resolution: actualResolution,
+          },
+          dataLabel: "trends",
+          data: {
+            summary: {
+              totalGroups: errorGroupStats.length,
+              totalErrors,
+              averagePerGroup:
+                errorGroupStats.length > 0
+                  ? Math.round(totalErrors / errorGroupStats.length)
+                  : 0,
+            },
+            groups: groupPreview.displayed.map(summarizeErrorGroup),
+            groupsOmitted: groupPreview.omitted,
+            timeline,
+            timelineOmitted: timelinePreview.omitted,
+            spikes: spikes.slice(0, 5),
+            topContributors: topErrors,
+            recommendations,
+          },
+          preview: {
+            total: errorGroupStats.length,
+            displayed: groupPreview.displayed.length,
+            omitted: groupPreview.omitted,
+            limit: ERROR_GROUP_PREVIEW_LIMIT,
+            label: "error groups",
+            emptyMessage: "No error data found for trend analysis.",
+          },
+        });
 
         return {
           content: [
             {
               type: "text",
-              text: content,
+              text,
             },
           ],
         };
@@ -659,4 +680,52 @@ export function registerErrorReportingTools(server: McpServer): void {
       }
     },
   );
+}
+
+function parseCount(value?: string | number | null): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function buildTrendRecommendations(
+  spikeCount: number,
+  contributorCount: number,
+  averageErrors: number,
+  resolution?: string,
+): string[] {
+  const recs: string[] = [];
+
+  if (spikeCount > 0) {
+    recs.push(
+      `Investigate the ${spikeCount} time windows where error volumes exceeded 2x the rolling average (${Math.round(averageErrors)}).`,
+    );
+    recs.push(
+      "Correlate spikes with recent deployments or configuration changes to spot regressions.",
+    );
+  }
+
+  if (contributorCount > 0) {
+    recs.push(
+      `Monitor the top ${Math.min(3, contributorCount)} contributing error groups—they drive the majority of volume.`,
+    );
+  }
+
+  if (averageErrors > 0) {
+    const alertThreshold = Math.round(averageErrors * 1.5);
+    recs.push(
+      `Set alerts for error rates above ${alertThreshold} per ${resolution ?? "sample window"} to catch emerging spikes early.`,
+    );
+  }
+
+  recs.push(
+    "Review recurring patterns (user agent, region, request path) to isolate chronic issues.",
+  );
+
+  return recs;
 }

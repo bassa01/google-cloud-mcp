@@ -12,6 +12,17 @@ import {
 import { parseRelativeTime } from "../../utils/time.js";
 import { buildLogResponseText } from "./output.js";
 
+function toLogEntryList(entries: unknown[] | undefined): LogEntryLike[] {
+  if (!entries) {
+    return [];
+  }
+
+  return entries.map((entry) => {
+    const maybeJson = (entry as { toJSON?: () => unknown })?.toJSON?.();
+    return (maybeJson ?? entry) as LogEntryLike;
+  });
+}
+
 /**
  * Registers Google Cloud Logging tools with the MCP server
  *
@@ -49,7 +60,9 @@ export function registerLoggingTools(server: McpServer): void {
           filter,
         });
 
-        if (!entries || entries.length === 0) {
+        const normalizedEntries = toLogEntryList(entries);
+
+        if (normalizedEntries.length === 0) {
           return {
             content: [
               {
@@ -62,17 +75,17 @@ export function registerLoggingTools(server: McpServer): void {
 
         const allowFullPayload = canViewFullLogPayloads();
         const redactionNotice = buildRedactionNotice(allowFullPayload);
-        const responseText = buildLogResponseText({
-          title: "Log Query Results",
-          metadata: {
-            projectId,
-            filter,
-            limit,
-          },
-          entries: (entries as LogEntryLike[]) ?? [],
-          allowFullPayload,
-          footnote: redactionNotice,
-        });
+          const responseText = buildLogResponseText({
+            title: "Log Query Results",
+            metadata: {
+              projectId,
+              filter,
+              limit,
+            },
+            entries: normalizedEntries,
+            allowFullPayload,
+            footnote: redactionNotice,
+          });
 
         return {
           content: [
@@ -149,7 +162,9 @@ Please check your filter syntax and try again. For filter syntax help, see: http
           filter: filterStr,
         });
 
-        if (!entries || entries.length === 0) {
+        const normalizedEntries = toLogEntryList(entries);
+
+        if (normalizedEntries.length === 0) {
           return {
             content: [
               {
@@ -170,7 +185,7 @@ Please check your filter syntax and try again. For filter syntax help, see: http
             filter: filter || "none",
             limit,
           },
-          entries: (entries as LogEntryLike[]) ?? [],
+          entries: normalizedEntries,
           allowFullPayload,
           footnote: redactionNotice,
         });
@@ -341,7 +356,9 @@ Please check your time range format and try again. Valid formats include:
           orderBy: "timestamp desc",
         });
 
-        if (!entries || entries.length === 0) {
+        const normalizedEntries = toLogEntryList(entries);
+
+        if (normalizedEntries.length === 0) {
           return {
             content: [
               {
@@ -364,7 +381,7 @@ Please check your time range format and try again. Valid formats include:
             resource: resource || "all",
             limit,
           },
-          entries: (entries as LogEntryLike[]) ?? [],
+          entries: normalizedEntries,
           allowFullPayload,
           footnote: redactionNotice,
         });

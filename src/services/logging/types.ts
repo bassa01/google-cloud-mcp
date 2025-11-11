@@ -12,13 +12,13 @@ import {
  * Interface for Google Cloud Log Entry
  */
 export interface LogEntry {
-  timestamp: string;
-  severity: string;
-  resource: {
-    type: string;
-    labels: Record<string, string>;
+  timestamp?: string;
+  severity?: string;
+  resource?: {
+    type?: string;
+    labels?: Record<string, string>;
   };
-  logName: string;
+  logName?: string;
   textPayload?: string;
   jsonPayload?: Record<string, unknown>;
   protoPayload?: Record<string, unknown>;
