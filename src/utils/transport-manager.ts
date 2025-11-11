@@ -264,12 +264,49 @@ export class TransportManager {
 
     // MCP Requirement: Validate Accept headers for SSE support
     const acceptHeader = req.headers.accept;
-    const supportsJson = acceptHeader
-      ? acceptHeader.includes("application/json")
-      : true;
-    const supportsEventStream = acceptHeader
-      ? acceptHeader.includes("text/event-stream")
-      : false;
+    const parsedAcceptValues = acceptHeader
+      ? acceptHeader
+          .split(",")
+          .map((value) => value.split(";")[0].trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
+    const acceptsType = (mimeType: string): boolean => {
+      if (!acceptHeader) {
+        return mimeType === "application/json";
+      }
+
+      const [targetType, targetSubtype] = mimeType.toLowerCase().split("/");
+
+      return parsedAcceptValues.some((value) => {
+        if (value === "*/*") {
+          return true;
+        }
+
+        const [type, subtype] = value.split("/");
+
+        if (!type || !subtype) {
+          return false;
+        }
+
+        if (type === "*" && subtype === "*") {
+          return true;
+        }
+
+        if (type === targetType && (subtype === targetSubtype || subtype === "*")) {
+          return true;
+        }
+
+        if (type === "*" && targetSubtype === subtype) {
+          return true;
+        }
+
+        return false;
+      });
+    };
+
+    const supportsJson = acceptHeader ? acceptsType("application/json") : true;
+    const supportsEventStream = acceptHeader ? acceptsType("text/event-stream") : false;
 
     if (acceptHeader && !supportsJson && !supportsEventStream) {
       this.securityValidator.logSecurityEvent(
