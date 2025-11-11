@@ -210,7 +210,7 @@ export function registerSpannerTools(server: McpServer): void {
 
         const spanner = await getSpannerClient();
         logger.debug(
-          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-execute-query`,
+          `Using Spanner client with project ID: ${spanner.projectId} for gcp-spanner-list-tables`,
         );
         const instance = spanner.instance(config.instanceId);
         const database = instance.database(config.databaseId);
