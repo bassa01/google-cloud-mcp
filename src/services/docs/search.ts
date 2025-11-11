@@ -286,7 +286,13 @@ export function rankDocsResults(
     };
   });
 
-  return scored
+  const filtered = scored.filter(({ score }) => score > 0);
+
+  if (filtered.length === 0) {
+    return [];
+  }
+
+  return filtered
     .sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title))
     .map((item, index) => ({
       title: item.entry.title,
