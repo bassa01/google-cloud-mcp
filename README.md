@@ -24,6 +24,7 @@ Supported Google Cloud services:
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
+- [x] [Documentation Search](https://cloud.google.com/docs)
 
 ### Selecting active services
 
@@ -166,6 +167,25 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 - "List open P1 cases for projects/my-prod-123"
 - "Add an update to projects/foo/cases/1234567890123456789 summarizing the mitigation"
 - "Search classifications for 'service account access'"
+
+### Documentation Search
+
+Find the closest official Google Cloud documentation for natural-language prompts without juggling API credentials. The docs tool proxy-scrapes the public site search endpoint, parses the rendered results, and re-ranks them locally with token overlap scoring so intent-heavy queries surface ahead of simple string matches.
+
+**Tools:** `google-cloud-docs-search`
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
+| `GOOGLE_CLOUD_DOCS_LANGUAGE` | `en` | Sets the `hl` parameter so you can bias search toward Japanese (`ja`), German (`de`), etc. |
+| `GOOGLE_CLOUD_DOCS_PROXY` | `https://r.jina.ai` | Override if you operate your own Readability proxy or must route traffic internally. |
+| `GOOGLE_CLOUD_DOCS_TIMEOUT_MS` | `12000` | Abort doc searches that take too long. |
+| `GOOGLE_CLOUD_DOCS_MAX_FETCH` | `30` | Upper bound on candidates fetched from the rendered results before local re-ranking. |
+
+*Example prompts:*
+- "Find the best doc that teaches how to trigger Cloud Run from Cloud Storage events"
+- "What's the official guidance for securing Memorystore for Redis?"
+- "日本語ドキュメントで Cloud Logging の料金を確認して"
 
 ## Deep Wiki / 詳細ドキュメント
 
