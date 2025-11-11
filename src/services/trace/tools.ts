@@ -30,7 +30,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
         .optional()
         .describe("Optional Google Cloud project ID"),
     },
-    async ({ traceId, projectId }, context) => {
+    async ({ traceId, projectId }, _context) => {
       try {
         // Use provided project ID or get the default one from state manager first
         const actualProjectId =
@@ -293,7 +293,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
           'Start time in RFC3339 format (e.g., "2023-01-01T00:00:00Z") or relative time (e.g., "1h", "2d")',
         ),
     },
-    async ({ projectId, filter, limit, startTime }, context) => {
+    async ({ projectId, filter, limit, startTime }, _context) => {
       try {
         // Use provided project ID or get the default one from state manager first
         const actualProjectId =
@@ -509,7 +509,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
       filter: z
         .string()
         .describe(
-          'Filter for logs (e.g., "severity>=ERROR AND timestamp>\"-1d\"")',
+          'Filter for logs (e.g., severity>=ERROR AND timestamp>"-1d")',
         ),
       limit: z
         .number()
@@ -518,7 +518,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
         .default(10)
         .describe("Maximum number of logs to check"),
     },
-    async ({ projectId, filter, limit }, context) => {
+    async ({ projectId, filter, limit }, _context) => {
       try {
         // Use provided project ID or get the default one from state manager first
         const actualProjectId =
@@ -647,7 +647,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
                   } else {
                     timestampStr = String(metadata.timestamp);
                   }
-                } catch (e) {
+                } catch {
                   timestampStr = "Invalid timestamp";
                 }
               }
@@ -672,7 +672,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
             } else if (metadata.jsonPayload) {
               try {
                 messageStr = JSON.stringify(metadata.jsonPayload);
-              } catch (e) {
+              } catch {
                 messageStr = "Invalid JSON payload";
               }
             }
@@ -718,7 +718,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
             if (timestamp !== "Unknown" && timestamp !== "Invalid timestamp") {
               timestamp = new Date(trace.timestamp).toISOString();
             }
-          } catch (e) {
+          } catch {
             // Keep the original timestamp if conversion fails
           }
           const severity = trace.severity;
@@ -767,7 +767,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
         .optional()
         .describe("Optional Google Cloud project ID"),
     },
-    async ({ query, projectId }, context) => {
+    async ({ query, projectId }, _context) => {
       try {
         // Use provided project ID or get the default one from state manager first
         const actualProjectId =
@@ -999,7 +999,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
                     } else {
                       timestampStr = String(metadata.timestamp);
                     }
-                  } catch (e) {
+                  } catch {
                     timestampStr = "Invalid timestamp";
                   }
                 }
@@ -1024,7 +1024,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
               } else if (metadata.jsonPayload) {
                 try {
                   messageStr = JSON.stringify(metadata.jsonPayload);
-                } catch (e) {
+                } catch {
                   messageStr = "Invalid JSON payload";
                 }
               }
@@ -1074,7 +1074,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
               ) {
                 timestamp = new Date(trace.timestamp).toISOString();
               }
-            } catch (e) {
+            } catch {
               // Keep the original timestamp if conversion fails
             }
             const severity = trace.severity;

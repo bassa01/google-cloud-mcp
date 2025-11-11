@@ -3,7 +3,6 @@
  */
 import * as traceAgent from "@google-cloud/trace-agent";
 import { PluginTypes } from "@google-cloud/trace-agent";
-import { getProjectId } from "../../utils/auth.js";
 import { stateManager } from "../../utils/state-manager.js";
 import { GcpMcpError } from "../../utils/error.js";
 import { logger } from "../../utils/logger.js";
@@ -647,7 +646,7 @@ export function buildTraceHierarchy(
             if (JSON.stringify(value).length > 100) {
               attributes[`raw.${key}`] += "...";
             }
-          } catch (e) {
+          } catch {
             // If we can't stringify, just note that it exists
             attributes[`raw.${key}`] = "[Complex Object]";
           }

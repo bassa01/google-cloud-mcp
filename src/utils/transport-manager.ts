@@ -261,8 +261,55 @@ export class TransportManager {
 
     // MCP Requirement: Validate Accept headers for SSE support
     const acceptHeader = req.headers.accept;
-    const supportsJson = acceptHeader?.includes("application/json");
-    const supportsEventStream = acceptHeader?.includes("text/event-stream");
+    const supportsJson = acceptHeader
+      ? acceptHeader.includes("application/json")
+      : true;
+    const supportsEventStream = acceptHeader
+      ? acceptHeader.includes("text/event-stream")
+      : false;
+
+    const rateLimitStatus = this.securityValidator.checkRateLimit(clientId);
+    if (!rateLimitStatus.allowed) {
+      if (rateLimitStatus.retryAfter) {
+        res.setHeader("Retry-After", rateLimitStatus.retryAfter.toString());
+      }
+      res.writeHead(429, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: null,
+          error: {
+            code: -32000,
+            message: "Too Many Requests",
+          },
+        }),
+      );
+      req.destroy();
+      return;
+    }
+
+    if (acceptHeader && !supportsJson && !supportsEventStream) {
+      this.securityValidator.logSecurityEvent(
+        "unsupported_accept",
+        {
+          clientIp: req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+          accept: acceptHeader,
+          clientId,
+        },
+        "medium",
+      );
+      res.writeHead(406, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32600, message: "Unsupported Accept header" },
+        }),
+      );
+      req.destroy();
+      return;
+    }
 
     req.on("data", (chunk) => {
       body += chunk.toString("utf8"); // Ensure UTF-8 encoding per MCP spec
@@ -280,6 +327,7 @@ export class TransportManager {
             {
               clientIp: req.connection.remoteAddress,
               userAgent: req.headers["user-agent"],
+              clientId,
               message:
                 typeof message === "object"
                   ? JSON.stringify(message).substring(0, 200)
@@ -309,6 +357,7 @@ export class TransportManager {
             {
               clientIp: req.connection.remoteAddress,
               userAgent: req.headers["user-agent"],
+              clientId,
               method: this.securityValidator.sanitiseInput(message.method),
             },
             "high",
@@ -341,6 +390,9 @@ export class TransportManager {
           res.end(JSON.stringify({ acknowledged: true }));
         }
       } catch (error) {
+        this.logger.warn(
+          `Failed to process JSON-RPC payload: ${error instanceof Error ? error.message : String(error)}`,
+        );
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({

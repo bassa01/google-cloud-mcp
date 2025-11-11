@@ -11,7 +11,6 @@ import {
   analyseProfilePatterns,
   formatProfileSummary,
   getProfileTypeDescription,
-  Profile,
   ProfileType,
   ListProfilesResponse,
 } from "./types.js";
@@ -181,14 +180,14 @@ export function registerProfilerResources(server: McpServer): void {
             contents: [
               {
                 uri: uri.href,
-                text: `# CPU Profiles\n\nProject: ${projectId}\n\nNo CPU profiles found. Ensure CPU profiling is enabled for your applications.`,
+                text: `# CPU Profiles\n\nProject: ${actualProjectId}\n\nNo CPU profiles found. Ensure CPU profiling is enabled for your applications.`,
                 mimeType: "text/markdown",
               },
             ],
           };
         }
 
-        let content = `# CPU Performance Profiles\n\nProject: ${projectId}\nCPU Profiles: ${cpuProfiles.length} (of ${allProfiles.length} total)\n\n`;
+        let content = `# CPU Performance Profiles\n\nProject: ${actualProjectId}\nCPU Profiles: ${cpuProfiles.length} (of ${allProfiles.length} total)\n\n`;
 
         // CPU-specific analysis
         content += `## CPU Performance Analysis\n\n`;
@@ -263,7 +262,7 @@ export function registerProfilerResources(server: McpServer): void {
           pageSize: "100",
         });
 
-        const apiUrl = `https://cloudprofiler.googleapis.com/v2/projects/${projectId}/profiles?${params}`;
+        const apiUrl = `https://cloudprofiler.googleapis.com/v2/projects/${actualProjectId}/profiles?${params}`;
 
         const response = await fetch(apiUrl, {
           method: "GET",
@@ -298,14 +297,14 @@ export function registerProfilerResources(server: McpServer): void {
             contents: [
               {
                 uri: uri.href,
-                text: `# Memory Profiles\n\nProject: ${projectId}\n\nNo memory profiles found. Ensure heap profiling is enabled for your applications.`,
+                text: `# Memory Profiles\n\nProject: ${actualProjectId}\n\nNo memory profiles found. Ensure heap profiling is enabled for your applications.`,
                 mimeType: "text/markdown",
               },
             ],
           };
         }
 
-        let content = `# Memory Performance Profiles\n\nProject: ${projectId}\nMemory Profiles: ${memoryProfiles.length} (of ${allProfiles.length} total)\n\n`;
+        let content = `# Memory Performance Profiles\n\nProject: ${actualProjectId}\nMemory Profiles: ${memoryProfiles.length} (of ${allProfiles.length} total)\n\n`;
 
         // Memory-specific analysis
         content += `## Memory Profiling Analysis\n\n`;
@@ -401,7 +400,7 @@ export function registerProfilerResources(server: McpServer): void {
           pageSize: "200", // Get more data for better recommendations
         });
 
-        const apiUrl = `https://cloudprofiler.googleapis.com/v2/projects/${projectId}/profiles?${params}`;
+        const apiUrl = `https://cloudprofiler.googleapis.com/v2/projects/${actualProjectId}/profiles?${params}`;
 
         const response = await fetch(apiUrl, {
           method: "GET",
@@ -428,14 +427,14 @@ export function registerProfilerResources(server: McpServer): void {
             contents: [
               {
                 uri: uri.href,
-                text: `# Performance Recommendations\n\nProject: ${projectId}\n\nNo profiles available to generate recommendations. Enable Cloud Profiler for your applications to get performance insights.`,
+                text: `# Performance Recommendations\n\nProject: ${actualProjectId}\n\nNo profiles available to generate recommendations. Enable Cloud Profiler for your applications to get performance insights.`,
                 mimeType: "text/markdown",
               },
             ],
           };
         }
 
-        let content = `# Performance Recommendations\n\nProject: ${projectId}\nBased on ${profiles.length} profiles\n\n`;
+        let content = `# Performance Recommendations\n\nProject: ${actualProjectId}\nBased on ${profiles.length} profiles\n\n`;
 
         // Generate comprehensive analysis
         const analysis = analyseProfilePatterns(profiles);

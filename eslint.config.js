@@ -30,6 +30,7 @@ export default [
       '@typescript-eslint': typescript,
     },
     rules: {
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off', // Allow console for MCP server logging

@@ -23,7 +23,7 @@ export function registerTraceResources(server: McpServer): void {
     new ResourceTemplate("gcp-trace://{projectId}/traces/{traceId}", {
       list: undefined,
     }),
-    async (uri, { projectId, traceId }, context) => {
+    async (uri, { projectId, traceId }, _context) => {
       try {
         // Use provided project ID or get the default one
         const actualProjectId = projectId || (await getProjectId());
@@ -118,7 +118,7 @@ export function registerTraceResources(server: McpServer): void {
     new ResourceTemplate("gcp-trace://{projectId}/traces/{traceId}/logs", {
       list: undefined,
     }),
-    async (uri, { projectId, traceId }, context) => {
+    async (uri, { projectId, traceId }, _context) => {
       try {
         // Use provided project ID or get the default one
         const actualProjectId = projectId || (await getProjectId());
@@ -187,7 +187,7 @@ Filter used: ${traceFilter}`,
               if (!isNaN(date.getTime())) {
                 timestamp = date.toISOString();
               }
-            } catch (e) {
+            } catch {
               // Keep default timestamp if parsing fails
             }
           }
@@ -265,7 +265,7 @@ Filter used: ${traceFilter}`,
     new ResourceTemplate("gcp-trace://{projectId}/recent-failed", {
       list: undefined,
     }),
-    async (uri, { projectId }, context) => {
+    async (uri, { projectId }, _context) => {
       try {
         // Use provided project ID or get the default one
         const actualProjectId = projectId || (await getProjectId());
