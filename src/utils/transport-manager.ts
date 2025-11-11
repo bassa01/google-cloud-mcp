@@ -150,7 +150,10 @@ export class TransportManager {
       }
 
       // Security: Rate limiting check
-      const rateLimitCheck = this.securityValidator.checkRateLimit(clientId);
+      const rateLimitCheck = this.securityValidator.checkRateLimit(
+        clientId,
+        `${req.method ?? "UNKNOWN"}:${req.url ?? "/"}`,
+      );
       if (!rateLimitCheck.allowed) {
         this.securityValidator.logSecurityEvent(
           "rate_limit_exceeded",
@@ -267,26 +270,6 @@ export class TransportManager {
     const supportsEventStream = acceptHeader
       ? acceptHeader.includes("text/event-stream")
       : false;
-
-    const rateLimitStatus = this.securityValidator.checkRateLimit(clientId);
-    if (!rateLimitStatus.allowed) {
-      if (rateLimitStatus.retryAfter) {
-        res.setHeader("Retry-After", rateLimitStatus.retryAfter.toString());
-      }
-      res.writeHead(429, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32000,
-            message: "Too Many Requests",
-          },
-        }),
-      );
-      req.destroy();
-      return;
-    }
 
     if (acceptHeader && !supportsJson && !supportsEventStream) {
       this.securityValidator.logSecurityEvent(

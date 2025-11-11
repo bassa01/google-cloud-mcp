@@ -12,9 +12,16 @@ const CONTROL_CHAR_PATTERN = /\p{Cc}/gu;
 /**
  * Security validator implementation for MCP compliance
  */
+type RateLimitEntry = {
+  windowStart: number;
+  count: number;
+  cleanupTimer: ReturnType<typeof setTimeout>;
+};
+
 export class McpSecurityValidator implements SecurityValidator {
   private allowedOrigins: string[];
-  private rateLimitState = new Map<string, { windowStart: number; count: number }>();
+  // TODO: Allow injecting a persistent rate limit store (e.g., Redis) for distributed deployments.
+  private rateLimitState = new Map<string, RateLimitEntry>();
 
   constructor(
     allowedOrigins: string[] = ["http://localhost", "https://localhost"],
@@ -150,23 +157,34 @@ export class McpSecurityValidator implements SecurityValidator {
   /**
    * Rate limiting check (simple implementation)
    */
-  checkRateLimit(clientId: string): { allowed: boolean; retryAfter?: number } {
+  checkRateLimit(
+    clientId: string,
+    endpoint: string = "global",
+  ): { allowed: boolean; retryAfter?: number } {
     const now = Date.now();
     const windowMs = 60_000; // 1 minute window
     const maxRequests = 100; // 100 requests per minute
 
-    const state = this.rateLimitState.get(clientId) ?? {
-      windowStart: now,
-      count: 0,
-    };
+    const rateLimitKey = `${clientId}:${endpoint}`;
+    let state = this.rateLimitState.get(rateLimitKey);
+
+    if (!state) {
+      state = {
+        windowStart: now,
+        count: 0,
+        cleanupTimer: this.scheduleRateLimitCleanup(rateLimitKey, windowMs),
+      };
+    }
 
     if (now - state.windowStart >= windowMs) {
       state.windowStart = now;
       state.count = 0;
+      clearTimeout(state.cleanupTimer);
+      state.cleanupTimer = this.scheduleRateLimitCleanup(rateLimitKey, windowMs);
     }
 
     state.count += 1;
-    this.rateLimitState.set(clientId, state);
+    this.rateLimitState.set(rateLimitKey, state);
 
     if (state.count > maxRequests) {
       const retryAfterSeconds = Math.ceil(
@@ -176,6 +194,21 @@ export class McpSecurityValidator implements SecurityValidator {
     }
 
     return { allowed: true };
+  }
+
+  private scheduleRateLimitCleanup(
+    key: string,
+    windowMs: number,
+  ): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.rateLimitState.delete(key);
+    }, windowMs);
+
+    if (typeof timer.unref === "function") {
+      timer.unref();
+    }
+
+    return timer;
   }
 
   /**
