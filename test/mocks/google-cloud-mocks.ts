@@ -57,6 +57,46 @@ vi.mock('@google-cloud/spanner', () => ({
   Spanner: SpannerMock,
 }));
 
+// Mock @google-cloud/bigquery
+export const mockBigQueryClient = {
+  projectId: 'test-project',
+  createQueryJob: vi.fn().mockResolvedValue([
+    {
+      id: 'test-job',
+      getQueryResults: vi.fn().mockResolvedValue([
+        [
+          {
+            id: 'row-1',
+            value: 'mock',
+          },
+        ],
+      ]),
+      getMetadata: vi.fn().mockResolvedValue([
+        {
+          jobReference: { jobId: 'test-job', location: 'US' },
+          statistics: {
+            query: {
+              totalBytesProcessed: '1000',
+              cacheHit: false,
+              totalSlotMs: '200',
+            },
+          },
+          configuration: { query: { dryRun: false } },
+          status: {},
+        },
+      ]),
+    },
+  ]),
+};
+
+const BigQueryMock = vi.fn(function BigQueryMock() {
+  return mockBigQueryClient;
+});
+
+vi.mock('@google-cloud/bigquery', () => ({
+  BigQuery: BigQueryMock,
+}));
+
 // Mock google-auth-library
 export const mockAuthClient = {
   getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
