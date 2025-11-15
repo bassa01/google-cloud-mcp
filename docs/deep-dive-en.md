@@ -243,10 +243,14 @@ BigQuery tools focus on conversational data analysis while keeping every query s
 
 #### Key tools
 
+- `gcp-bigquery-list-datasets` – Lists datasets in the active project, including friendly names, labels, and expiration defaults.
+- `gcp-bigquery-list-tables` – Enumerates tables and views in a dataset while surfacing partitioning, clustering, and size stats.
+- `gcp-bigquery-get-table-schema` – Returns column-level schema (name/type/mode + nested fields) plus partitioning requirements.
 - `gcp-bigquery-execute-query` – Executes read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with optional dry-run, bound parameters, and dataset defaults. It blocks INSERT/UPDATE/DELETE/CREATE/EXPORT before the query reaches BigQuery.
 
 #### Operational tips
 
+- Use the discovery tools (`list-datasets`, `list-tables`, `get-table-schema`) to confirm naming and partitioning before writing SQL so large queries reference the right resources.
 - Set `BIGQUERY_LOCATION` (or pass `location`) to avoid cross-region errors, especially for EU-only datasets.
 - Provide `defaultDataset` when queries reference tables without fully qualified names.
 - Dry-run first when exploring new datasets to inspect bytes processed before incurring cost, then re-run without `dryRun` to fetch the actual rows.
@@ -476,6 +480,9 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
+| BigQuery | `gcp-bigquery-list-datasets` | List dataset metadata (friendly name, location, labels, expirations). |
+| BigQuery | `gcp-bigquery-list-tables` | Enumerate tables/views with partitioning and clustering details. |
+| BigQuery | `gcp-bigquery-get-table-schema` | Return column/type/mode plus partitioning for a specific table. |
 | BigQuery | `gcp-bigquery-execute-query` | Run read-only SQL with optional dry-run, params, and dataset defaults. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
