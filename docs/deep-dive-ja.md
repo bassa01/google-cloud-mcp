@@ -196,7 +196,7 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 - `gcp-logging-query-logs` – 重大度やリソース条件を含む高度なフィルターを実行。
 - `gcp-logging-query-time-range` – 時間範囲に特化したショートカットクエリ。
 - `gcp-logging-search-comprehensive` – 複数フィールドを横断して関連イベントを捜索。
-- `gcp-logging-log-analytics-query` – BigQuery バックエンドの Log Analytics SQL を `{{log_view}}` 置換やリンク済みデータセットで実行し、集計をすばやく取得。
+- `gcp-logging-log-analytics-query` – `entries:queryData` / `entries:readQueryResults` を使って Log Analytics SQL を実行し、`{{log_view}}` プレースホルダーでビューを差し込みます。
 
 **運用ヒント**
 
@@ -479,7 +479,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
-| Logging | `gcp-logging-log-analytics-query` | BigQuery 連携の Log Analytics SQL を実行。 |
+| Logging | `gcp-logging-log-analytics-query` | Cloud Logging の Log Analytics SQL (`entries:queryData` / `readQueryResults`) を実行。 |
 | BigQuery | `gcp-bigquery-execute-query` | 読み取り専用 SQL を dry-run/パラメータ付きで実行。 |
 | Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |

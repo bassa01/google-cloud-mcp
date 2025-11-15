@@ -196,7 +196,7 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 - `gcp-logging-query-logs` – Runs advanced LogQL-style filters with severity and resource constraints.
 - `gcp-logging-query-time-range` – Convenience helper focused on time-bounded searches.
 - `gcp-logging-search-comprehensive` – Performs multi-field searches to uncover related events.
-- `gcp-logging-log-analytics-query` – Executes BigQuery-backed Log Analytics SQL with the `{{log_view}}` placeholder or linked datasets to produce aggregations.
+- `gcp-logging-log-analytics-query` – Runs Cloud Logging Log Analytics SQL (`entries:queryData` / `entries:readQueryResults`) with the `{{log_view}}` placeholder for fast aggregations.
 
 #### Operational tips
 
@@ -479,7 +479,7 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
-| Logging | `gcp-logging-log-analytics-query` | Run Cloud Logging Log Analytics SQL via BigQuery. |
+| Logging | `gcp-logging-log-analytics-query` | Run Cloud Logging Log Analytics SQL (entries:queryData / readQueryResults). |
 | BigQuery | `gcp-bigquery-execute-query` | Run read-only SQL with optional dry-run, params, and dataset defaults. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
