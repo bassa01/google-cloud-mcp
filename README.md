@@ -26,6 +26,7 @@ Supported Google Cloud services:
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
 - [x] [Documentation Search](https://cloud.google.com/docs)
+- [x] [gcloud CLI (read-only wrapper)](https://cloud.google.com/sdk/gcloud)
 
 ### Selecting active services
 
@@ -207,6 +208,27 @@ To extend the catalog, add entries shaped like:
   "lastReviewed": "2025-06-30"
 }
 ```
+
+### gcloud CLI (Read-only)
+
+Wrap the official gcloud CLI behind an MCP tool when you only need read operations and must guarantee zero side effects.
+
+**Tool:** `gcloud-run-read-command`
+
+| Guardrail | Behaviour |
+| --- | --- |
+| Read verbs only | Commands must end with `list`, `describe`, `get`, `read`, `tail`, `check`, or similar read-only verbs. Anything else is denied. |
+| Sensitive APIs blocked | All IAM, Secret Manager, KMS, Access Context Manager, SSH/interactive surfaces, and API enablement/subscription flows are rejected even if they look read-only. |
+| Mutations forbidden | Keywords such as `create`, `delete`, `update`, `set`, `enable`, `disable`, `deploy`, `import`, `export`, `attach`, `detach`, or `start/stop` are detected anywhere in the command or flags and cause an immediate block. |
+| Service account enforcement | The active gcloud identity (or the `--impersonate-service-account` flag) must point to a `*.gserviceaccount.com` principal. Personal user accounts are rejected before execution. |
+| Direct CLI output | STDOUT/STDERR from gcloud returns verbatim so you can copy filters locally; non-zero exit codes mark the tool response as `isError: true`. |
+
+*Example prompts:*
+- "Run `gcloud projects list` with these args: `['gcloud','projects','list','--format=json']`"
+- "List Cloud Logging sinks by calling `['gcloud','logging','sinks','list']`"
+- "Describe the monitoring notification channel `projects/example/channels/123` (command: `['gcloud','monitoring','channels','describe','projects/...']`)"
+
+If a command is blocked, the tool echoes the policy code and reason so you can adjust or fall back to a human operator.
 
 Only Google-owned domains are accepted, so typos or third-party links are skipped automatically.
 
