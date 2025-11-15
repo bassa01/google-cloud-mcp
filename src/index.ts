@@ -33,6 +33,7 @@ import {
 } from "./services/profiler/index.js";
 import { registerSupportTools } from "./services/support/index.js";
 import { registerDocsTools } from "./services/docs/index.js";
+import { registerStorageTools } from "./services/storage/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
@@ -240,6 +241,13 @@ async function main(): Promise<void> {
         registerBigQueryTools(server);
       },
     },
+      {
+        name: "storage",
+        label: "Google Cloud Storage",
+        register: async () => {
+          registerStorageTools(server);
+        },
+      },
       {
         name: "monitoring",
         label: "Google Cloud Monitoring",

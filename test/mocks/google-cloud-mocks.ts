@@ -1,6 +1,7 @@
 /**
  * Mock implementations for Google Cloud services
  */
+import { Buffer } from 'node:buffer';
 import { vi } from 'vitest';
 import { createMockLogEntries, createMockSpannerSchema, createMockBillingAccount, createMockCostData } from '../utils/test-helpers.js';
 
@@ -169,6 +170,58 @@ const BigQueryMock = vi.fn(function BigQueryMock() {
 
 vi.mock('@google-cloud/bigquery', () => ({
   BigQuery: BigQueryMock,
+}));
+
+// Mock @google-cloud/storage
+export const mockStorageBucketMetadata = {
+  name: 'test-bucket',
+  location: 'US',
+  storageClass: 'STANDARD',
+  timeCreated: new Date().toISOString(),
+  updated: new Date().toISOString(),
+  labels: { env: 'test' },
+};
+
+export const mockStorageObjectMetadata = {
+  bucket: 'test-bucket',
+  name: 'folder/sample.txt',
+  size: '128',
+  storageClass: 'STANDARD',
+  contentType: 'text/plain',
+  updated: new Date().toISOString(),
+  generation: '1',
+  crc32c: 'dJUQtw==',
+  metadata: { owner: 'unit-test' },
+};
+
+export const mockStorageFileHandle = {
+  metadata: mockStorageObjectMetadata,
+  getMetadata: vi.fn().mockResolvedValue([mockStorageObjectMetadata]),
+  download: vi.fn().mockResolvedValue([Buffer.from('mock file content')]),
+};
+
+export const mockStorageBucketHandle = {
+  metadata: mockStorageBucketMetadata,
+  getMetadata: vi.fn().mockResolvedValue([mockStorageBucketMetadata]),
+  iam: {
+    getPolicy: vi.fn().mockResolvedValue([{ bindings: [] }]),
+    testPermissions: vi.fn().mockResolvedValue({ 'storage.objects.get': true }),
+  },
+  getFiles: vi.fn().mockResolvedValue([[{ name: 'folder/sample.txt', metadata: mockStorageObjectMetadata }], {}, {}]),
+  file: vi.fn(() => mockStorageFileHandle),
+};
+
+export const mockStorageClient = {
+  getBuckets: vi.fn().mockResolvedValue([[{ name: 'test-bucket', metadata: mockStorageBucketMetadata }], {}, {}]),
+  bucket: vi.fn(() => mockStorageBucketHandle),
+};
+
+const StorageMock = vi.fn(function StorageMock() {
+  return mockStorageClient;
+});
+
+vi.mock('@google-cloud/storage', () => ({
+  Storage: StorageMock,
 }));
 
 // Mock google-auth-library
