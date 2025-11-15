@@ -79,11 +79,11 @@ function removeSqlComments(sql: string): string {
 }
 
 const STRING_LITERAL_REGEX =
-  /(?:(?:[rb]{1,2})\s*)?(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:''|\\'|[^'])*?'|"(?:""|\\"|[^"])*?")/gis;
+  /(?:(?:[rb]{1,2}))?(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:''|\\'|[^'])*?'|"(?:""|\\"|[^"])*?")/gis;
 
 function maskStringLiterals(sql: string): string {
   return sql.replace(STRING_LITERAL_REGEX, (literal) => {
-    const prefixMatch = literal.match(/^(?:[rb]{1,2})\s*/i);
+    const prefixMatch = literal.match(/^(?:[rb]{1,2})/i);
     const prefix = prefixMatch ? prefixMatch[0] : "";
     const body = literal.slice(prefix.length);
 
