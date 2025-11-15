@@ -32,3 +32,11 @@ export interface GoogleCloudDocsCatalog {
   metadata: DocsCatalogMetadata;
   services: DocsCatalogService[];
 }
+
+export interface DocsCatalogSearchResult {
+  serviceId: string;
+  serviceName: string;
+  serviceCategory?: string;
+  document: DocsCatalogDocument;
+  score: number;
+}

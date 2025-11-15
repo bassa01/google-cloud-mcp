@@ -5,6 +5,7 @@ export { registerDocsCatalogResources } from "./resources.js";
 export {
   loadDocsCatalog,
   findDocsCatalogService,
+  searchDocsCatalog,
   resetDocsCatalogCache,
 } from "./catalog.js";
 export type {
@@ -12,4 +13,5 @@ export type {
   DocsCatalogMetadata,
   DocsCatalogService,
   GoogleCloudDocsCatalog,
+  DocsCatalogSearchResult,
 } from "./types.js";

@@ -8,6 +8,7 @@ import {
   loadDocsCatalog,
   registerDocsCatalogResources,
   resetDocsCatalogCache,
+  searchDocsCatalog,
 } from "../../../../src/services/docs-catalog/index.js";
 
 describe("Documentation Catalog Resources", () => {
@@ -71,5 +72,27 @@ describe("Documentation Catalog Resources", () => {
 
     expect(serviceResponse?.contents?.[0]?.text).toContain("Google Cloud Docs");
     expect(serviceResponse?.contents?.[0]?.text).toContain("logging");
+
+    const searchCall = mockServer.resource.mock.calls.find(
+      (call) => call[0] === "gcp-docs-search",
+    );
+    expect(searchCall).toBeDefined();
+
+    const searchHandler = searchCall?.[2];
+    const searchResponse = await searchHandler?.(
+      new URL("docs://google-cloud/search/logging"),
+      { query: "logging quickstart" },
+    );
+    expect(searchResponse?.contents?.[0]?.text).toContain(
+      "Google Cloud Docs Search",
+    );
+    expect(searchResponse?.contents?.[0]?.text).toContain("logging");
+  });
+
+  it("searches the catalog for the closest documentation entries", async () => {
+    const results = await searchDocsCatalog("Log Router");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.serviceId).toBe("logging");
+    expect(results[0]?.document.title).toContain("Log Router");
   });
 });

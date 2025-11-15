@@ -11,12 +11,22 @@ import {
   previewList,
   resolveBoundedNumber,
 } from "../../utils/output.js";
-import { findDocsCatalogService, loadDocsCatalog } from "./catalog.js";
+import {
+  findDocsCatalogService,
+  loadDocsCatalog,
+  searchDocsCatalog,
+} from "./catalog.js";
 
 const DOCS_PREVIEW_LIMIT = resolveBoundedNumber(
   process.env.DOCS_CATALOG_PREVIEW_LIMIT,
   25,
   { min: 5, max: 200 },
+);
+
+const DOCS_SEARCH_RESULTS_LIMIT = resolveBoundedNumber(
+  process.env.DOCS_CATALOG_SEARCH_LIMIT,
+  8,
+  { min: 3, max: 50 },
 );
 
 /**
@@ -102,6 +112,51 @@ export function registerDocsCatalogResources(server: McpServer): void {
           omitted,
           limit: DOCS_PREVIEW_LIMIT,
         },
+      });
+
+      return {
+        contents: [{ uri: uri.href, text }],
+      };
+    },
+  );
+
+  server.resource(
+    "gcp-docs-search",
+    new ResourceTemplate("docs://google-cloud/search/{query}", {
+      list: undefined,
+    }),
+    async (uri, params) => {
+      const query = Array.isArray(params.query) ? params.query[0] : params.query;
+      if (!query || !query.trim()) {
+        throw new GcpMcpError(
+          "Search query is required (e.g., docs://google-cloud/search/logging).",
+          "INVALID_ARGUMENT",
+          400,
+        );
+      }
+
+      const results = await searchDocsCatalog(query, DOCS_SEARCH_RESULTS_LIMIT);
+      const data = results.map((result) => ({
+        serviceId: result.serviceId,
+        serviceName: result.serviceName,
+        category: result.serviceCategory,
+        score: result.score,
+        document: result.document,
+      }));
+
+      const text = buildStructuredResponse({
+        title: "Google Cloud Docs Search",
+        metadata: {
+          query,
+          matches: results.length,
+          limit: DOCS_SEARCH_RESULTS_LIMIT,
+        },
+        dataLabel: "matches",
+        data,
+        note:
+          results.length === 0
+            ? "No documentation entries matched the search terms."
+            : undefined,
       });
 
       return {
