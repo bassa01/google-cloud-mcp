@@ -21,9 +21,11 @@ Supported Google Cloud services:
 - [x] [Logging](https://cloud.google.com/logging)
 - [x] [Monitoring](https://cloud.google.com/monitoring)
 - [x] [Profiler](https://cloud.google.com/profiler)
+- [x] [BigQuery](https://cloud.google.com/bigquery)
 - [x] [Spanner](https://cloud.google.com/spanner)
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
+- [x] [Documentation Search](https://cloud.google.com/docs)
 
 ### Selecting active services
 
@@ -77,6 +79,8 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | `LOG_OUTPUT_PREVIEW_LIMIT` (alias `LOG_OUTPUT_MAX`) | `20` entries | Caps how many log entries are returned per call. |
 | `LOG_TEXT_PAYLOAD_PREVIEW` | `600` characters | Truncates long `textPayload` values with an ellipsis. |
 | `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-spanner-execute-query`, `list-*`, and NL query outputs. |
+| `BIGQUERY_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-bigquery-execute-query` row previews before truncation. |
+| `BIGQUERY_LOCATION` | none | Default BigQuery job location when `location` isn’t specified per call. |
 | `SPANNER_QUERY_COUNT_SERIES_LIMIT` | `5` series | Maximum Spanner query-count time series per response. |
 | `SPANNER_QUERY_COUNT_POINT_LIMIT` | `60` points | Per-series datapoint cap for query-count results. |
 | `MONITORING_SERIES_PREVIEW_LIMIT` | `5` series | Maximum Monitoring time series per response. |
@@ -99,6 +103,19 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | `TRACE_ANALYSIS_PREVIEW_LIMIT` | `4000` characters | Truncates hierarchy markdown embedded in trace responses. |
 
 Each response clearly reports how many rows/series were omitted so that automations can decide whether to narrow filters or request a smaller time window.
+
+### BigQuery
+
+Run federated analytics with strict read-only enforcement:
+
+**Tools:** `gcp-bigquery-execute-query`
+
+The server validates SQL before it reaches BigQuery (blocking INSERT/UPDATE/CREATE/EXPORT, etc.), supports bound parameters, optional dry runs, and lets you define a `defaultDataset` or `BIGQUERY_LOCATION` to avoid repeating qualifiers. Outputs include query metadata (job ID, bytes processed, cache hits) plus a row preview that honours `BIGQUERY_ROW_PREVIEW_LIMIT`.
+
+*Example prompts:*
+- "Dry-run `SELECT COUNT(*) FROM \`billing.daily_costs\`` in project finops-prod-123 with BIGQUERY_LOCATION=US to estimate bytes scanned."
+- "Execute `WITH recent AS (...) SELECT * FROM recent WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)` against dataset marketing_reporting."
+- "Fetch the top 20 customers by spend from `analytics.orders` in project data-warehouse-999 located in EU."
 
 ### Spanner
 
@@ -167,10 +184,42 @@ Support responses now emit sanitized case/comment/attachment JSON along with sho
 - "Add an update to projects/foo/cases/1234567890123456789 summarizing the mitigation"
 - "Search classifications for 'service account access'"
 
+### Documentation Search
+
+Find the closest official Google Cloud documentation for natural-language prompts without leaving your network. Instead of proxying live traffic, the docs tool scores entries from a local JSON catalog (`docs/catalog/google-cloud-docs.json` by default) using TF‑IDF + cosine similarity, so query intent matters more than naive string overlap. Update that file whenever you need new coverage—either manually or via whatever internal crawler you trust—and the MCP server will answer entirely offline.
+
+**Tools:** `google-cloud-docs-search`
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
+| `GOOGLE_CLOUD_DOCS_CATALOG` | `docs/catalog/google-cloud-docs.json` | Override the local JSON catalog path if you maintain a custom index elsewhere. |
+
+To extend the catalog, add entries shaped like:
+
+```json
+{
+  "title": "Cloud Run resource limits",
+  "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+  "summary": "Lists CPU, memory, and request limits for Cloud Run services and jobs.",
+  "tags": ["cloud run", "limits", "cpu", "memory"],
+  "product": "cloud-run",
+  "lastReviewed": "2025-06-30"
+}
+```
+
+Only Google-owned domains are accepted, so typos or third-party links are skipped automatically.
+
+*Example prompts:*
+- "Find the best doc that teaches how to trigger Cloud Run from Cloud Storage events"
+- "What's the official guidance for securing Memorystore for Redis?"
+- "日本語ドキュメントで Cloud Logging の料金を確認して"
+
 ## Deep Wiki / 詳細ドキュメント
 
 - [Deep Dive (English)](docs/deep-dive-en.md)
 - [詳細ガイド (日本語)](docs/deep-dive-ja.md)
+- [Offline Docs Search](docs/offline-docs-search.md)
 
 ## Quick Start
 
@@ -180,6 +229,7 @@ Once configured, you can interact with Google Cloud services via the MCP tools:
 "Show me errors from project ecommerce-api-456 in the last hour"
 "Find logs containing 'database timeout' from project backend-prod-321 yesterday"
 "List Spanner databases in instance prod-db for project data-store-654"
+"Run a BigQuery query to list the latest 20 orders in project analytics-prod-888"
 "What's the CPU usage of Compute Engine instances in project infrastructure-987?"
 "Compare recent heap profiles in project performance-test-789"
 "List traces for checkout-api in project ecommerce-prod-321 during the past day"

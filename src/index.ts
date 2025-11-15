@@ -21,6 +21,7 @@ import {
   registerMonitoringResources,
   registerMonitoringTools,
 } from "./services/monitoring/index.js";
+import { registerBigQueryTools } from "./services/bigquery/index.js";
 import { registerTraceService } from "./services/trace/index.js";
 import {
   registerErrorReportingResources,
@@ -31,6 +32,7 @@ import {
   registerProfilerTools,
 } from "./services/profiler/index.js";
 import { registerSupportTools } from "./services/support/index.js";
+import { registerDocsTools } from "./services/docs/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
@@ -222,15 +224,22 @@ async function main(): Promise<void> {
           registerLoggingTools(server);
         },
       },
-      {
-        name: "spanner",
-        label: "Google Cloud Spanner",
-        register: async () => {
-          registerSpannerResources(server);
-          registerSpannerTools(server);
-          registerSpannerQueryCountTool(server);
-        },
+    {
+      name: "spanner",
+      label: "Google Cloud Spanner",
+      register: async () => {
+        registerSpannerResources(server);
+        registerSpannerTools(server);
+        registerSpannerQueryCountTool(server);
       },
+    },
+    {
+      name: "bigquery",
+      label: "Google Cloud BigQuery",
+      register: async () => {
+        registerBigQueryTools(server);
+      },
+    },
       {
         name: "monitoring",
         label: "Google Cloud Monitoring",
@@ -267,6 +276,13 @@ async function main(): Promise<void> {
         label: "Google Cloud Support",
         register: async () => {
           registerSupportTools(server);
+        },
+      },
+      {
+        name: "docs",
+        label: "Google Cloud Documentation",
+        register: async () => {
+          registerDocsTools(server);
         },
       },
     ];

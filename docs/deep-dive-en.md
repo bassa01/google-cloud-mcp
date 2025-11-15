@@ -23,7 +23,7 @@
 - **Node.js 24.11+** – matches the `engines.node` constraint in `package.json`.
 - **pnpm 10.21+** – enable via `corepack enable && corepack use pnpm@10.21.0` to stay aligned with the repo’s `packageManager` metadata.
 - **Google Cloud CLI** – manages credentials and sets the active project (`gcloud init`).
-- **Google Cloud project & entitlements** – access to Logging, Monitoring, Spanner, Trace, Profiler, Error Reporting, and (optionally) Support APIs.
+- **Google Cloud project & entitlements** – access to Logging, BigQuery, Monitoring, Spanner, Trace, Profiler, Error Reporting, and (optionally) Support APIs.
 
 Sanity-check versions:
 
@@ -90,7 +90,7 @@ npx -y @modelcontextprotocol/inspector node dist/index.js
 | Path | Purpose |
 | --- | --- |
 | `src/index.ts` | Entry point wiring logging, auth, prompts, resource discovery, and every service registrar. |
-| `src/services/<service>/tools.ts` | Tool registrations plus Zod schemas for Logging, Monitoring, Profiler, Error Reporting, Spanner, Trace, and Support. |
+| `src/services/<service>/tools.ts` | Tool registrations plus Zod schemas for Logging, BigQuery, Monitoring, Profiler, Error Reporting, Spanner, Trace, and Support. |
 | `src/services/<service>/resources.ts` | Resource registrations that expose browseable data (logs, metrics, traces, etc.). |
 | `src/services/<service>/types.ts` | DTOs, transformers, and formatter helpers that keep tool outputs consistent. |
 | `src/services/support/client.ts` | Lightweight REST client for the Google Cloud Support API. |
@@ -125,7 +125,7 @@ The Google Cloud MCP server exposes Google Cloud Platform (GCP) operations throu
 
 ### Core capabilities
 
-- Unifies access to Error Reporting, Logging, Monitoring, Profiler, Spanner, Support, and Trace through a single MCP endpoint.
+- Unifies access to Error Reporting, Logging, BigQuery, Monitoring, Profiler, Spanner, Support, and Trace through a single MCP endpoint.
 - Normalises authentication across service account credentials and direct environment variable secrets.
 - Provides curated prompts, filters, and result formatting that are optimised for conversational agents.
 - Ships with guard rails such as project scoping, time-range defaults, and pagination helpers to keep responses reliable.
@@ -237,6 +237,24 @@ Profiler helpers analyse Cloud Profiler data so you can identify CPU, heap, or w
 - Start with smaller date windows to avoid processing large profile collections.
 - Use comparisons when validating new releases or configuration changes.
 
+### BigQuery
+
+BigQuery tools focus on conversational data analysis while keeping every query strictly read-only. Use them to explore datasets, validate parameterised SQL, or run dry-run cost estimates without granting mutation permissions.
+
+#### Key tools
+
+- `gcp-bigquery-list-datasets` – Lists datasets in the active project, including friendly names, labels, and expiration defaults.
+- `gcp-bigquery-list-tables` – Enumerates tables and views in a dataset while surfacing partitioning, clustering, and size stats.
+- `gcp-bigquery-get-table-schema` – Returns column-level schema (name/type/mode + nested fields) plus partitioning requirements.
+- `gcp-bigquery-execute-query` – Executes read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with optional dry-run, bound parameters, and dataset defaults. It blocks INSERT/UPDATE/DELETE/CREATE/EXPORT before the query reaches BigQuery.
+
+#### Operational tips
+
+- Use the discovery tools (`list-datasets`, `list-tables`, `get-table-schema`) to confirm naming and partitioning before writing SQL so large queries reference the right resources.
+- Set `BIGQUERY_LOCATION` (or pass `location`) to avoid cross-region errors, especially for EU-only datasets.
+- Provide `defaultDataset` when queries reference tables without fully qualified names.
+- Dry-run first when exploring new datasets to inspect bytes processed before incurring cost, then re-run without `dryRun` to fetch the actual rows.
+
 ### Spanner
 
 Spanner tools assist with schema discovery and SQL execution across distributed databases.
@@ -301,6 +319,7 @@ Support tools integrate with the Cloud Support API so agents can triage customer
 - **Logging** – “Summarise ERROR logs for Cloud Run service `checkout` in project `prod-app-123` over the last two hours.”
 - **Monitoring** – “Show the 95th percentile latency for HTTPS load balancer `lb-frontend` in `my-network-prod` during the past day.”
 - **Profiler** – “Compare CPU profiles for service `payments-api` between versions `v1.4.0` and `v1.5.0`.”
+- **BigQuery** – “Dry-run `SELECT COUNT(*) FROM \`billing.daily_costs\`` in project `finops-prod-123` to estimate bytes scanned.”
 - **Spanner** – “Draft a SQL query that finds the top five customers by order count in the `orders` table.”
 - **Trace** – “Find traces longer than five seconds that include span `CheckoutService/ProcessPayment`.”
 - **Support** – “List open P1 cases for `projects/payments-prod` created this week.”
@@ -461,6 +480,10 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
+| BigQuery | `gcp-bigquery-list-datasets` | List dataset metadata (friendly name, location, labels, expirations). |
+| BigQuery | `gcp-bigquery-list-tables` | Enumerate tables/views with partitioning and clustering details. |
+| BigQuery | `gcp-bigquery-get-table-schema` | Return column/type/mode plus partitioning for a specific table. |
+| BigQuery | `gcp-bigquery-execute-query` | Run read-only SQL with optional dry-run, params, and dataset defaults. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
 | Profiler | `gcp-profiler-list-profiles` | Locate CPU, heap, or wall-time profiles. |
@@ -497,6 +520,7 @@ Testing tips:
 - [Cloud Logging query language reference](https://cloud.google.com/logging/docs/view/logging-query-language)
 - [Cloud Monitoring metrics guide](https://cloud.google.com/monitoring)
 - [Cloud Profiler overview](https://cloud.google.com/profiler)
+- [BigQuery SQL reference](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax)
 - [Cloud Spanner SQL reference](https://cloud.google.com/spanner/docs/reference/standard-sql)
 - [Cloud Trace documentation](https://cloud.google.com/trace/docs)
 - [Cloud Support API reference](https://cloud.google.com/support/docs/reference/rest)

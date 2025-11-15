@@ -34,6 +34,7 @@
   "author": "Kristof Kowalski <k@ko.wal.ski>",
   "license": "Apache",
   "dependencies": {
+    "@google-cloud/bigquery": "^7.9.4",
     "@google-cloud/iam": "^2.3.1",
     "@google-cloud/logging": "^11.2.1",
     "@google-cloud/monitoring": "^5.3.1",
