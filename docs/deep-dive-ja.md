@@ -514,6 +514,34 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 - `gcloud projects list` – 現在のアイデンティティでアクセス可能なプロジェクトを確認。
 - `gcloud logging read` – MCP 外でフィルターを検証したいときの補助。
 
+### MCP 内での gcloud 読み取り専用ツール
+
+`gcloud-run-read-command` は [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) と同様に gcloud CLI をラップしつつ、さらに厳格なガードレールで「読むだけ」の操作に限定します。
+
+1. gcloud 側で **サービス アカウント** をアクティブ化するか、`gcloud config set auth/impersonate_service_account <sa>` のように代理実行を設定します。ユーザー アカウントは即拒否されます。
+2. ツール入力にはトークン配列（例: `["gcloud","projects","list","--format=json"]`）を渡します。先頭の `gcloud` は省略可能です。
+3. サーバーはコマンドを lint→ポリシー判定→実行の順に処理し、STDOUT/STDERR をそのまま返します。どこかで違反すると実行前にブロックされます。
+
+ガードレールの概要:
+
+- **読み取り動詞のみ** – `list`／`describe`／`get`／`read`／`tail`／`check`／`status` などで終わるコマンドだけ許可。
+- **変更操作のキーワードを拒否** – `create`／`delete`／`update`／`set`／`enable`／`disable`／`import`／`export`／`attach`／`detach`／`deploy` などが引数に含まれると即失敗。
+- **機密 API を遮断** – IAM・Secret Manager・KMS・Access Context Manager へのアクセスは読み取り目的でも拒否。
+- **SSH / interactive 無効化** – `ssh`／`interactive`／トンネル／シリアルポート接続などは常に不許可。
+- **サービス アカウント強制** – `.gserviceaccount.com` で終わるプリンシパルに限定。`--impersonate-service-account=` を利用する場合も同じ。
+
+*入力例*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*ブロック例*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager 系は常に拒否。
+- `["gcloud","compute","instances","delete", ...]` – `delete` などの動詞が含まれる。
+- `["gcloud","compute","ssh", ...]` – SSH/interactive 系コマンドは禁止。
+
 ### 参考リンク
 
 - [Google Cloud Error Reporting ドキュメント](https://cloud.google.com/error-reporting/docs)

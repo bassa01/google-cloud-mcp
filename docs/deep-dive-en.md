@@ -514,6 +514,34 @@ Testing tips:
 - `gcloud projects list` – Discover accessible projects for the current identity.
 - `gcloud logging read` – Sanity-check log filters outside MCP when debugging queries.
 
+### Read-only gcloud tool inside MCP
+
+The `gcloud-run-read-command` tool mirrors the behaviour of [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) but adds even stricter guardrails so incidents remain impossible:
+
+1. Authenticate gcloud with a **service account** (activate it or set `auth/impersonate_service_account`). User accounts are rejected outright.
+2. Invoke the tool with the desired command expressed as an array of tokens: `["gcloud","projects","list","--format=json"]`.
+3. The server lints the command, verifies it only reads data, blocks sensitive surfaces (IAM, Secret Manager, KMS, Access Context Manager, SSH/interactive, API activation), and then streams STDOUT/STDERR back if everything passes.
+
+Guardrail summary:
+
+- **Read verbs only** – commands must end in verbs like `list`, `describe`, `get`, `read`, `tail`, `check`, or `status`.
+- **Mutation keywords denied** – any occurrence of `create`, `delete`, `update`, `set`, `enable`, `disable`, `import`, `export`, `attach`, `detach`, `deploy`, or similar fails fast.
+- **Sensitive APIs blocked** – IAM/Secret Manager/KMS/Access Context Manager calls never run, even if they look read-only.
+- **SSH/interactive disabled** – `ssh`, `interactive`, `connect-to-serial-port`, tunnels, and other remote-access helpers are denied forever.
+- **Service account required** – only principals ending in `.gserviceaccount.com` may execute commands (either active account or via `--impersonate-service-account=foo@project.iam.gserviceaccount.com`).
+
+*Example inputs:*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*Blocked inputs:*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager is forbidden regardless of verb.
+- `["gcloud","compute","instances","delete", ...]` – Contains the verb `delete`.
+- `["gcloud","compute","ssh", ...]` – SSH/interactive surfaces are disabled entirely.
+
 ### Additional resources
 
 - [Google Cloud Error Reporting documentation](https://cloud.google.com/error-reporting/docs)
