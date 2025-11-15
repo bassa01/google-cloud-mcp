@@ -25,6 +25,7 @@
   - **Profiler** – `PROFILER_PROFILE_PREVIEW_LIMIT` / `PROFILER_ANALYSIS_PREVIEW_LIMIT`
   - **Support** – `SUPPORT_CASE_PREVIEW_LIMIT` / `SUPPORT_COMMENT_PREVIEW_LIMIT` / `SUPPORT_ATTACHMENT_PREVIEW_LIMIT` / `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT` / `SUPPORT_DESCRIPTION_PREVIEW_LIMIT`
   - **Trace** – `TRACE_SPAN_PREVIEW_LIMIT` / `TRACE_TRACE_PREVIEW_LIMIT` / `TRACE_LOG_PREVIEW_LIMIT` / `TRACE_ATTRIBUTE_PREVIEW_LIMIT` / `TRACE_ANALYSIS_PREVIEW_LIMIT`
+  - **BigQuery** – `BIGQUERY_ROW_PREVIEW_LIMIT` でレスポンス内の行数を制限
 
 ### 表記ルール
 
@@ -169,6 +170,61 @@ Entries: 7
     }
   }
 ]
+```
+
+## BigQuery
+
+### gcp-bigquery-execute-query — 読み取り専用 SQL を安全に実行
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| sql | string | はい | SELECT/WITH/EXPLAIN/SHOW/DESCRIBE のみ | BigQuery へ投げる SQL。DML/DDL/EXPORT はクライアント側で弾かれます。 |
+| projectId | string | いいえ | アクティブプロジェクト | ジョブを実行するプロジェクトを上書き。 |
+| location | string | いいえ | `BIGQUERY_LOCATION` またはデータセット既定 | ジョブのリージョン (例: `US`, `EU`)。 |
+| defaultDataset | record | いいえ | なし | `{ datasetId, projectId? }` を指定して未修飾テーブル名を解決。 |
+| params | record<string, any> | いいえ | `{}` | Named parameter を JSON で渡します。 |
+| maximumBytesBilled | number | いいえ | 制限なし | 推定バイト数が上限を超えるとジョブが失敗。 |
+| dryRun | boolean | いいえ | `false` | 実行せずにバイト数/コストを見積もり。 |
+| useLegacySql | boolean | いいえ | `false` | 旧 SQL が必要な場合のみ `true`。 |
+| resultOptions | record | いいえ | なし | `maxResults` / `timeoutMs` / `startIndex` を `getQueryResults` に渡す高度な制御。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-bigquery-execute-query",
+  "arguments": {
+    "sql": "SELECT user_id, total_spend FROM `analytics.orders` WHERE status=@status ORDER BY total_spend DESC LIMIT 20",
+    "projectId": "analytics-prod-123",
+    "location": "US",
+    "defaultDataset": {
+      "projectId": "analytics-prod-123",
+      "datasetId": "analytics"
+    },
+    "params": { "status": "COMPLETE" }
+  }
+}
+```
+
+**戻り値例**
+```text
+BigQuery Query Results
+projectId=analytics-prod-123 | location=US | jobId=job_123 | rowsReturned=20 | totalBytesProcessed=1234567
+Showing 20 of 20 rows.
+```
+
+```json
+{
+  "sql": "SELECT user_id, total_spend FROM `analytics.orders` WHERE status=@status ORDER BY total_spend DESC LIMIT 20",
+  "params": { "status": "COMPLETE" },
+  "jobId": "job_123",
+  "statistics": {
+    "totalBytesProcessed": "1234567",
+    "cacheHit": false
+  },
+  "rows": [
+    { "user_id": "42", "total_spend": "1000.00" },
+    { "...": "..." }
+  ]
+}
 ```
 
 ## Spanner

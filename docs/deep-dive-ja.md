@@ -23,7 +23,7 @@
 - **Node.js 24.11 以上** – `package.json` の `engines.node` と合わせます。
 - **pnpm 10.21 以上** – `corepack enable && corepack use pnpm@10.21.0` でリポジトリの `packageManager` バージョンと同期します。
 - **Google Cloud CLI** – `gcloud init` で認証・プロジェクト切り替えを行います。
-- **Google Cloud プロジェクト** – Logging / Monitoring / Spanner / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
+- **Google Cloud プロジェクト** – Logging / BigQuery / Monitoring / Spanner / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
 
 バージョン確認例:
 
@@ -90,7 +90,7 @@ npx -y @modelcontextprotocol/inspector node dist/index.js
 | パス | 役割 |
 | --- | --- |
 | `src/index.ts` | ロギング・認証・プロンプト・リソースディスカバリ・各サービス登録をまとめるエントリポイント。 |
-| `src/services/<service>/tools.ts` | 各サービス (Logging / Monitoring / Profiler / Error Reporting / Spanner / Trace / Support) のツール登録と Zod スキーマ。 |
+| `src/services/<service>/tools.ts` | 各サービス (Logging / BigQuery / Monitoring / Profiler / Error Reporting / Spanner / Trace / Support) のツール登録と Zod スキーマ。 |
 | `src/services/<service>/resources.ts` | ログやメトリクスなどを MCP リソースとして公開する登録処理。 |
 | `src/services/<service>/types.ts` | DTO、フォーマッタ、ユーティリティをまとめて結果を整形。 |
 | `src/services/support/client.ts` | Cloud Support API 向けの軽量 REST クライアント。 |
@@ -238,6 +238,20 @@ Cloud Profiler のデータを解析し、CPU / ヒープ / 実行時間のホ�
 - まずは短い期間でサーベイし、大量データを避けます。
 - バージョン間の比較でリリース検証を効率化。
 
+### BigQuery
+
+BigQuery ツールは読み取り専用のガードレールを徹底しつつ、データウェアハウスの探索やコスト見積もりを会話形式でこなせます。
+
+**主要ツール**
+
+- `gcp-bigquery-execute-query` – SELECT/WITH/EXPLAIN/SHOW/DESCRIBE のみを許可し、INSERT/UPDATE/CREATE/EXPORT などは BigQuery に送る前に遮断。dryRun、パラメータ、`defaultDataset`、`BIGQUERY_LOCATION` などのオプションをサポートします。
+
+**運用ヒント**
+
+- EU/US などリージョンが固定されているデータセットは `BIGQUERY_LOCATION` もしくは `location` 引数で合わせます。
+- テーブル参照を省略したい場合は `defaultDataset` を渡し、未修飾テーブルでも実行できるようにします。
+- 大規模テーブルや新規クエリは先に `dryRun: true` でバイト数を確認し、コストを把握してから本番実行します。
+
 ### Spanner
 
 Spanner のスキーマ調査や SQL 実行を支援します。
@@ -302,6 +316,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 - **Logging** – 「`prod-app-123` の Cloud Run サービス `checkout` で過去 2 時間の ERROR ログを要約して」。
 - **Monitoring** – 「`my-network-prod` の HTTPS LB `lb-frontend` の過去 1 日の p95 レイテンシを表示して」。
 - **Profiler** – 「`payments-api` の v1.4.0 と v1.5.0 の CPU プロファイルを比較して」。
+- **BigQuery** – 「プロジェクト `finops-prod-123` の `billing.daily_costs` テーブルで dry-run を実行し、スキャンバイト数を教えて」。
 - **Spanner** – 「`orders` テーブルで注文数が多い顧客トップ 5 を出す SQL を作成して」。
 - **Trace** – 「スパン `CheckoutService/ProcessPayment` を含み 5 秒超のトレースを探して」。
 - **Support** – 「`projects/payments-prod` の今週作成された P1 ケースを列挙して」。
@@ -461,6 +476,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
+| BigQuery | `gcp-bigquery-execute-query` | 読み取り専用 SQL を dry-run/パラメータ付きで実行。 |
 | Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
 | Profiler | `gcp-profiler-list-profiles` | CPU/Heap/Wall-time プロファイル一覧。 |
@@ -497,6 +513,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 - [Cloud Logging クエリ言語リファレンス](https://cloud.google.com/logging/docs/view/logging-query-language)
 - [Cloud Monitoring ガイド](https://cloud.google.com/monitoring)
 - [Cloud Profiler Overview](https://cloud.google.com/profiler)
+- [BigQuery SQL リファレンス](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax)
 - [Cloud Spanner SQL リファレンス](https://cloud.google.com/spanner/docs/reference/standard-sql)
 - [Cloud Trace ドキュメント](https://cloud.google.com/trace/docs)
 - [Cloud Support API リファレンス](https://cloud.google.com/support/docs/reference/rest)

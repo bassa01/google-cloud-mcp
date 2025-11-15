@@ -21,6 +21,7 @@ import {
   registerMonitoringResources,
   registerMonitoringTools,
 } from "./services/monitoring/index.js";
+import { registerBigQueryTools } from "./services/bigquery/index.js";
 import { registerTraceService } from "./services/trace/index.js";
 import {
   registerErrorReportingResources,
@@ -222,15 +223,22 @@ async function main(): Promise<void> {
           registerLoggingTools(server);
         },
       },
-      {
-        name: "spanner",
-        label: "Google Cloud Spanner",
-        register: async () => {
-          registerSpannerResources(server);
-          registerSpannerTools(server);
-          registerSpannerQueryCountTool(server);
-        },
+    {
+      name: "spanner",
+      label: "Google Cloud Spanner",
+      register: async () => {
+        registerSpannerResources(server);
+        registerSpannerTools(server);
+        registerSpannerQueryCountTool(server);
       },
+    },
+    {
+      name: "bigquery",
+      label: "Google Cloud BigQuery",
+      register: async () => {
+        registerBigQueryTools(server);
+      },
+    },
       {
         name: "monitoring",
         label: "Google Cloud Monitoring",

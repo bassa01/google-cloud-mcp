@@ -25,6 +25,7 @@ Tools are invoked over MCP using the payload below:
   - **Profiler** – `PROFILER_PROFILE_PREVIEW_LIMIT`, `PROFILER_ANALYSIS_PREVIEW_LIMIT`.
   - **Support** – `SUPPORT_CASE_PREVIEW_LIMIT`, `SUPPORT_COMMENT_PREVIEW_LIMIT`, `SUPPORT_ATTACHMENT_PREVIEW_LIMIT`, `SUPPORT_CLASSIFICATION_PREVIEW_LIMIT`, `SUPPORT_DESCRIPTION_PREVIEW_LIMIT`.
   - **Trace** – `TRACE_SPAN_PREVIEW_LIMIT`, `TRACE_TRACE_PREVIEW_LIMIT`, `TRACE_LOG_PREVIEW_LIMIT`, `TRACE_ATTRIBUTE_PREVIEW_LIMIT`, `TRACE_ANALYSIS_PREVIEW_LIMIT`.
+  - **BigQuery** – `BIGQUERY_ROW_PREVIEW_LIMIT` caps the number of rows embedded in query responses.
 
 ### Notation
 | Column | Meaning |
@@ -165,6 +166,61 @@ Entries: 7
     }
   }
 ]
+```
+
+## BigQuery
+
+### gcp-bigquery-execute-query — Run read-only SQL safely
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| sql | string | yes | Standard SQL only (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) | Query text; mutating statements are rejected client-side before reaching BigQuery. |
+| projectId | string | no | Active/authenticated project | Overrides the project that owns the query job. |
+| location | string | no | `BIGQUERY_LOCATION` env or dataset default | BigQuery region (e.g., `US`, `EU`). |
+| defaultDataset | record | no | none | `{ datasetId, projectId? }` applied to unqualified table references. |
+| params | record<string, any> | no | `{}` | Named parameters (JSON-compatible). |
+| maximumBytesBilled | number | no | unlimited | Job fails if estimated bytes exceed this cap. |
+| dryRun | boolean | no | `false` | Validate and estimate cost without executing the query. |
+| useLegacySql | boolean | no | `false` | Set to `true` only for Legacy SQL workloads. |
+| resultOptions | record | no | none | `{ maxResults, timeoutMs, startIndex }` passed to `getQueryResults`. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-bigquery-execute-query",
+  "arguments": {
+    "sql": "SELECT user_id, total_spend FROM `analytics.orders` WHERE status=@status ORDER BY total_spend DESC LIMIT 20",
+    "projectId": "analytics-prod-123",
+    "location": "US",
+    "defaultDataset": {
+      "projectId": "analytics-prod-123",
+      "datasetId": "analytics"
+    },
+    "params": { "status": "COMPLETE" }
+  }
+}
+```
+
+**Response example**
+```text
+BigQuery Query Results
+projectId=analytics-prod-123 | location=US | jobId=job_123 | rowsReturned=20 | totalBytesProcessed=1234567
+Showing 20 of 20 rows.
+```
+
+```json
+{
+  "sql": "SELECT user_id, total_spend FROM `analytics.orders` WHERE status=@status ORDER BY total_spend DESC LIMIT 20",
+  "params": { "status": "COMPLETE" },
+  "jobId": "job_123",
+  "statistics": {
+    "totalBytesProcessed": "1234567",
+    "cacheHit": false
+  },
+  "rows": [
+    { "user_id": "42", "total_spend": "1000.00" },
+    { "...": "..." }
+  ]
+}
 ```
 
 ## Spanner

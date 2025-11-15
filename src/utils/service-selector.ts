@@ -8,6 +8,7 @@
 export const SERVICE_NAMES = [
   "logging",
   "spanner",
+  "bigquery",
   "monitoring",
   "trace",
   "error-reporting",
@@ -35,6 +36,10 @@ const aliasEntries: Array<[string, ServiceName]> = [
   ["logs", "logging"],
   ["log", "logging"],
   ["spanner", "spanner"],
+  ["bq", "bigquery"],
+  ["bigquery", "bigquery"],
+  ["big-query", "bigquery"],
+  ["big_query", "bigquery"],
   ["monitoring", "monitoring"],
   ["metrics", "monitoring"],
   ["trace", "trace"],
