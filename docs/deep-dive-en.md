@@ -196,12 +196,15 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 - `gcp-logging-query-logs` – Runs advanced LogQL-style filters with severity and resource constraints.
 - `gcp-logging-query-time-range` – Convenience helper focused on time-bounded searches.
 - `gcp-logging-search-comprehensive` – Performs multi-field searches to uncover related events.
+- `gcp-logging-log-analytics-query` – Executes BigQuery-backed Log Analytics SQL with the `{{log_view}}` placeholder or linked datasets to produce aggregations.
 
 #### Operational tips
 
 - Keep queries bounded to avoid quota issues.
 - Combine severity filters with resource types to narrow noisy workloads.
 - Use follow-up prompts to summarise or cluster returned entries.
+- When using Log Analytics SQL, set `LOG_ANALYTICS_LOCATION`, `LOG_ANALYTICS_BUCKET`, and `LOG_ANALYTICS_VIEW` (default `global`, `_Default`, `_AllLogs`) so `{{log_view}}` targets the right bucket, or specify a `resourceName` pointing to your analytics view.
+- Tune `LOG_ANALYTICS_QUERY_TIMEOUT_MS`, `LOG_ANALYTICS_READ_TIMEOUT_MS`, and `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` if queries frequently hit long-running windows or require larger previews.
 
 #### Log redaction policy
 
@@ -476,6 +479,7 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
+| Logging | `gcp-logging-log-analytics-query` | Run Cloud Logging Log Analytics SQL via BigQuery. |
 | BigQuery | `gcp-bigquery-execute-query` | Run read-only SQL with optional dry-run, params, and dataset defaults. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
