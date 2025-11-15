@@ -18,7 +18,7 @@ const DESTRUCTIVE_PATTERNS: Array<{ regex: RegExp; description: string }> = [
     description: "INSERT statements modify data.",
   },
   {
-    regex: /\bUPDATE\s+[A-Z0-9_\"`[\]]+/i,
+    regex: /\bUPDATE\s+[A-Z0-9_"`[\]]+/i,
     description: "UPDATE statements modify data.",
   },
   {
@@ -26,11 +26,11 @@ const DESTRUCTIVE_PATTERNS: Array<{ regex: RegExp; description: string }> = [
     description: "DELETE statements remove data.",
   },
   {
-    regex: /\bMERGE\s+[A-Z0-9_\"`[\]]+/i,
+    regex: /\bMERGE\s+[A-Z0-9_"`[\]]+/i,
     description: "MERGE statements modify data.",
   },
   {
-    regex: /\bREPLACE\s+[A-Z0-9_\"`[\]]+/i,
+    regex: /\bREPLACE\s+[A-Z0-9_"`[\]]+/i,
     description: "REPLACE statements modify data.",
   },
   {
@@ -78,8 +78,33 @@ function removeSqlComments(sql: string): string {
     .replace(/#.*/gm, " ");
 }
 
+const STRING_LITERAL_REGEX =
+  /(?:(?:[rb]{1,2})\s*)?(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:''|\\'|[^'])*?'|"(?:""|\\"|[^"])*?")/gis;
+
 function maskStringLiterals(sql: string): string {
-  return sql.replace(/'(?:''|[^'])*'/g, "''");
+  return sql.replace(STRING_LITERAL_REGEX, (literal) => {
+    const prefixMatch = literal.match(/^(?:[rb]{1,2})\s*/i);
+    const prefix = prefixMatch ? prefixMatch[0] : "";
+    const body = literal.slice(prefix.length);
+
+    if (body.startsWith("'''")) {
+      return `${prefix}''''''`;
+    }
+
+    if (body.startsWith('"""')) {
+      return `${prefix}""""""`;
+    }
+
+    if (body.startsWith("'")) {
+      return `${prefix}''`;
+    }
+
+    if (body.startsWith('"')) {
+      return `${prefix}""`;
+    }
+
+    return `${prefix}''`;
+  });
 }
 
 function normalizeWhitespace(sql: string): string {
