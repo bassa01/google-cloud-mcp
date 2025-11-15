@@ -259,12 +259,13 @@ function extractErrorMessage(error: unknown): string {
 }
 
 const PLACEHOLDER_PATTERN = /{{\s*log_view\s*}}/gi;
+const PLACEHOLDER_DETECTION_PATTERN = /{{\s*log_view\s*}}/i;
 
 function applyLogViewPlaceholder(
   sql: string,
   identifier: string,
 ): { statement: string; applied: boolean } {
-  if (!PLACEHOLDER_PATTERN.test(sql)) {
+  if (!PLACEHOLDER_DETECTION_PATTERN.test(sql)) {
     return { statement: sql, applied: false };
   }
 
@@ -441,9 +442,36 @@ export function buildRestrictionSummary(
   }
 
   const parts = conflicts.map((conflict) => {
-    const type = conflict.type || "unknown";
-    const line = conflict.line ? `line ${conflict.line}` : undefined;
-    const column = conflict.column ? `column ${conflict.column}` : undefined;
+    const typedConflict = conflict as {
+      type?: unknown;
+      line?: unknown;
+      column?: unknown;
+    };
+
+    const type =
+      typeof typedConflict.type === "string" && typedConflict.type.trim()
+        ? typedConflict.type
+        : "unknown";
+    const lineValue = typedConflict.line;
+    const columnValue = typedConflict.column;
+    const line = (() => {
+      if (typeof lineValue === "number") {
+        return `line ${lineValue}`;
+      }
+      if (typeof lineValue === "string" && lineValue.trim()) {
+        return `line ${lineValue.trim()}`;
+      }
+      return undefined;
+    })();
+    const column = (() => {
+      if (typeof columnValue === "number") {
+        return `column ${columnValue}`;
+      }
+      if (typeof columnValue === "string" && columnValue.trim()) {
+        return `column ${columnValue.trim()}`;
+      }
+      return undefined;
+    })();
     const location = [line, column].filter(Boolean).join(", ");
     return location ? `${type} conflict at ${location}` : `${type} conflict`;
   });
@@ -476,6 +504,8 @@ export function formatLogAnalyticsRowsResponse({
     LOG_ANALYTICS_ROW_PREVIEW_LIMIT;
   const previewLabel = rows.length === 1 ? "row" : "rows";
 
+  const additionalNotes = additionalNote ? [additionalNote] : undefined;
+
   return buildStructuredResponse({
     title,
     metadata: {
@@ -491,7 +521,7 @@ export function formatLogAnalyticsRowsResponse({
       limit: rowLimit,
       emptyMessage,
     },
-    additionalNotes: [additionalNote],
+    additionalNotes,
   });
 }
 

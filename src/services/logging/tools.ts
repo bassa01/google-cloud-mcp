@@ -12,13 +12,14 @@ import {
 import { parseRelativeTime } from "../../utils/time.js";
 import { buildLogResponseText } from "./output.js";
 import { logger } from "../../utils/logger.js";
-import { GcpMcpError } from "../../utils/error.js";
 import {
   formatLogAnalyticsRowsResponse,
   resolveLogViewSelection,
   runLogAnalyticsQuery,
   buildRestrictionSummary,
   LOG_ANALYTICS_ROW_PREVIEW_LIMIT,
+  QUERY_TIMEOUT_MS,
+  READ_TIMEOUT_MS,
 } from "./analytics.js";
 
 function toLogEntryList(entries: unknown[] | undefined): LogEntryLike[] {
@@ -482,7 +483,7 @@ Please check your time range format and try again. Valid formats include:
           .max(500)
           .optional()
           .describe(
-            "Maximum number of rows to return (defaults to LOG_ANALYTICS_ROW_PREVIEW_LIMIT).",
+            `Maximum number of rows to return (defaults to ${LOG_ANALYTICS_ROW_PREVIEW_LIMIT}).`,
           ),
         disableCache: z
           .boolean()
@@ -494,7 +495,7 @@ Please check your time range format and try again. Valid formats include:
           .positive()
           .optional()
           .describe(
-            "Override the query job timeout in milliseconds (defaults to LOG_ANALYTICS_QUERY_TIMEOUT_MS).",
+            `Override the query job timeout in milliseconds (defaults to ${QUERY_TIMEOUT_MS}).`,
           ),
         readTimeoutMs: z
           .number()
@@ -502,7 +503,7 @@ Please check your time range format and try again. Valid formats include:
           .positive()
           .optional()
           .describe(
-            "Override the wait duration for entries:readQueryResults (defaults to LOG_ANALYTICS_READ_TIMEOUT_MS).",
+            `Override the wait duration for entries:readQueryResults (defaults to ${READ_TIMEOUT_MS}).`,
           ),
       },
     },
