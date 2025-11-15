@@ -23,7 +23,7 @@
 - **Node.js 24.11 以上** – `package.json` の `engines.node` と合わせます。
 - **pnpm 10.21 以上** – `corepack enable && corepack use pnpm@10.21.0` でリポジトリの `packageManager` バージョンと同期します。
 - **Google Cloud CLI** – `gcloud init` で認証・プロジェクト切り替えを行います。
-- **Google Cloud プロジェクト** – Logging / BigQuery / Monitoring / Spanner / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
+- **Google Cloud プロジェクト** – Logging / BigQuery / Monitoring / Spanner / Cloud Storage / Trace / Profiler / Error Reporting / (必要なら) Support API へのアクセス権が必要です。
 
 バージョン確認例:
 
@@ -90,7 +90,7 @@ npx -y @modelcontextprotocol/inspector node dist/index.js
 | パス | 役割 |
 | --- | --- |
 | `src/index.ts` | ロギング・認証・プロンプト・リソースディスカバリ・各サービス登録をまとめるエントリポイント。 |
-| `src/services/<service>/tools.ts` | 各サービス (Logging / BigQuery / Monitoring / Profiler / Error Reporting / Spanner / Trace / Support) のツール登録と Zod スキーマ。 |
+| `src/services/<service>/tools.ts` | 各サービス (Logging / BigQuery / Monitoring / Profiler / Error Reporting / Spanner / Cloud Storage / Trace / Support) のツール登録と Zod スキーマ。 |
 | `src/services/<service>/resources.ts` | ログやメトリクスなどを MCP リソースとして公開する登録処理。 |
 | `src/services/<service>/types.ts` | DTO、フォーマッタ、ユーティリティをまとめて結果を整形。 |
 | `src/services/support/client.ts` | Cloud Support API 向けの軽量 REST クライアント。 |
@@ -125,7 +125,7 @@ Google Cloud MCP サーバーは Google Cloud Platform (GCP) の操作を Model 
 
 ### 主要な機能
 
-- Error Reporting / Logging / Monitoring / Profiler / Spanner / Support / Trace を単一の MCP エンドポイントで提供。
+- Error Reporting / Logging / Monitoring / Profiler / Spanner / Cloud Storage / Support / Trace を単一の MCP エンドポイントで提供。
 - サービスアカウント認証と環境変数ベースのシークレットを統一的に扱います。
 - 会話型エージェント向けに最適化されたプロンプト、フィルター、結果整形を備えています。
 - プロジェクト範囲、期間デフォルト、ページネーション補助などのガードレールで信頼性を高めます。
@@ -273,6 +273,27 @@ Spanner のスキーマ調査や SQL 実行を支援します。
 - 本番とステージングを明示的に分けて実行し、環境混在を避ける。
 - クエリはテキストで下書きし、`execute-query` へ貼り付けて安全に実行。
 - Query Insights を有効化し、MCP のサービスアカウントに `roles/spanner.databaseReader` 以上を付与すると `SPANNER_SYS` ビューを読み取れます。未取得のウィンドウは Markdown 上で `n/a` として明示されます。
+
+### Cloud Storage
+
+Cloud Storage ツールはバケット/オブジェクトの在庫、メタデータ、IAM 情報、軽量な内容プレビューを `gcloud` なしに提供します。すべて読み取り専用のため、本番バケットを調査する際も安全です。
+
+**主要ツール**
+
+- `gcp-storage-list-buckets` – 対象プロジェクトのバケットをプレビューし、ロケーション/ストレージクラス/ラベル/ライフサイクルとページネーション情報を返します。
+- `gcp-storage-get-bucket` – 特定バケットのメタデータ (保持ポリシー、Uniform bucket-level access、デフォルトホールド、暗号化キーなど) を取得。
+- `gcp-storage-view-bucket-iam` – IAM バインディング (可能ならポリシー v3) を読み、Principal や条件を監査。
+- `gcp-storage-test-bucket-permissions` – `buckets.testIamPermissions` を呼び、`storage.objects.delete` など個別パーミッションが付与されているか確認。
+- `gcp-storage-list-objects` – バケット内オブジェクトを接頭辞/デリミタで絞り込み、バージョン表示やページネーションもサポート。
+- `gcp-storage-read-object-metadata` – オブジェクトのサイズ、チェックサム、ホールド、KMS キー、カスタムメタデータを取得 (本体はダウンロードしません)。
+- `gcp-storage-read-object-content` – 最大 N バイトだけを取得し、テキストは UTF-8、バイナリは Base64 でプレビュー。
+
+**運用ヒント**
+
+- Requester Pays や別プロジェクトのバケットを扱う場合は `projectId` を明示し、請求先や `GOOGLE_CLOUD_PROJECT` と矛盾させないようにします。
+- プレビュー件数/文字数/バイトは `STORAGE_BUCKET_PREVIEW_LIMIT` / `STORAGE_OBJECT_PREVIEW_LIMIT` / `STORAGE_LABEL_PREVIEW_LIMIT` / `STORAGE_METADATA_PREVIEW_LIMIT` / `STORAGE_OBJECT_CONTENT_PREVIEW_BYTES` で調整できます。必要最小限の値で維持してください。
+- `gcp-storage-read-object-content` は既定で 8KB のみ取得します。`bytes` 引数を増やす場合も、ログ断片など明確な用途がある時に限定します。
+- バケット・オブジェクト名から `gs://` は不要です。エラーは Google API のメッセージを添えて返すため、スクリプトを自作するより調査が早くなります。
 
 ### Trace
 
