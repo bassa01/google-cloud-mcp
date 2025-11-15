@@ -278,9 +278,11 @@
           "url": "https://cloud.google.com/logging/docs/samples",
           "description": "Ready-to-run snippets for common ingestion, filtering, sink routing, and analytics workflows.",
           "topics": [
-        "samples",
-        "automation",
-        "reference"
+            "samples",
+            "automation",
+            "reference"
+          ]
+        }
       ]
     },
     {
@@ -1711,7 +1713,5 @@
         }
       ]
     }
-  ]
-}
   ]
 }
