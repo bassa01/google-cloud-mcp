@@ -58,6 +58,78 @@ vi.mock('@google-cloud/spanner', () => ({
 }));
 
 // Mock @google-cloud/bigquery
+export const mockDatasetMetadata = {
+  id: 'test-project:sample_dataset',
+  datasetReference: {
+    projectId: 'test-project',
+    datasetId: 'sample_dataset',
+  },
+  friendlyName: 'Sample Dataset',
+  description: 'Mock dataset for testing',
+  location: 'US',
+  defaultTableExpirationMs: '86400000',
+  labels: { env: 'test' },
+};
+
+export const mockTableMetadata = {
+  id: 'test-project:sample_dataset.sample_table',
+  tableReference: {
+    projectId: 'test-project',
+    datasetId: 'sample_dataset',
+    tableId: 'sample_table',
+  },
+  type: 'TABLE',
+  location: 'US',
+  friendlyName: 'Sample Table',
+  description: 'Mock table metadata',
+  numRows: '42',
+  numBytes: '2048',
+  creationTime: '1700000000000',
+  schema: {
+    fields: [
+      {
+        name: 'event_date',
+        type: 'DATE',
+        mode: 'REQUIRED',
+        description: 'Partition column',
+      },
+      {
+        name: 'payload',
+        type: 'RECORD',
+        mode: 'NULLABLE',
+        fields: [
+          { name: 'user_id', type: 'STRING', mode: 'NULLABLE' },
+          { name: 'value', type: 'FLOAT64', mode: 'NULLABLE' },
+        ],
+      },
+    ],
+  },
+  timePartitioning: {
+    type: 'DAY',
+    field: 'event_date',
+    requirePartitionFilter: true,
+  },
+  clustering: { fields: ['event_date', 'payload.user_id'] },
+};
+
+const createMockDatasetObject = () => ({
+  metadata: mockDatasetMetadata,
+  getMetadata: vi.fn().mockResolvedValue([mockDatasetMetadata]),
+});
+
+const createMockTableObject = () => ({
+  metadata: mockTableMetadata,
+  getMetadata: vi.fn().mockResolvedValue([mockTableMetadata]),
+});
+
+const createMockDatasetHandle = () => {
+  const tableObject = createMockTableObject();
+  return {
+    getTables: vi.fn().mockResolvedValue([[tableObject]]),
+    table: vi.fn(() => createMockTableObject()),
+  };
+};
+
 export const mockBigQueryClient = {
   projectId: 'test-project',
   createQueryJob: vi.fn().mockResolvedValue([
@@ -87,6 +159,8 @@ export const mockBigQueryClient = {
       ]),
     },
   ]),
+  getDatasets: vi.fn().mockResolvedValue([[createMockDatasetObject()]]),
+  dataset: vi.fn(() => createMockDatasetHandle()),
 };
 
 const BigQueryMock = vi.fn(function BigQueryMock() {

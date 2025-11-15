@@ -244,10 +244,14 @@ BigQuery ツールは読み取り専用のガードレールを徹底しつつ�
 
 **主要ツール**
 
+- `gcp-bigquery-list-datasets` – プロジェクト内のデータセットを一覧し、フレンドリ名やラベル、期限を確認。
+- `gcp-bigquery-list-tables` – データセット内のテーブル/ビューを列挙し、パーティションやクラスタリング情報を付与。
+- `gcp-bigquery-get-table-schema` – テーブルのカラム名/型/モード（入れ子含む）やパーティション条件を取得。
 - `gcp-bigquery-execute-query` – SELECT/WITH/EXPLAIN/SHOW/DESCRIBE のみを許可し、INSERT/UPDATE/CREATE/EXPORT などは BigQuery に送る前に遮断。dryRun、パラメータ、`defaultDataset`、`BIGQUERY_LOCATION` などのオプションをサポートします。
 
 **運用ヒント**
 
+- SQL を書く前に `list-datasets` / `list-tables` / `get-table-schema` で正式名称とパーティション設計を把握すると、誤参照や非効率なスキャンを避けられます。
 - EU/US などリージョンが固定されているデータセットは `BIGQUERY_LOCATION` もしくは `location` 引数で合わせます。
 - テーブル参照を省略したい場合は `defaultDataset` を渡し、未修飾テーブルでも実行できるようにします。
 - 大規模テーブルや新規クエリは先に `dryRun: true` でバイト数を確認し、コストを把握してから本番実行します。
@@ -476,6 +480,9 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
+| BigQuery | `gcp-bigquery-list-datasets` | データセットのメタデータ (名前/ラベル/期限/リージョン) を一覧。 |
+| BigQuery | `gcp-bigquery-list-tables` | データセット内のテーブル/ビューとパーティション/クラスタリングを可視化。 |
+| BigQuery | `gcp-bigquery-get-table-schema` | テーブルのカラム名・型・モードとパーティション設定を取得。 |
 | BigQuery | `gcp-bigquery-execute-query` | 読み取り専用 SQL を dry-run/パラメータ付きで実行。 |
 | Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
