@@ -76,6 +76,7 @@ const FORBIDDEN_OPERATION_KEYWORDS = [
   "detach",
   "disable",
   "enable",
+  "export",
   "import",
   "move",
   "patch",

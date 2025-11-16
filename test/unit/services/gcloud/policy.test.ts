@@ -62,4 +62,17 @@ describe('gcloud policy', () => {
     expect(violation).not.toBeNull();
     expect(violation?.code).toBe('UNSAFE_OPERATION');
   });
+
+  it('blocks export operations surfaced in arguments', () => {
+    const violation = checkCommandAgainstPolicy('sql operations list', [
+      'sql',
+      'operations',
+      'list',
+      '--format=json',
+      'export',
+      'gs://bucket/path',
+    ]);
+    expect(violation).not.toBeNull();
+    expect(violation?.code).toBe('UNSAFE_OPERATION');
+  });
 });
