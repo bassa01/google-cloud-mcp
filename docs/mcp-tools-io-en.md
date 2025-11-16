@@ -1626,28 +1626,54 @@ Current project ID: `my-sre-prod`
 
 ## Documentation Search
 
-### gcp-services-load — Load service tools on demand
+### gcp-tools-directory — Lightweight tool metadata
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |
-| services | array<string> | yes | Accepts canonical names or aliases (`logging`, `spanner`, `metrics`, `errors`, `docs`, `gcloud`, etc.). | Services whose tool schemas should be registered.
+| service | string | no |  | Filter by service alias (`logging`, `metrics`, `trace`, etc.). |
+| query | string | no |  | Case-insensitive substring filter across names and descriptions. |
+| limit | number | no | 50 (1-200) | Maximum number of entries to return. |
 
 **Call example**
 ```jsonc
 {
-  "name": "gcp-services-load",
-  "arguments": { "services": ["logging", "trace"] }
+  "name": "gcp-tools-directory",
+  "arguments": { "service": "logging", "limit": 20 }
 }
 ```
 
 **Response example**
 ```text
-Loaded services: Google Cloud Logging, Google Cloud Trace
-Re-run tools/list (cursor=service=logging) to download only the schemas you just loaded.
+Tools directory | service=logging | query= | returned=4 | total=63
 ```
 
-Use this helper together with `MCP_LAZY_TOOLS=true` to avoid loading every Google
-Cloud integration up front. After the tool returns, issue another `tools/list`
-call with an appropriate cursor to fetch just the new definitions.
+```json
+[
+  { "name": "gcp-logging-query-logs", "title": "Query Logs", "service": "logging" },
+  { "name": "gcp-logging-query-time-range", "title": "Query Logs by Time Range", "service": "logging" }
+]
+```
+
+### gcp-tool-exec — Execute any Google Cloud tool by name
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| tool | string | yes |  | Exact tool name (e.g., `gcp-logging-query-logs`). |
+| arguments | record | no | `{}` | Arguments passed to the tool; validated lazily. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-tool-exec",
+  "arguments": {
+    "tool": "gcp-logging-query-logs",
+    "arguments": { "filter": "severity>=ERROR", "limit": 5 }
+  }
+}
+```
+
+`gcp-tool-exec` validates the payload using the original tool schema and then
+invokes the stored handler, so responses are identical to calling the tool
+directly. Pair this with `MCP_LAZY_TOOLS=true` to keep the initial `tools/list`
+payload tiny.
 
 ### google-cloud-docs-search — Offline catalog lookup
 | Field | Type | Required | Default / Constraints | Description |

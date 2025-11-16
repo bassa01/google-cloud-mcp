@@ -454,7 +454,7 @@ Testing tips:
 | `LAZY_AUTH` | `true` (default) delays auth initialisation until the first request. Set to `false` to fail fast. |
 | `MCP_SERVER_PORT` | Custom port when self-hosting behind a proxy or container. |
 | `MCP_ENABLED_SERVICES` | Comma-separated whitelist of Google Cloud services to register (e.g., `spanner,trace`). Defaults to all services when unset or when set to `all` / `*`. |
-| `MCP_LAZY_TOOLS` | When `true`, only registers the lightweight `gcp-services-load` helper at boot; call it to load service-specific tools on demand. |
+| `MCP_LAZY_TOOLS` | When `true`, hide every Google Cloud tool behind `gcp-tools-directory` + `gcp-tool-exec` so clients fetch schemas only when executing a tool. |
 | `MCP_TOOL_PAGE_SIZE` | When > 0, enables paginated `tools/list` responses with the given page size (e.g., `20`) so clients only download schemas they need. |
 | `MCP_TOOL_PAGE_MAX_SIZE` | Upper bound for user-requested page sizes via cursor overrides (default `50`). |
 | `MCP_SERVER_MODE` | `daemon` (default) keeps the Node.js process alive; set to `standalone` to exit once the MCP transport closes. |
@@ -482,7 +482,7 @@ Testing tips:
 
 ### Context-efficient tool usage
 
-Large MCP clients run up their token budget when they ship every Google Cloud tool description up front. Combine `MCP_LAZY_TOOLS=true` (so only the `gcp-services-load` bootstrap tool is available at start) with `MCP_TOOL_PAGE_SIZE` (e.g., `20`) so `tools/list` returns small, service-scoped chunks. Load only the services you need via `gcp-services-load`, then treat this server like any other dependency: publish thin wrappers, discover modules on demand, and compose work in normal code instead of raw `call_tool` payloads.
+Large MCP clients run up their token budget when they ship every Google Cloud tool description up front. With `MCP_LAZY_TOOLS=true` the server advertises only `gcp-tools-directory` and `gcp-tool-exec`. Use the directory tool to discover names (optionally filtered by service) and call `gcp-tool-exec` with those names when you actually need to run something. Pair this with `MCP_TOOL_PAGE_SIZE` if you still want paginated schemas in eager mode, and keep writing thin wrappers so your agent code imports only the modules it needs.
 
 1. **Modular tool definitions** – Mirror the server’s service layout under your agent workspace (for example `./agents/google-cloud/logging/query-logs.ts`) so wrappers stay self-contained and tree-shakeable. Each wrapper calls into a local helper such as `callGoogleCloudTool`, which in turn wraps `client.callTool` from `@modelcontextprotocol/sdk/client`.
 

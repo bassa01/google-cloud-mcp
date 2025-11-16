@@ -1658,27 +1658,55 @@ Current project ID: `my-sre-prod`
 
 ## ドキュメント検索
 
-### gcp-services-load — 必要サービスだけをロード
+### gcp-tools-directory — 軽量なツールメタデータ一覧
 
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
 | --- | --- | --- | --- | --- |
-| services | array<string> | はい | `logging` / `metrics` / `spanner` / `docs` / `gcloud` などサービス名またはエイリアス。 | ロードしたいサービス一覧。 |
+| service | string | いいえ |  | `logging` / `metrics` / `trace` などのエイリアスでサービスを絞り込み。 |
+| query | string | いいえ |  | 名前・説明に対する部分一致検索。 |
+| limit | number | いいえ | 50 (1-200) | 返却件数上限。 |
 
 **呼び出し例**
 ```jsonc
 {
-  "name": "gcp-services-load",
-  "arguments": { "services": ["logging", "trace"] }
+  "name": "gcp-tools-directory",
+  "arguments": { "service": "logging", "limit": 20 }
 }
 ```
 
 **戻り値例**
 ```text
-Loaded services: Google Cloud Logging, Google Cloud Trace
-Re-run tools/list (cursor=service=logging) to download only the schemas you just loaded.
+Tools directory | service=logging | query= | returned=4 | total=63
 ```
 
-`MCP_LAZY_TOOLS=true` と併用すると、起動時に巨大なツール定義を読み込む必要がありません。ツール実行後は `tools/list`（必要なら `cursor=service=logging` など）を再実行し、ロードしたサービス分だけのスキーマを取得してください。
+```json
+[
+  { "name": "gcp-logging-query-logs", "title": "Query Logs", "service": "logging" },
+  { "name": "gcp-logging-query-time-range", "title": "Query Logs by Time Range", "service": "logging" }
+]
+```
+
+### gcp-tool-exec — 任意のツールを名前指定で実行
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| tool | string | はい |  | 正式なツール名（例: `gcp-logging-query-logs`）。 |
+| arguments | record | いいえ | `{}` | 指定ツールに渡す引数。サーバー側で元のスキーマに基づき検証。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-tool-exec",
+  "arguments": {
+    "tool": "gcp-logging-query-logs",
+    "arguments": { "filter": "severity>=ERROR", "limit": 5 }
+  }
+}
+```
+
+`MCP_LAZY_TOOLS=true` のときは `gcp-tool-exec` を通じてすべての Google Cloud
+ツールを実行します。元のスキーマで引数と出力を検証したうえで実際の
+ハンドラーを起動するため、従来と同じレスポンスが得られます。
 
 ### google-cloud-docs-search — オフライン カタログ検索
 

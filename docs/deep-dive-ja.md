@@ -444,7 +444,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
 | `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
 | `MCP_ENABLED_SERVICES` | 有効化したいサービスをカンマ区切りで指定（例: `spanner,trace`）。未設定や `all` / `*` の場合は全サービス。 |
-| `MCP_LAZY_TOOLS` | `true` を指定すると起動時は軽量な `gcp-services-load` のみ登録し、必要なサービスをその都度ロードできます。 |
+| `MCP_LAZY_TOOLS` | `true` で起動すると `gcp-tools-directory` / `gcp-tool-exec` だけを公開し、実行時に必要なツールだけをロードできます。 |
 | `MCP_TOOL_PAGE_SIZE` | `tools/list` のレスポンスをページングしたいときに設定（例: `20`）。必要なツールだけを段階的に取得できます。 |
 | `MCP_TOOL_PAGE_MAX_SIZE` | カーソル指定で `pageSize` を上書きする際の上限（デフォルト `50`）。 |
 | `MCP_SERVER_MODE` | デフォルトの `daemon` はプロセスを常駐、`standalone` でクライアント切断時に終了。 |
@@ -472,7 +472,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 
 ### コンテキスト圧縮を意識したツール利用
 
-Google Cloud の全ツール定義をそのまま会話に流すと、LLM クライアントのトークン枠が一瞬で足りなくなります。`MCP_LAZY_TOOLS=true`（起動時は `gcp-services-load` だけ登録）と `MCP_TOOL_PAGE_SIZE=20` などのページング設定を組み合わせ、必要になったサービスだけ `gcp-services-load` でロードしてから `tools/list` を小さい単位で取得してください。そのうえでこのサーバーを通常の依存モジュールとして扱い、薄いラッパーを作って必要なときだけ読み込み、`call_tool` を直接書く代わりに通常のコードで処理を組み立てるのが最も効率的です。
+Google Cloud の全ツール定義をそのまま会話に流すと、LLM クライアントのトークン枠が一瞬で足りなくなります。`MCP_LAZY_TOOLS=true` にすると、`gcp-tools-directory`（名前一覧）と `gcp-tool-exec`（実行ルーター）だけが `tools/list` に現れ、必要なツール名だけを調べてから `gcp-tool-exec` で実行できます。必要に応じて `MCP_TOOL_PAGE_SIZE=20` などを併用しつつ、このサーバーを通常の依存モジュールとして扱い、薄いラッパーを作って必要なときだけ読み込み、`call_tool` を直接書く代わりに通常のコードで処理を組み立てるのが最も効率的です。
 
 1. **モジュール化されたツール定義** – エージェント側のワークスペースに `./agents/google-cloud/logging/query-logs.ts` のようなサービス別ディレクトリを用意し、各ファイルで個別ツールをエクスポートします。ラッパーはローカルの `callGoogleCloudTool`（`@modelcontextprotocol/sdk/client` の `client.callTool` を包んだヘルパー）を呼び出すだけなので、簡単にツリーシェイクできます。
 

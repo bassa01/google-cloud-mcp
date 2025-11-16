@@ -45,20 +45,14 @@ entries are ignored with a startup warning, and common aliases such as
 
 ### Lazy-loading tool definitions
 
-Set `MCP_LAZY_TOOLS=true` to start the server with only housekeeping helpers and
-the `gcp-services-load` bootstrap tool. Invoke it whenever you need additional
-services and then re-run `tools/list` to fetch just those schemas:
-
-```jsonc
-{
-  "name": "gcp-services-load",
-  "arguments": { "services": ["logging", "trace"] }
-}
-```
-
-Combine this workflow with `MCP_TOOL_PAGE_SIZE` (see below) to keep the total
-context impact under a few kilobytes even though the server supports dozens of
-tools.
+Set `MCP_LAZY_TOOLS=true` to shrink the handshake down to two lightweight tools:
+`gcp-tools-directory` (metadata listing) and `gcp-tool-exec` (router). Use
+`gcp-tools-directory` with optional `service` / `query` filters to discover tool
+names, then call `gcp-tool-exec` with
+`{ "tool": "gcp-logging-query-logs", "arguments": { ... } }` to run the real
+tool. The server validates arguments/output against the original schema before
+hitting Google Cloud, so you get identical behaviour without streaming dozens of
+JSON Schemas.
 
 ### Paginating tool metadata
 
