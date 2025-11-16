@@ -176,7 +176,15 @@ export const mockAuthClient = {
   getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
   getProjectId: vi.fn().mockResolvedValue('test-project'),
   authorize: vi.fn().mockResolvedValue(undefined),
+  getClient: vi.fn(),
 };
+
+export const mockAuthorizedHttpClient = {
+  request: vi.fn(),
+  getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
+};
+
+mockAuthClient.getClient.mockResolvedValue(mockAuthorizedHttpClient);
 
 const GoogleAuthMock = vi.fn(function GoogleAuthMock() {
   return mockAuthClient;

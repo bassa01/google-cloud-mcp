@@ -168,6 +168,54 @@ Entries: 7
 ]
 ```
 
+### gcp-logging-log-analytics-query — Run SQL with Log Analytics
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| sql | string | yes | Standard SQL | Sent directly to `entries:queryData`. Use `{{log_view}}` to inject the primary view identifier. |
+| projectId | string | no | Active/authenticated project | Overrides the project used to resolve log views. |
+| logView | record | no | `LOG_ANALYTICS_*` env defaults | `{ resourceName?, projectId?, location?, bucketId?, viewId? }` describing the primary Cloud Logging analytics view. |
+| additionalLogViews | record[] | no | none | Extra log views to authorize when referencing multiple sources in SQL. |
+| rowLimit | number | no | `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` (5–500) | Caps rows returned in the preview. |
+| disableCache | boolean | no | `false` | Disables Log Analytics caching for this query. |
+| queryTimeoutMs | number | no | `LOG_ANALYTICS_QUERY_TIMEOUT_MS` | Timeout passed to `entries:queryData`. |
+| readTimeoutMs | number | no | `LOG_ANALYTICS_READ_TIMEOUT_MS` | Timeout per `entries:readQueryResults` call. |
+
+`logView.resourceName` accepts `projects/<project>/locations/<location>/buckets/<bucket>/views/<view>`. When omitted, the server falls back to `LOG_ANALYTICS_LOCATION` (default `global`), `LOG_ANALYTICS_BUCKET` (`_Default`), and `LOG_ANALYTICS_VIEW` (`_AllLogs`). No linked BigQuery dataset is required—the tool polls `entries:readQueryResults` until the query completes or the preview limit is reached.
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-logging-log-analytics-query",
+  "arguments": {
+    "sql": "SELECT severity, COUNT(*) AS occurrences FROM {{log_view}} WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC"
+  }
+}
+```
+
+**Response example**
+```text
+Log Analytics Query Results
+projectId=my-sre-prod | views=projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs | sqlView=my-sre-prod.global._Default._AllLogs | rowsReturned=3
+Showing 3 of 3 rows.
+```
+
+```json
+{
+  "sql": "SELECT severity, COUNT(*) AS occurrences FROM `my-sre-prod.global._Default._AllLogs` WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC",
+  "placeholderApplied": true,
+  "queryStepHandle": "handle-123",
+  "resultReference": "projects/my-sre-prod/locations/global/operations/abc123",
+  "resourceNames": [
+    "projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs"
+  ],
+  "rows": [
+    { "severity": "ERROR", "occurrences": "12" },
+    { "severity": "WARNING", "occurrences": "5" },
+    { "severity": "INFO", "occurrences": "2" }
+  ]
+}
+```
+
 ## BigQuery
 
 ### gcp-bigquery-execute-query — Run read-only SQL safely

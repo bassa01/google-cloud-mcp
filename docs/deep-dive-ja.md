@@ -196,12 +196,15 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 - `gcp-logging-query-logs` – 重大度やリソース条件を含む高度なフィルターを実行。
 - `gcp-logging-query-time-range` – 時間範囲に特化したショートカットクエリ。
 - `gcp-logging-search-comprehensive` – 複数フィールドを横断して関連イベントを捜索。
+- `gcp-logging-log-analytics-query` – `entries:queryData` / `entries:readQueryResults` を使って Log Analytics SQL を実行し、`{{log_view}}` プレースホルダーでビューを差し込みます。
 
 **運用ヒント**
 
 - クエリは範囲を絞り、クォータ超過を防止。
 - 重大度フィルターとリソース種別を組み合わせてノイズを削減。
 - 取得結果は追跡質問で要約やクラスタリングを依頼すると効率的です。
+- Log Analytics SQL を使う際は `LOG_ANALYTICS_LOCATION` (既定 `global`)、`LOG_ANALYTICS_BUCKET` (`_Default`)、`LOG_ANALYTICS_VIEW` (`_AllLogs`) を設定するか、`resourceName` で目的のアナリティクスビューを明示してください。
+- 長時間実行やより大きなプレビューが必要な場合は `LOG_ANALYTICS_QUERY_TIMEOUT_MS` / `LOG_ANALYTICS_READ_TIMEOUT_MS` / `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` を調整すると安定します。
 
 #### ログのマスキングポリシー
 
@@ -480,6 +483,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
+| Logging | `gcp-logging-log-analytics-query` | Cloud Logging の Log Analytics SQL (`entries:queryData` / `readQueryResults`) を実行。 |
 | BigQuery | `gcp-bigquery-list-datasets` | データセットのメタデータ (名前/ラベル/期限/リージョン) を一覧。 |
 | BigQuery | `gcp-bigquery-list-tables` | データセット内のテーブル/ビューとパーティション/クラスタリングを可視化。 |
 | BigQuery | `gcp-bigquery-get-table-schema` | テーブルのカラム名・型・モードとパーティション設定を取得。 |

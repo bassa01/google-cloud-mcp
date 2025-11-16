@@ -60,12 +60,14 @@ All Error Reporting tools now emit a compact summary followed by JSON data that 
 
 Query and filter log entries from Google Cloud Logging:
 
-**Tools:** `gcp-logging-query-logs`, `gcp-logging-query-time-range`, `gcp-logging-search-comprehensive`
+**Tools:** `gcp-logging-query-logs`, `gcp-logging-query-time-range`, `gcp-logging-search-comprehensive`, `gcp-logging-log-analytics-query`
 
 *Example prompts:*
 - "Show me logs from project my-app-prod-123 from the last hour with severity ERROR"
 - "Search for logs containing 'timeout' from service my-api in project backend-456"
 - "Query logs for resource type gce_instance in project compute-prod-789"
+
+To pivot into SQL-powered aggregations, use `gcp-logging-log-analytics-query`. It invokes Cloud Logging’s Log Analytics SQL endpoints (`entries:queryData` / `entries:readQueryResults`) and automatically replaces the `{{log_view}}` placeholder with the configured view (defaulting to `projects/<project>/locations/global/buckets/_Default/views/_AllLogs`). No explicit BigQuery datasets are required—the tool runs directly against the Log Analytics bucket.
 
 #### Log redaction policy
 
@@ -79,6 +81,14 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | --- | --- | --- |
 | `LOG_OUTPUT_PREVIEW_LIMIT` (alias `LOG_OUTPUT_MAX`) | `20` entries | Caps how many log entries are returned per call. |
 | `LOG_TEXT_PAYLOAD_PREVIEW` | `600` characters | Truncates long `textPayload` values with an ellipsis. |
+| `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` | `50` rows | Limits preview rows emitted by `gcp-logging-log-analytics-query`. |
+| `LOG_ANALYTICS_LOCATION` | `global` | Default Cloud Logging bucket location for Log Analytics SQL when `logView` isn’t specified. |
+| `LOG_ANALYTICS_BUCKET` | `_Default` | Default log bucket ID for Log Analytics SQL. |
+| `LOG_ANALYTICS_VIEW` | `_AllLogs` | Default log view ID for Log Analytics SQL. |
+| `LOG_ANALYTICS_QUERY_TIMEOUT_MS` | `15000` | Default timeout passed to `entries:queryData` (15 seconds). |
+| `LOG_ANALYTICS_READ_TIMEOUT_MS` | `5000` | Default wait duration per `entries:readQueryResults` call (5 seconds). |
+| `LOG_ANALYTICS_POLL_INTERVAL_MS` | `1000` | Delay between read polls while waiting for results. |
+| `LOG_ANALYTICS_MAX_POLL_ATTEMPTS` | `30` | Maximum polling attempts before timing out waiting for results. |
 | `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-spanner-execute-query`, `list-*`, and NL query outputs. |
 | `BIGQUERY_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-bigquery-execute-query` row previews before truncation. |
 | `BIGQUERY_LOCATION` | none | Default BigQuery job location when `location` isn’t specified per call. |
