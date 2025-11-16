@@ -208,7 +208,7 @@ export function registerBucketTools(server: McpServer): void {
         );
         const summary = permissions.map((permission) => ({
           permission,
-          allowed: Boolean(result[permission]),
+          allowed: Boolean(result[0][permission]),
         }));
 
         const text = formatPermissionCheckResponse(summary, { bucket });

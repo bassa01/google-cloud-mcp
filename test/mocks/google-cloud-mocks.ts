@@ -205,7 +205,10 @@ export const mockStorageBucketHandle = {
   getMetadata: vi.fn().mockResolvedValue([mockStorageBucketMetadata]),
   iam: {
     getPolicy: vi.fn().mockResolvedValue([{ bindings: [] }]),
-    testPermissions: vi.fn().mockResolvedValue({ 'storage.objects.get': true }),
+    testPermissions: vi.fn().mockResolvedValue([
+      { 'storage.objects.get': true },
+      {},
+    ]),
   },
   getFiles: vi.fn().mockResolvedValue([[{ name: 'folder/sample.txt', metadata: mockStorageObjectMetadata }], {}, {}]),
   file: vi.fn(() => mockStorageFileHandle),
