@@ -43,6 +43,23 @@ entries are ignored with a startup warning, and common aliases such as
 }
 ```
 
+### Lazy-loading tool definitions
+
+Set `MCP_LAZY_TOOLS=true` to start the server with only housekeeping helpers and
+the `gcp-services-load` bootstrap tool. Invoke it whenever you need additional
+services and then re-run `tools/list` to fetch just those schemas:
+
+```jsonc
+{
+  "name": "gcp-services-load",
+  "arguments": { "services": ["logging", "trace"] }
+}
+```
+
+Combine this workflow with `MCP_TOOL_PAGE_SIZE` (see below) to keep the total
+context impact under a few kilobytes even though the server supports dozens of
+tools.
+
 ### Paginating tool metadata
 
 Some MCP clients fetch every tool definition they discover, which can easily

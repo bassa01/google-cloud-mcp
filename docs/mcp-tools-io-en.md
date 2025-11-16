@@ -1626,6 +1626,29 @@ Current project ID: `my-sre-prod`
 
 ## Documentation Search
 
+### gcp-services-load — Load service tools on demand
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| services | array<string> | yes | Accepts canonical names or aliases (`logging`, `spanner`, `metrics`, `errors`, `docs`, `gcloud`, etc.). | Services whose tool schemas should be registered.
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-services-load",
+  "arguments": { "services": ["logging", "trace"] }
+}
+```
+
+**Response example**
+```text
+Loaded services: Google Cloud Logging, Google Cloud Trace
+Re-run tools/list (cursor=service=logging) to download only the schemas you just loaded.
+```
+
+Use this helper together with `MCP_LAZY_TOOLS=true` to avoid loading every Google
+Cloud integration up front. After the tool returns, issue another `tools/list`
+call with an appropriate cursor to fetch just the new definitions.
+
 ### google-cloud-docs-search — Offline catalog lookup
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |

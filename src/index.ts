@@ -6,6 +6,7 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import dotenv from "dotenv";
+import { z } from "zod";
 
 // Import service modules
 import {
@@ -45,6 +46,7 @@ import {
   getEnabledServices,
   isServiceEnabled,
   parseServiceSelection,
+  resolveServiceName,
   type ServiceName,
 } from "./utils/service-selector.js";
 import { configureToolListPagination } from "./utils/tool-pagination.js";
@@ -295,22 +297,229 @@ async function main(): Promise<void> {
         },
       },
     ];
+    const serviceMap = new Map<ServiceName, (typeof serviceRegistrations)[number]>(
+      serviceRegistrations.map((svc) => [svc.name, svc]),
+    );
+    const loadedServices = new Set<ServiceName>();
+    const loadingServices = new Map<ServiceName, Promise<void>>();
 
-    for (const service of serviceRegistrations) {
-      if (!isServiceEnabled(serviceSelection, service.name)) {
-        logger.info(
-          `Skipping ${service.label} registration (disabled via MCP_ENABLED_SERVICES)`,
-        );
-        continue;
+    const ensureServiceLoaded = async (
+      serviceName: ServiceName,
+    ): Promise<boolean> => {
+      if (loadedServices.has(serviceName)) {
+        return false;
+      }
+
+      const descriptor = serviceMap.get(serviceName);
+      if (!descriptor) {
+        throw new Error(`Unknown service: ${serviceName}`);
+      }
+
+      let pending = loadingServices.get(serviceName);
+      if (!pending) {
+        pending = (async () => {
+          logger.info(`Registering ${descriptor.label} services`);
+          await descriptor.register();
+          loadedServices.add(serviceName);
+          logger.info(`${descriptor.label} services registered`);
+        })();
+        loadingServices.set(serviceName, pending);
       }
 
       try {
-        logger.info(`Registering ${service.label} services`);
-        await service.register();
+        await pending;
+        return true;
       } catch (error) {
-        logger.warn(
-          `Error registering ${service.label} services: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw error;
+      } finally {
+        loadingServices.delete(serviceName);
+      }
+    };
+
+    const registerServiceLoaderTool = (): void => {
+      server.registerTool(
+        "gcp-services-load",
+        {
+          title: "Load Google Cloud service tools",
+          description:
+            "Registers the requested Google Cloud service integrations so you only fetch tool schemas on demand.",
+          inputSchema: {
+            services: z
+              .array(
+                z
+                  .string()
+                  .min(1)
+                  .describe(
+                    "Service names or aliases (logging, spanner, bigquery, monitoring, trace, error-reporting, profiler, support, docs, gcloud).",
+                  ),
+              )
+              .min(1)
+              .describe(
+                "List of services to load before invoking their individual tools.",
+              ),
+          },
+        },
+        async ({ services }) => {
+          const tokenize = (value: string): string[] =>
+            value
+              .split(/[\s,]+/)
+              .map((part) => part.trim())
+              .filter((part) => part.length > 0);
+
+          const tokens = Array.from(
+            new Set(services.flatMap((entry) => tokenize(entry))),
+          );
+
+          const requested: ServiceName[] = [];
+          const invalidTokens: string[] = [];
+          const disabledTokens: string[] = [];
+
+          for (const token of tokens) {
+            const resolved = resolveServiceName(token);
+            if (!resolved) {
+              invalidTokens.push(token);
+              continue;
+            }
+
+            if (!isServiceEnabled(serviceSelection, resolved)) {
+              disabledTokens.push(token);
+              continue;
+            }
+
+            if (!requested.includes(resolved)) {
+              requested.push(resolved);
+            }
+          }
+
+          if (requested.length === 0) {
+            const messageParts = [];
+            if (invalidTokens.length > 0) {
+              messageParts.push(
+                `Unknown services: ${invalidTokens.join(", ")}`,
+              );
+            }
+            if (disabledTokens.length > 0) {
+              messageParts.push(
+                `Disabled via MCP_ENABLED_SERVICES: ${disabledTokens.join(", ")}`,
+              );
+            }
+
+            const fallback =
+              messageParts.length > 0
+                ? messageParts.join(" | ")
+                : "No valid services were provided.";
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: fallback,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          const newlyLoaded: ServiceName[] = [];
+          const alreadyLoaded: ServiceName[] = [];
+          const failures: Array<{ service: ServiceName; error: string }> = [];
+
+          for (const name of requested) {
+            try {
+              const loaded = await ensureServiceLoaded(name);
+              if (loaded) {
+                newlyLoaded.push(name);
+              } else {
+                alreadyLoaded.push(name);
+              }
+            } catch (error) {
+              failures.push({
+                service: name,
+                error:
+                  error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          if (newlyLoaded.length > 0) {
+            server.sendToolListChanged();
+            server.sendResourceListChanged();
+            server.sendPromptListChanged();
+          }
+
+          const labelFor = (service: ServiceName): string => {
+            const descriptor = serviceMap.get(service);
+            return descriptor ? descriptor.label : service;
+          };
+
+          const summaryParts: string[] = [];
+          if (newlyLoaded.length > 0) {
+            summaryParts.push(
+              `Loaded services: ${newlyLoaded.map(labelFor).join(", ")}`,
+            );
+          }
+          if (alreadyLoaded.length > 0) {
+            summaryParts.push(
+              `Already registered: ${alreadyLoaded.map(labelFor).join(", ")}`,
+            );
+          }
+          if (invalidTokens.length > 0) {
+            summaryParts.push(`Unknown services: ${invalidTokens.join(", ")}`);
+          }
+          if (disabledTokens.length > 0) {
+            summaryParts.push(
+              `Disabled via MCP_ENABLED_SERVICES: ${disabledTokens.join(", ")}`,
+            );
+          }
+          if (failures.length > 0) {
+            summaryParts.push(
+              `Failed: ${failures
+                .map((item) => `${labelFor(item.service)} (${item.error})`)
+                .join(", ")}`,
+            );
+          }
+
+          summaryParts.push(
+            "Re-run tools/list (optionally with cursor=service=<name>) to download only the schemas you just loaded.",
+          );
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: summaryParts.join("\n"),
+              },
+            ],
+            isError: failures.length === requested.length,
+          };
+        },
+      );
+    };
+
+    const lazyServiceMode =
+      process.env.MCP_LAZY_TOOLS?.toLowerCase() === "true";
+
+    if (lazyServiceMode) {
+      logger.info(
+        "MCP_LAZY_TOOLS enabled; load tool definitions via the gcp-services-load helper as you need them.",
+      );
+      registerServiceLoaderTool();
+    } else {
+      for (const service of serviceRegistrations) {
+        if (!isServiceEnabled(serviceSelection, service.name)) {
+          logger.info(
+            `Skipping ${service.label} registration (disabled via MCP_ENABLED_SERVICES)`,
+          );
+          continue;
+        }
+
+        try {
+          await ensureServiceLoaded(service.name);
+        } catch (error) {
+          logger.warn(
+            `Error registering ${service.label} services: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }
     }
 

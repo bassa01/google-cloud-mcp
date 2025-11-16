@@ -3,6 +3,7 @@ import {
   getEnabledServices,
   isServiceEnabled,
   parseServiceSelection,
+  resolveServiceName,
   SERVICE_NAMES,
 } from '../../../src/utils/service-selector.js';
 
@@ -56,5 +57,12 @@ describe('service selector', () => {
     expect(selection.mode).toBe('all');
     expect(selection.invalidEntries).toEqual(['foo', 'bar']);
     expect(getEnabledServices(selection)).toEqual(Array.from(SERVICE_NAMES));
+  });
+
+  it('resolves service aliases consistently', () => {
+    expect(resolveServiceName('metrics')).toBe('monitoring');
+    expect(resolveServiceName('Error Reporting')).toBe('error-reporting');
+    expect(resolveServiceName('gcloud-cli')).toBe('gcloud');
+    expect(resolveServiceName('unknown-service')).toBeUndefined();
   });
 });

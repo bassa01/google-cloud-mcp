@@ -1658,6 +1658,28 @@ Current project ID: `my-sre-prod`
 
 ## ドキュメント検索
 
+### gcp-services-load — 必要サービスだけをロード
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| services | array<string> | はい | `logging` / `metrics` / `spanner` / `docs` / `gcloud` などサービス名またはエイリアス。 | ロードしたいサービス一覧。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-services-load",
+  "arguments": { "services": ["logging", "trace"] }
+}
+```
+
+**戻り値例**
+```text
+Loaded services: Google Cloud Logging, Google Cloud Trace
+Re-run tools/list (cursor=service=logging) to download only the schemas you just loaded.
+```
+
+`MCP_LAZY_TOOLS=true` と併用すると、起動時に巨大なツール定義を読み込む必要がありません。ツール実行後は `tools/list`（必要なら `cursor=service=logging` など）を再実行し、ロードしたサービス分だけのスキーマを取得してください。
+
 ### google-cloud-docs-search — オフライン カタログ検索
 
 | フィールド | 型 | 必須 | デフォルト/制約 | 説明 |

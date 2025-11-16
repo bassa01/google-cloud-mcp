@@ -158,3 +158,16 @@ export const getEnabledServices = (selection: ServiceSelection): ServiceName[] =
 
   return Array.from(selection.enabled.values());
 };
+
+export const resolveServiceName = (value: string): ServiceName | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = normalizeToken(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  return SERVICE_ALIAS_LOOKUP.get(normalized);
+};
