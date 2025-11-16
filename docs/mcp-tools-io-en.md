@@ -168,6 +168,54 @@ Entries: 7
 ]
 ```
 
+### gcp-logging-log-analytics-query — Run SQL with Log Analytics
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| sql | string | yes | Standard SQL | Sent directly to `entries:queryData`. Use `{{log_view}}` to inject the primary view identifier. |
+| projectId | string | no | Active/authenticated project | Overrides the project used to resolve log views. |
+| logView | record | no | `LOG_ANALYTICS_*` env defaults | `{ resourceName?, projectId?, location?, bucketId?, viewId? }` describing the primary Cloud Logging analytics view. |
+| additionalLogViews | record[] | no | none | Extra log views to authorize when referencing multiple sources in SQL. |
+| rowLimit | number | no | `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` (5–500) | Caps rows returned in the preview. |
+| disableCache | boolean | no | `false` | Disables Log Analytics caching for this query. |
+| queryTimeoutMs | number | no | `LOG_ANALYTICS_QUERY_TIMEOUT_MS` | Timeout passed to `entries:queryData`. |
+| readTimeoutMs | number | no | `LOG_ANALYTICS_READ_TIMEOUT_MS` | Timeout per `entries:readQueryResults` call. |
+
+`logView.resourceName` accepts `projects/<project>/locations/<location>/buckets/<bucket>/views/<view>`. When omitted, the server falls back to `LOG_ANALYTICS_LOCATION` (default `global`), `LOG_ANALYTICS_BUCKET` (`_Default`), and `LOG_ANALYTICS_VIEW` (`_AllLogs`). No linked BigQuery dataset is required—the tool polls `entries:readQueryResults` until the query completes or the preview limit is reached.
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-logging-log-analytics-query",
+  "arguments": {
+    "sql": "SELECT severity, COUNT(*) AS occurrences FROM {{log_view}} WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC"
+  }
+}
+```
+
+**Response example**
+```text
+Log Analytics Query Results
+projectId=my-sre-prod | views=projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs | sqlView=my-sre-prod.global._Default._AllLogs | rowsReturned=3
+Showing 3 of 3 rows.
+```
+
+```json
+{
+  "sql": "SELECT severity, COUNT(*) AS occurrences FROM `my-sre-prod.global._Default._AllLogs` WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC",
+  "placeholderApplied": true,
+  "queryStepHandle": "handle-123",
+  "resultReference": "projects/my-sre-prod/locations/global/operations/abc123",
+  "resourceNames": [
+    "projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs"
+  ],
+  "rows": [
+    { "severity": "ERROR", "occurrences": "12" },
+    { "severity": "WARNING", "occurrences": "5" },
+    { "severity": "INFO", "occurrences": "2" }
+  ]
+}
+```
+
 ## BigQuery
 
 ### gcp-bigquery-execute-query — Run read-only SQL safely
@@ -1576,6 +1624,99 @@ Current project ID: `my-sre-prod`
 - `analytics-playground`
 ```
 
+## Documentation Search
+
+### google-cloud-docs-search — Offline catalog lookup
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| query | string | yes | Minimum 2 characters | Natural-language search terms matched against the local Google Cloud docs catalog. |
+| maxResults | number | no | `DOCS_SEARCH_PREVIEW_LIMIT` (default 5, 1-10) | Cap on ranked matches to return. |
+
+**Call example**
+```jsonc
+{
+  "name": "google-cloud-docs-search",
+  "arguments": {
+    "query": "Cloud Run memory limits",
+    "maxResults": 3
+  }
+}
+```
+
+**Response example**
+```text
+Google Cloud Docs Search
+query="Cloud Run memory limits" | requested=3 | returned=3 | catalogEntries=1240 | catalogPath=/Users/me/google-cloud-mcp/docs/catalog/google-cloud-docs.json | catalogUpdated=2025-10-01T12:34:56.000Z | omitted=0
+```
+
+```json
+[
+  {
+    "rank": 1,
+    "score": 0.8123,
+    "title": "Cloud Run resource limits",
+    "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+    "summary": "Lists CPU, memory, and request limits for services and jobs.",
+    "tags": ["cloud run", "limits", "cpu"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-06-30"
+  },
+  {
+    "rank": 2,
+    "score": 0.741,
+    "title": "Pricing guidance for Cloud Run",
+    "url": "https://cloud.google.com/run/pricing",
+    "tags": ["cloud run", "pricing"],
+    "product": "cloud-run"
+  }
+]
+```
+
+## gcloud CLI
+
+### gcloud-run-read-command — Guarded read-only gcloud execution
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| args | array<string> | yes | At least one token | The gcloud command split into tokens (leading `gcloud` optional). Only read verbs are allowed; mutating or sensitive surfaces are rejected before execution. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcloud-run-read-command",
+  "arguments": {
+    "args": [
+      "gcloud",
+      "projects",
+      "list",
+      "--format=json"
+    ]
+  }
+}
+```
+
+**Response example**
+```text
+# gcloud command output
+
+- Command: `gcloud projects list --format=json`
+- Service account: `mcp-reader@prod.iam.gserviceaccount.com`
+- Exit code: `0`
+
+## STDOUT
+```
+
+```json
+[
+  { "projectId": "my-sre-prod", "name": "My SRE Prod" },
+  { "projectId": "analytics-playground", "name": "Analytics Playground" }
+]
+```
+
+```text
+## STDERR
+_(no output)_
+```
+
 ## Resource Reference
 
 MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted otherwise, placeholders such as `{projectId}`, `{instanceId}`, or `{databaseId}` can be omitted to fall back to the defaults established via `gcp-resource-manager-set-project-id` or Google Cloud authentication context.
@@ -1622,3 +1763,10 @@ MCP resources are retrieved with `read_resource` / `get_resource`. Unless noted 
 | `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | Same auth requirements. | CPU-only subset with hotspot analysis and optimisation recommendations. |
 | `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | Filters to HEAP / HEAP_ALLOC / PEAK_HEAP types. | Memory-distribution analysis plus leak/memory-management guidance. |
 | `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | Fetches up to 200 profiles for broader insights. | Comprehensive performance plan (immediate/medium/long-term) derived from recent profiles. |
+
+### Documentation Catalog Resources
+| Resource | URI template | Parameters | Response |
+| --- | --- | --- | --- |
+| `gcp-docs-catalog` | `docs://google-cloud/catalog` | none | Structured summary of every catalogued product plus metadata (services count, generatedAt, official docs roots). |
+| `gcp-docs-service` | `docs://google-cloud/{serviceId}` | `serviceId` accepts product slug/name/category | Lists curated documents for a single product. Preview length obeys `DOCS_CATALOG_PREVIEW_LIMIT`. |
+| `gcp-docs-search` | `docs://google-cloud/search/{query}` | `query` path segment URL-encoded | Returns the highest-scoring catalog matches with scores, bounded by `DOCS_CATALOG_SEARCH_LIMIT`. |

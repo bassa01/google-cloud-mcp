@@ -196,12 +196,15 @@ Cloud Logging を柔軟なフィルターと一貫したページネーション
 - `gcp-logging-query-logs` – 重大度やリソース条件を含む高度なフィルターを実行。
 - `gcp-logging-query-time-range` – 時間範囲に特化したショートカットクエリ。
 - `gcp-logging-search-comprehensive` – 複数フィールドを横断して関連イベントを捜索。
+- `gcp-logging-log-analytics-query` – `entries:queryData` / `entries:readQueryResults` を使って Log Analytics SQL を実行し、`{{log_view}}` プレースホルダーでビューを差し込みます。
 
 **運用ヒント**
 
 - クエリは範囲を絞り、クォータ超過を防止。
 - 重大度フィルターとリソース種別を組み合わせてノイズを削減。
 - 取得結果は追跡質問で要約やクラスタリングを依頼すると効率的です。
+- Log Analytics SQL を使う際は `LOG_ANALYTICS_LOCATION` (既定 `global`)、`LOG_ANALYTICS_BUCKET` (`_Default`)、`LOG_ANALYTICS_VIEW` (`_AllLogs`) を設定するか、`resourceName` で目的のアナリティクスビューを明示してください。
+- 長時間実行やより大きなプレビューが必要な場合は `LOG_ANALYTICS_QUERY_TIMEOUT_MS` / `LOG_ANALYTICS_READ_TIMEOUT_MS` / `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` を調整すると安定します。
 
 #### ログのマスキングポリシー
 
@@ -501,6 +504,7 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-logs` | 高度な Cloud Logging クエリ。 |
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
+| Logging | `gcp-logging-log-analytics-query` | Cloud Logging の Log Analytics SQL (`entries:queryData` / `readQueryResults`) を実行。 |
 | BigQuery | `gcp-bigquery-list-datasets` | データセットのメタデータ (名前/ラベル/期限/リージョン) を一覧。 |
 | BigQuery | `gcp-bigquery-list-tables` | データセット内のテーブル/ビューとパーティション/クラスタリングを可視化。 |
 | BigQuery | `gcp-bigquery-get-table-schema` | テーブルのカラム名・型・モードとパーティション設定を取得。 |
@@ -529,11 +533,49 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 
 ## 付録
 
+### ドキュメントカタログとオフライン検索
+
+- `google-cloud-docs-search` は `docs/catalog/google-cloud-docs.json`（`GOOGLE_CLOUD_DOCS_CATALOG` で差し替え可）をローカルで読み込み、完全オフラインで TF-IDF 検索します。クエリは2文字以上で、`maxResults` を省略した場合は `DOCS_SEARCH_PREVIEW_LIMIT`（デフォルト5、最大10）が返却件数を決めます。
+- カタログに登録できる URL は Google 管轄のホストのみです。新しいドキュメントを取り込んだら `lastReviewed` を更新し、サーバー再起動（またはキャッシュクリア）で最新版を読み込ませてください。
+- 同じカタログは MCP リソースとして `docs://google-cloud/...` でも公開されます。
+  - `gcp-docs-catalog`（`docs://google-cloud/catalog`）: すべてのプロダクトと検証日時を俯瞰。
+  - `gcp-docs-service`（`docs://google-cloud/{serviceId}`）: 単一プロダクトのドキュメント一覧。表示件数は `DOCS_CATALOG_PREVIEW_LIMIT`（デフォルト25、最大200）で制御します。
+  - `gcp-docs-search`（`docs://google-cloud/search/{query}`）: カタログ内検索。結果件数は `DOCS_CATALOG_SEARCH_LIMIT`（デフォルト8）まで。
+- 複数の JSON ファイル（例: `docs/catalog/cloud-run-ja.json`）を用意し、デプロイ単位で `GOOGLE_CLOUD_DOCS_CATALOG` を切り替える運用も可能です。
+
 ### 便利な gcloud コマンド
 
 - `gcloud auth application-default login` – ADC を初期化。
 - `gcloud projects list` – 現在のアイデンティティでアクセス可能なプロジェクトを確認。
 - `gcloud logging read` – MCP 外でフィルターを検証したいときの補助。
+
+### MCP 内での gcloud 読み取り専用ツール
+
+`gcloud-run-read-command` は [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) と同様に gcloud CLI をラップしつつ、さらに厳格なガードレールで「読むだけ」の操作に限定します。
+
+1. gcloud 側で **サービス アカウント** をアクティブ化するか、`gcloud config set auth/impersonate_service_account <sa>` のように代理実行を設定します。ユーザー アカウントは即拒否されます。
+2. ツール入力にはトークン配列（例: `["gcloud","projects","list","--format=json"]`）を渡します。先頭の `gcloud` は省略可能です。
+3. サーバーはコマンドを lint→ポリシー判定→実行の順に処理し、STDOUT/STDERR をそのまま返します。どこかで違反すると実行前にブロックされます。
+
+ガードレールの概要:
+
+- **読み取り動詞のみ** – `list`／`describe`／`get`／`read`／`tail`／`check`／`status` などで終わるコマンドだけ許可。
+- **変更操作のキーワードを拒否** – `create`／`delete`／`update`／`set`／`enable`／`disable`／`import`／`export`／`attach`／`detach`／`deploy` などが引数に含まれると即失敗。
+- **機密 API を遮断** – IAM・Secret Manager・KMS・Access Context Manager へのアクセスは読み取り目的でも拒否。
+- **SSH / interactive 無効化** – `ssh`／`interactive`／トンネル／シリアルポート接続などは常に不許可。
+- **サービス アカウント強制** – `.gserviceaccount.com` で終わるプリンシパルに限定。`--impersonate-service-account=` を利用する場合も同じ。
+
+*入力例*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*ブロック例*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager 系は常に拒否。
+- `["gcloud","compute","instances","delete", ...]` – `delete` などの動詞が含まれる。
+- `["gcloud","compute","ssh", ...]` – SSH/interactive 系コマンドは禁止。
 
 ### 参考リンク
 

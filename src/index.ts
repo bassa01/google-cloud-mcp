@@ -34,6 +34,7 @@ import {
 import { registerSupportTools } from "./services/support/index.js";
 import { registerDocsTools } from "./services/docs/index.js";
 import { registerStorageTools } from "./services/storage/index.js";
+import { registerGcloudTools } from "./services/gcloud/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
@@ -291,6 +292,13 @@ async function main(): Promise<void> {
         label: "Google Cloud Documentation",
         register: async () => {
           registerDocsTools(server);
+        },
+      },
+      {
+        name: "gcloud",
+        label: "gcloud CLI (read-only)",
+        register: async () => {
+          registerGcloudTools(server);
         },
       },
     ];

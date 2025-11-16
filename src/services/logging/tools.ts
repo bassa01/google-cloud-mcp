@@ -11,6 +11,16 @@ import {
 } from "./policy.js";
 import { parseRelativeTime } from "../../utils/time.js";
 import { buildLogResponseText } from "./output.js";
+import { logger } from "../../utils/logger.js";
+import {
+  formatLogAnalyticsRowsResponse,
+  resolveLogViewSelection,
+  runLogAnalyticsQuery,
+  buildRestrictionSummary,
+  LOG_ANALYTICS_ROW_PREVIEW_LIMIT,
+  QUERY_TIMEOUT_MS,
+  READ_TIMEOUT_MS,
+} from "./analytics.js";
 
 function toLogEntryList(entries: unknown[] | undefined): LogEntryLike[] {
   if (!entries) {
@@ -22,6 +32,31 @@ function toLogEntryList(entries: unknown[] | undefined): LogEntryLike[] {
     return (maybeJson ?? entry) as LogEntryLike;
   });
 }
+
+const logViewSchema = z.object({
+  resourceName: z
+    .string()
+    .optional()
+    .describe(
+      "Full resource name projects/{project}/locations/{location}/buckets/{bucket}/views/{view}.",
+    ),
+  projectId: z
+    .string()
+    .optional()
+    .describe("Project that owns the log view (defaults to detected project)."),
+  location: z
+    .string()
+    .optional()
+    .describe("Log bucket location (defaults to LOG_ANALYTICS_LOCATION or 'global')."),
+  bucketId: z
+    .string()
+    .optional()
+    .describe("Log bucket ID (defaults to LOG_ANALYTICS_BUCKET or '_Default')."),
+  viewId: z
+    .string()
+    .optional()
+    .describe("Log view ID (defaults to LOG_ANALYTICS_VIEW or '_AllLogs')."),
+});
 
 /**
  * Registers Google Cloud Logging tools with the MCP server
@@ -403,6 +438,167 @@ Please check your time range format and try again. Valid formats include:
             {
               type: "text",
               text: `# Error in Comprehensive Log Search\n\nAn error occurred while searching logs: ${errorMessage}\n\nPlease check your search parameters and try again.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "gcp-logging-log-analytics-query",
+    {
+      title: "Run Log Analytics SQL",
+      description:
+        "Execute SQL against Cloud Logging Log Analytics views without managing linked BigQuery datasets.",
+      inputSchema: {
+        sql: z
+          .string()
+          .min(1)
+          .describe(
+            "Standard SQL statement. Use {{log_view}} to automatically inject the selected Log Analytics view.",
+          ),
+        projectId: z
+          .string()
+          .optional()
+          .describe(
+            "Overrides the active project (defaults to the detected Google Cloud project).",
+          ),
+        logView: logViewSchema
+          .optional()
+          .describe(
+            "Selects the Cloud Logging analytics view when you are not manually specifying a fully-qualified identifier.",
+          ),
+        additionalLogViews: z
+          .array(logViewSchema)
+          .optional()
+          .describe(
+            "Additional log views to authorize for the query when referencing multiple sources.",
+          ),
+        rowLimit: z
+          .number()
+          .int()
+          .min(5)
+          .max(500)
+          .optional()
+          .describe(
+            `Maximum number of rows to return (defaults to ${LOG_ANALYTICS_ROW_PREVIEW_LIMIT}).`,
+          ),
+        disableCache: z
+          .boolean()
+          .optional()
+          .describe("If true, turns off Log Analytics caching for this query."),
+        queryTimeoutMs: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            `Override the query job timeout in milliseconds (defaults to ${QUERY_TIMEOUT_MS}).`,
+          ),
+        readTimeoutMs: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            `Override the wait duration for entries:readQueryResults (defaults to ${READ_TIMEOUT_MS}).`,
+          ),
+      },
+    },
+    async (
+      {
+        sql,
+        projectId,
+        logView,
+        additionalLogViews,
+        rowLimit,
+        disableCache,
+        queryTimeoutMs,
+        readTimeoutMs,
+      },
+    ) => {
+      try {
+        const normalizedProjectId = projectId || (await getProjectId());
+        const primaryView = resolveLogViewSelection(
+          logView,
+          normalizedProjectId,
+        );
+        const extraViews = (additionalLogViews ?? []).map((view) =>
+          resolveLogViewSelection(view, normalizedProjectId),
+        );
+        const result = await runLogAnalyticsQuery({
+          sql,
+          logViews: [primaryView, ...extraViews],
+          rowLimit,
+          disableCache,
+          queryTimeoutMs,
+          readTimeoutMs,
+        });
+
+        const notes: string[] = [];
+        if (!result.placeholderApplied) {
+          notes.push(
+            "SQL did not include {{log_view}}; ensure the statement references your log view.",
+          );
+        }
+        const restrictionNote = buildRestrictionSummary(
+          result.restrictionConflicts,
+        );
+        if (restrictionNote) {
+          notes.push(restrictionNote);
+        }
+
+        const responseText = formatLogAnalyticsRowsResponse({
+          title: result.queryComplete
+            ? "Log Analytics Query Results"
+            : "Log Analytics Query (partial)",
+          metadata: {
+            projectId: normalizedProjectId,
+            views: result.resourceNames,
+            sqlView: result.primaryViewSqlIdentifier,
+            totalRows: result.totalRows,
+            totalBytesProcessed: result.totalBytesProcessed,
+            totalSlotMs: result.totalSlotMs,
+            jobLocation: result.jobLocation,
+            resultReference: result.resultReference,
+            queryComplete: result.queryComplete,
+            rowLimit: result.rowLimit,
+          },
+          rows: result.rows,
+          context: {
+            sql: result.sql,
+            placeholderApplied: result.placeholderApplied,
+            queryStepHandle: result.queryStepHandle,
+            resourceNames: result.resourceNames,
+            resultReference: result.resultReference,
+            restrictionConflicts: result.restrictionConflicts,
+          },
+          emptyMessage:
+            "Query executed successfully, but no rows were returned.",
+          additionalNote: notes.length ? notes.join(" ") : undefined,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: responseText,
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(
+          `Log Analytics SQL tool failed: ${errorMessage}`,
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: `# Error Running Log Analytics Query\n\n${errorMessage}\n\nEnsure the analytics bucket is Log Analytics-enabled, your account can access the selected log view, and the SQL references fully qualified views. See https://cloud.google.com/logging/docs/analyze/log-analytics-queries for syntax guidance.`,
             },
           ],
           isError: true,

@@ -27,6 +27,7 @@ Supported Google Cloud services:
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
 - [x] [Documentation Search](https://cloud.google.com/docs)
+- [x] [gcloud CLI (read-only wrapper)](https://cloud.google.com/sdk/gcloud)
 
 ### Selecting active services
 
@@ -60,12 +61,14 @@ All Error Reporting tools now emit a compact summary followed by JSON data that 
 
 Query and filter log entries from Google Cloud Logging:
 
-**Tools:** `gcp-logging-query-logs`, `gcp-logging-query-time-range`, `gcp-logging-search-comprehensive`
+**Tools:** `gcp-logging-query-logs`, `gcp-logging-query-time-range`, `gcp-logging-search-comprehensive`, `gcp-logging-log-analytics-query`
 
 *Example prompts:*
 - "Show me logs from project my-app-prod-123 from the last hour with severity ERROR"
 - "Search for logs containing 'timeout' from service my-api in project backend-456"
 - "Query logs for resource type gce_instance in project compute-prod-789"
+
+To pivot into SQL-powered aggregations, use `gcp-logging-log-analytics-query`. It invokes Cloud Logging’s Log Analytics SQL endpoints (`entries:queryData` / `entries:readQueryResults`) and automatically replaces the `{{log_view}}` placeholder with the configured view (defaulting to `projects/<project>/locations/global/buckets/_Default/views/_AllLogs`). No explicit BigQuery datasets are required—the tool runs directly against the Log Analytics bucket.
 
 #### Log redaction policy
 
@@ -79,6 +82,14 @@ To keep MCP responses LLM-friendly, every tool now emits a short metadata line f
 | --- | --- | --- |
 | `LOG_OUTPUT_PREVIEW_LIMIT` (alias `LOG_OUTPUT_MAX`) | `20` entries | Caps how many log entries are returned per call. |
 | `LOG_TEXT_PAYLOAD_PREVIEW` | `600` characters | Truncates long `textPayload` values with an ellipsis. |
+| `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` | `50` rows | Limits preview rows emitted by `gcp-logging-log-analytics-query`. |
+| `LOG_ANALYTICS_LOCATION` | `global` | Default Cloud Logging bucket location for Log Analytics SQL when `logView` isn’t specified. |
+| `LOG_ANALYTICS_BUCKET` | `_Default` | Default log bucket ID for Log Analytics SQL. |
+| `LOG_ANALYTICS_VIEW` | `_AllLogs` | Default log view ID for Log Analytics SQL. |
+| `LOG_ANALYTICS_QUERY_TIMEOUT_MS` | `15000` | Default timeout passed to `entries:queryData` (15 seconds). |
+| `LOG_ANALYTICS_READ_TIMEOUT_MS` | `5000` | Default wait duration per `entries:readQueryResults` call (5 seconds). |
+| `LOG_ANALYTICS_POLL_INTERVAL_MS` | `1000` | Delay between read polls while waiting for results. |
+| `LOG_ANALYTICS_MAX_POLL_ATTEMPTS` | `30` | Maximum polling attempts before timing out waiting for results. |
 | `SPANNER_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-spanner-execute-query`, `list-*`, and NL query outputs. |
 | `BIGQUERY_ROW_PREVIEW_LIMIT` | `50` rows | Limits `gcp-bigquery-execute-query` row previews before truncation. |
 | `BIGQUERY_LOCATION` | none | Default BigQuery job location when `location` isn’t specified per call. |
@@ -223,6 +234,8 @@ Find the closest official Google Cloud documentation for natural-language prompt
 | --- | --- | --- |
 | `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
 | `GOOGLE_CLOUD_DOCS_CATALOG` | `docs/catalog/google-cloud-docs.json` | Override the local JSON catalog path if you maintain a custom index elsewhere. |
+| `DOCS_CATALOG_PREVIEW_LIMIT` | `25` | Max number of documents shown when browsing `docs://google-cloud/{serviceId}` resources. |
+| `DOCS_CATALOG_SEARCH_LIMIT` | `8` | Caps matches returned by `docs://google-cloud/search/{query}` resource lookups. |
 
 To extend the catalog, add entries shaped like:
 
@@ -236,6 +249,39 @@ To extend the catalog, add entries shaped like:
   "lastReviewed": "2025-06-30"
 }
 ```
+
+#### Docs catalog resources (`docs://`)
+
+MCP resources expose the same offline catalog so agents can browse and link docs without leaving the client:
+
+| Resource | URI | Description |
+| --- | --- | --- |
+| `gcp-docs-catalog` | `docs://google-cloud/catalog` | Summarises every catalogued Google Cloud product, including last validation timestamps and official docs roots. |
+| `gcp-docs-service` | `docs://google-cloud/{serviceId}` | Lists the curated documents for a given product slug, product name, or category. Output truncation obeys `DOCS_CATALOG_PREVIEW_LIMIT`. |
+| `gcp-docs-search` | `docs://google-cloud/search/{query}` | Performs a lightweight search over the catalog and previews the highest-scoring matches (bounded by `DOCS_CATALOG_SEARCH_LIMIT`). |
+
+Populate `docs/catalog/google-cloud-docs.json` (or your override path) to keep both the MCP tool and the resources current. Restart the server or clear the docs cache whenever you update the JSON so requests pick up the new entries.
+
+### gcloud CLI (Read-only)
+
+Wrap the official gcloud CLI behind an MCP tool when you only need read operations and must guarantee zero side effects.
+
+**Tool:** `gcloud-run-read-command`
+
+| Guardrail | Behaviour |
+| --- | --- |
+| Read verbs only | Commands must end with `list`, `describe`, `get`, `read`, `tail`, `check`, or similar read-only verbs. Anything else is denied. |
+| Sensitive APIs blocked | All IAM, Secret Manager, KMS, Access Context Manager, SSH/interactive surfaces, and API enablement/subscription flows are rejected even if they look read-only. |
+| Mutations forbidden | Keywords such as `create`, `delete`, `update`, `set`, `enable`, `disable`, `deploy`, `import`, `export`, `attach`, `detach`, or `start/stop` are detected anywhere in the command or flags and cause an immediate block. |
+| Service account enforcement | The active gcloud identity (or the `--impersonate-service-account` flag) must point to a `*.gserviceaccount.com` principal. Personal user accounts are rejected before execution. |
+| Direct CLI output | STDOUT/STDERR from gcloud returns verbatim so you can copy filters locally; non-zero exit codes mark the tool response as `isError: true`. |
+
+*Example prompts:*
+- "Run `gcloud projects list` with these args: `['gcloud','projects','list','--format=json']`"
+- "List Cloud Logging sinks by calling `['gcloud','logging','sinks','list']`"
+- "Describe the monitoring notification channel `projects/example/channels/123` (command: `['gcloud','monitoring','channels','describe','projects/...']`)"
+
+If a command is blocked, the tool echoes the policy code and reason so you can adjust or fall back to a human operator.
 
 Only Google-owned domains are accepted, so typos or third-party links are skipped automatically.
 

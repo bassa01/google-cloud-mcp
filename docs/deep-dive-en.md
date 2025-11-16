@@ -196,12 +196,15 @@ Logging tools query Cloud Logging with flexible filters, consistent pagination, 
 - `gcp-logging-query-logs` – Runs advanced LogQL-style filters with severity and resource constraints.
 - `gcp-logging-query-time-range` – Convenience helper focused on time-bounded searches.
 - `gcp-logging-search-comprehensive` – Performs multi-field searches to uncover related events.
+- `gcp-logging-log-analytics-query` – Runs Cloud Logging Log Analytics SQL (`entries:queryData` / `entries:readQueryResults`) with the `{{log_view}}` placeholder for fast aggregations.
 
 #### Operational tips
 
 - Keep queries bounded to avoid quota issues.
 - Combine severity filters with resource types to narrow noisy workloads.
 - Use follow-up prompts to summarise or cluster returned entries.
+- When using Log Analytics SQL, set `LOG_ANALYTICS_LOCATION`, `LOG_ANALYTICS_BUCKET`, and `LOG_ANALYTICS_VIEW` (default `global`, `_Default`, `_AllLogs`) so `{{log_view}}` targets the right bucket, or specify a `resourceName` pointing to your analytics view.
+- Tune `LOG_ANALYTICS_QUERY_TIMEOUT_MS`, `LOG_ANALYTICS_READ_TIMEOUT_MS`, and `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` if queries frequently hit long-running windows or require larger previews.
 
 #### Log redaction policy
 
@@ -326,6 +329,16 @@ Support tools integrate with the Cloud Support API so agents can triage customer
 - Use the `parent` argument (`projects/<id>` or `organizations/<id>`) to scope results; defaults to the active project.
 - The billing project must align with the Support entitlement—`tools.ts` resolves it automatically, but keep credentials consistent.
 - Avoid leaking sensitive attachment data by redacting before uploading.
+
+### Documentation catalog & offline search
+
+- `google-cloud-docs-search` keeps doc lookups entirely offline by ranking entries from `docs/catalog/google-cloud-docs.json` (override via `GOOGLE_CLOUD_DOCS_CATALOG`). Queries must be at least two characters, and `DOCS_SEARCH_PREVIEW_LIMIT` (default 5, max 10) governs how many matches are returned when `maxResults` is omitted.
+- Catalog entries accept only Google-owned hostnames. When you ingest new docs, bump `lastReviewed` so the recency boost remains meaningful and restart the server (or clear the docs cache) afterward.
+- MCP resources expose the same catalog via `docs://google-cloud/...` URIs:
+  - `gcp-docs-catalog` (`docs://google-cloud/catalog`) summarises every product plus metadata such as validation dates.
+  - `gcp-docs-service` (`docs://google-cloud/{serviceId}`) lists a single product's curated documents; previews obey `DOCS_CATALOG_PREVIEW_LIMIT` (default 25, max 200).
+  - `gcp-docs-search` (`docs://google-cloud/search/{query}`) performs quick catalog searches bounded by `DOCS_CATALOG_SEARCH_LIMIT` (default 8).
+- Store alternative catalogs (for example region-specific or private doc sets) under `docs/catalog/*.json` and point `GOOGLE_CLOUD_DOCS_CATALOG` to the desired file per deployment.
 
 ## Prompt patterns and authoring
 
@@ -501,6 +514,7 @@ Testing tips:
 | Logging | `gcp-logging-query-logs` | Execute advanced Cloud Logging queries. |
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
+| Logging | `gcp-logging-log-analytics-query` | Run Cloud Logging Log Analytics SQL (entries:queryData / readQueryResults). |
 | BigQuery | `gcp-bigquery-list-datasets` | List dataset metadata (friendly name, location, labels, expirations). |
 | BigQuery | `gcp-bigquery-list-tables` | Enumerate tables/views with partitioning and clustering details. |
 | BigQuery | `gcp-bigquery-get-table-schema` | Return column/type/mode plus partitioning for a specific table. |
@@ -534,6 +548,34 @@ Testing tips:
 - `gcloud auth application-default login` – Initialise local ADC credentials.
 - `gcloud projects list` – Discover accessible projects for the current identity.
 - `gcloud logging read` – Sanity-check log filters outside MCP when debugging queries.
+
+### Read-only gcloud tool inside MCP
+
+The `gcloud-run-read-command` tool mirrors the behaviour of [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) but adds even stricter guardrails so incidents remain impossible:
+
+1. Authenticate gcloud with a **service account** (activate it or set `auth/impersonate_service_account`). User accounts are rejected outright.
+2. Invoke the tool with the desired command expressed as an array of tokens: `["gcloud","projects","list","--format=json"]`.
+3. The server lints the command, verifies it only reads data, blocks sensitive surfaces (IAM, Secret Manager, KMS, Access Context Manager, SSH/interactive, API activation), and then streams STDOUT/STDERR back if everything passes.
+
+Guardrail summary:
+
+- **Read verbs only** – commands must end in verbs like `list`, `describe`, `get`, `read`, `tail`, `check`, or `status`.
+- **Mutation keywords denied** – any occurrence of `create`, `delete`, `update`, `set`, `enable`, `disable`, `import`, `export`, `attach`, `detach`, `deploy`, or similar fails fast.
+- **Sensitive APIs blocked** – IAM/Secret Manager/KMS/Access Context Manager calls never run, even if they look read-only.
+- **SSH/interactive disabled** – `ssh`, `interactive`, `connect-to-serial-port`, tunnels, and other remote-access helpers are denied forever.
+- **Service account required** – only principals ending in `.gserviceaccount.com` may execute commands (either active account or via `--impersonate-service-account=foo@project.iam.gserviceaccount.com`).
+
+*Example inputs:*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*Blocked inputs:*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager is forbidden regardless of verb.
+- `["gcloud","compute","instances","delete", ...]` – Contains the verb `delete`.
+- `["gcloud","compute","ssh", ...]` – SSH/interactive surfaces are disabled entirely.
 
 ### Additional resources
 

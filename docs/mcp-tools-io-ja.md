@@ -172,6 +172,55 @@ Entries: 7
 ]
 ```
 
+### gcp-logging-log-analytics-query — Log Analytics で SQL を実行
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| sql | string | はい | Standard SQL | `entries:queryData` に送信する SQL。`{{log_view}}` プレースホルダーで対象ビューを差し込めます。 |
+| projectId | string | いいえ | アクティブプロジェクト | ビュー解決に使うプロジェクトを上書き。 |
+| logView | record | いいえ | `LOG_ANALYTICS_*` 既定値 | `{ resourceName?, projectId?, location?, bucketId?, viewId? }` 形式で Cloud Logging のアナリティクスビューを指定。 |
+| additionalLogViews | record[] | いいえ | なし | SQL 内で複数ビューを参照する場合に追加で許可するログビュー。 |
+| rowLimit | number | いいえ | `LOG_ANALYTICS_ROW_PREVIEW_LIMIT` (5〜500) | プレビューで返す最大行数。 |
+| disableCache | boolean | いいえ | `false` | Log Analytics 側のキャッシュを無効化。 |
+| queryTimeoutMs | number | いいえ | `LOG_ANALYTICS_QUERY_TIMEOUT_MS` | `entries:queryData` に渡すタイムアウト (ミリ秒)。 |
+| readTimeoutMs | number | いいえ | `LOG_ANALYTICS_READ_TIMEOUT_MS` | `entries:readQueryResults` 呼び出しごとの待機時間 (ミリ秒)。 |
+
+`logView.resourceName` は `projects/<project>/locations/<location>/buckets/<bucket>/views/<view>` 形式。未指定時は `LOG_ANALYTICS_LOCATION` (既定 `global`)、`LOG_ANALYTICS_BUCKET` (`_Default`)、`LOG_ANALYTICS_VIEW` (`_AllLogs`) を使用します。リンク済み BigQuery データセットは不要で、ツールが `entries:readQueryResults` をポーリングして結果が揃うかプレビュー上限に達するまで待機します。
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcp-logging-log-analytics-query",
+  "arguments": {
+    "sql": "SELECT severity, COUNT(*) AS occurrences FROM {{log_view}} WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC"
+  }
+}
+```
+
+**戻り値例**
+```text
+Log Analytics Query Results
+projectId=my-sre-prod | views=projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs | sqlView=my-sre-prod.global._Default._AllLogs | rowsReturned=3
+Showing 3 of 3 rows.
+```
+
+```json
+{
+  "sql": "SELECT severity, COUNT(*) AS occurrences FROM `my-sre-prod.global._Default._AllLogs` WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR) GROUP BY severity ORDER BY occurrences DESC",
+  "placeholderApplied": true,
+  "queryStepHandle": "handle-123",
+  "resultReference": "projects/my-sre-prod/locations/global/operations/abc123",
+  "resourceNames": [
+    "projects/my-sre-prod/locations/global/buckets/_Default/views/_AllLogs"
+  ],
+  "rows": [
+    { "severity": "ERROR", "occurrences": "12" },
+    { "severity": "WARNING", "occurrences": "5" },
+    { "severity": "INFO", "occurrences": "2" }
+  ]
+}
+```
+
 ## BigQuery
 
 ### gcp-bigquery-execute-query — 読み取り専用 SQL を安全に実行
@@ -1607,6 +1656,93 @@ Current project ID: `my-sre-prod`
 - `analytics-playground`
 ```
 
+## ドキュメント検索
+
+### google-cloud-docs-search — オフライン カタログ検索
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| query | string | はい | 最低 2 文字 | ローカルの Google Cloud ドキュメントカタログに対する検索語。 |
+| maxResults | number | いいえ | `DOCS_SEARCH_PREVIEW_LIMIT` (デフォルト5, 1-10) | 返却する最大件数。省略時は環境変数で決まります。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "google-cloud-docs-search",
+  "arguments": {
+    "query": "Cloud Run memory limits",
+    "maxResults": 3
+  }
+}
+```
+
+**戻り値例**
+```text
+Google Cloud Docs Search
+query="Cloud Run memory limits" | requested=3 | returned=3 | catalogEntries=1240 | catalogPath=/Users/me/google-cloud-mcp/docs/catalog/google-cloud-docs.json | catalogUpdated=2025-10-01T12:34:56.000Z | omitted=0
+```
+
+```json
+[
+  {
+    "rank": 1,
+    "score": 0.8123,
+    "title": "Cloud Run resource limits",
+    "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+    "summary": "Lists CPU, memory, and request limits for services and jobs.",
+    "tags": ["cloud run", "limits", "cpu"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-06-30"
+  }
+]
+```
+
+## gcloud CLI
+
+### gcloud-run-read-command — 読み取り専用 gcloud 実行
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| args | array<string> | はい | 1 トークン以上 | gcloud コマンドをトークン配列で指定します（先頭の `gcloud` は省略可）。`list` / `describe` 等の読み取り動詞のみ許可され、書き込み系や機密 API は事前に拒否されます。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcloud-run-read-command",
+  "arguments": {
+    "args": [
+      "gcloud",
+      "projects",
+      "list",
+      "--format=json"
+    ]
+  }
+}
+```
+
+**戻り値例**
+```text
+# gcloud command output
+
+- Command: `gcloud projects list --format=json`
+- Service account: `mcp-reader@prod.iam.gserviceaccount.com`
+- Exit code: `0`
+
+## STDOUT
+```
+
+```json
+[
+  { "projectId": "my-sre-prod", "name": "My SRE Prod" },
+  { "projectId": "analytics-playground", "name": "Analytics Playground" }
+]
+```
+
+```text
+## STDERR
+_(no output)_
+```
+
 ## リソースリファレンス
 
 MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-resource-manager-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
@@ -1659,3 +1795,11 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | 同上。 | CPU プロファイルのみを抽出し、ホットスポット分析と改善提案を記載。 |
 | `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | HEAP / HEAP_ALLOC / PEAK_HEAP に限定。 | メモリ使用状況とリーク検知のためのインサイトを提供。 |
 | `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | 最大 200 件のプロファイルを収集。 | 直近のプロファイルから導いた短期・中期・長期のパフォーマンス施策。 |
+
+### ドキュメントカタログ リソース
+
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-docs-catalog` | `docs://google-cloud/catalog` | なし | 収録プロダクト数、`generatedAt` などのメタデータ付きサマリを返します。 |
+| `gcp-docs-service` | `docs://google-cloud/{serviceId}` | `serviceId` にプロダクト ID/名称/カテゴリを指定 | 指定プロダクトのドキュメント一覧。表示件数は `DOCS_CATALOG_PREVIEW_LIMIT` の範囲。 |
+| `gcp-docs-search` | `docs://google-cloud/search/{query}` | `query` を URL エンコード | カタログ内検索でスコア順にマッチを返します。件数は `DOCS_CATALOG_SEARCH_LIMIT` まで。 |

@@ -16,6 +16,7 @@ export const SERVICE_NAMES = [
   "profiler",
   "support",
   "docs",
+  "gcloud",
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -61,6 +62,9 @@ const aliasEntries: Array<[string, ServiceName]> = [
   ["documentation", "docs"],
   ["google-docs", "docs"],
   ["cloud-docs", "docs"],
+  ["gcloud", "gcloud"],
+  ["gcloud-cli", "gcloud"],
+  ["gcloud-read", "gcloud"],
 ];
 
 const SERVICE_ALIAS_LOOKUP = new Map<string, ServiceName>(aliasEntries);
