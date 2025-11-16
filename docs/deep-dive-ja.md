@@ -512,6 +512,16 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 
 ## 付録
 
+### ドキュメントカタログとオフライン検索
+
+- `google-cloud-docs-search` は `docs/catalog/google-cloud-docs.json`（`GOOGLE_CLOUD_DOCS_CATALOG` で差し替え可）をローカルで読み込み、完全オフラインで TF-IDF 検索します。クエリは2文字以上で、`maxResults` を省略した場合は `DOCS_SEARCH_PREVIEW_LIMIT`（デフォルト5、最大10）が返却件数を決めます。
+- カタログに登録できる URL は Google 管轄のホストのみです。新しいドキュメントを取り込んだら `lastReviewed` を更新し、サーバー再起動（またはキャッシュクリア）で最新版を読み込ませてください。
+- 同じカタログは MCP リソースとして `docs://google-cloud/...` でも公開されます。
+  - `gcp-docs-catalog`（`docs://google-cloud/catalog`）: すべてのプロダクトと検証日時を俯瞰。
+  - `gcp-docs-service`（`docs://google-cloud/{serviceId}`）: 単一プロダクトのドキュメント一覧。表示件数は `DOCS_CATALOG_PREVIEW_LIMIT`（デフォルト25、最大200）で制御します。
+  - `gcp-docs-search`（`docs://google-cloud/search/{query}`）: カタログ内検索。結果件数は `DOCS_CATALOG_SEARCH_LIMIT`（デフォルト8）まで。
+- 複数の JSON ファイル（例: `docs/catalog/cloud-run-ja.json`）を用意し、デプロイ単位で `GOOGLE_CLOUD_DOCS_CATALOG` を切り替える運用も可能です。
+
 ### 便利な gcloud コマンド
 
 - `gcloud auth application-default login` – ADC を初期化。

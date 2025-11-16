@@ -1656,6 +1656,93 @@ Current project ID: `my-sre-prod`
 - `analytics-playground`
 ```
 
+## ドキュメント検索
+
+### google-cloud-docs-search — オフライン カタログ検索
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| query | string | はい | 最低 2 文字 | ローカルの Google Cloud ドキュメントカタログに対する検索語。 |
+| maxResults | number | いいえ | `DOCS_SEARCH_PREVIEW_LIMIT` (デフォルト5, 1-10) | 返却する最大件数。省略時は環境変数で決まります。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "google-cloud-docs-search",
+  "arguments": {
+    "query": "Cloud Run memory limits",
+    "maxResults": 3
+  }
+}
+```
+
+**戻り値例**
+```text
+Google Cloud Docs Search
+query="Cloud Run memory limits" | requested=3 | returned=3 | catalogEntries=1240 | catalogPath=/Users/me/google-cloud-mcp/docs/catalog/google-cloud-docs.json | catalogUpdated=2025-10-01T12:34:56.000Z | omitted=0
+```
+
+```json
+[
+  {
+    "rank": 1,
+    "score": 0.8123,
+    "title": "Cloud Run resource limits",
+    "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
+    "summary": "Lists CPU, memory, and request limits for services and jobs.",
+    "tags": ["cloud run", "limits", "cpu"],
+    "product": "cloud-run",
+    "lastReviewed": "2025-06-30"
+  }
+]
+```
+
+## gcloud CLI
+
+### gcloud-run-read-command — 読み取り専用 gcloud 実行
+
+| フィールド | 型 | 必須 | デフォルト/制約 | 説明 |
+| --- | --- | --- | --- | --- |
+| args | array<string> | はい | 1 トークン以上 | gcloud コマンドをトークン配列で指定します（先頭の `gcloud` は省略可）。`list` / `describe` 等の読み取り動詞のみ許可され、書き込み系や機密 API は事前に拒否されます。 |
+
+**呼び出し例**
+```jsonc
+{
+  "name": "gcloud-run-read-command",
+  "arguments": {
+    "args": [
+      "gcloud",
+      "projects",
+      "list",
+      "--format=json"
+    ]
+  }
+}
+```
+
+**戻り値例**
+```text
+# gcloud command output
+
+- Command: `gcloud projects list --format=json`
+- Service account: `mcp-reader@prod.iam.gserviceaccount.com`
+- Exit code: `0`
+
+## STDOUT
+```
+
+```json
+[
+  { "projectId": "my-sre-prod", "name": "My SRE Prod" },
+  { "projectId": "analytics-playground", "name": "Analytics Playground" }
+]
+```
+
+```text
+## STDERR
+_(no output)_
+```
+
 ## リソースリファレンス
 
 MCP リソースは `read_resource` / `get_resource` で取得します。特に記載がない限り、`{projectId}` や `{instanceId}`、`{databaseId}` などのプレースホルダは `gcp-resource-manager-set-project-id` や Google Cloud 認証から決定された既定値にフォールバックできます。
@@ -1708,3 +1795,11 @@ MCP リソースは `read_resource` / `get_resource` で取得します。特に
 | `gcp-profiler-cpu-profiles` | `gcp-profiler://{projectId}/cpu-profiles` | 同上。 | CPU プロファイルのみを抽出し、ホットスポット分析と改善提案を記載。 |
 | `gcp-profiler-memory-profiles` | `gcp-profiler://{projectId}/memory-profiles` | HEAP / HEAP_ALLOC / PEAK_HEAP に限定。 | メモリ使用状況とリーク検知のためのインサイトを提供。 |
 | `gcp-profiler-performance-recommendations` | `gcp-profiler://{projectId}/performance-recommendations` | 最大 200 件のプロファイルを収集。 | 直近のプロファイルから導いた短期・中期・長期のパフォーマンス施策。 |
+
+### ドキュメントカタログ リソース
+
+| リソース | URI テンプレート | パラメータ | レスポンス |
+| --- | --- | --- | --- |
+| `gcp-docs-catalog` | `docs://google-cloud/catalog` | なし | 収録プロダクト数、`generatedAt` などのメタデータ付きサマリを返します。 |
+| `gcp-docs-service` | `docs://google-cloud/{serviceId}` | `serviceId` にプロダクト ID/名称/カテゴリを指定 | 指定プロダクトのドキュメント一覧。表示件数は `DOCS_CATALOG_PREVIEW_LIMIT` の範囲。 |
+| `gcp-docs-search` | `docs://google-cloud/search/{query}` | `query` を URL エンコード | カタログ内検索でスコア順にマッチを返します。件数は `DOCS_CATALOG_SEARCH_LIMIT` まで。 |

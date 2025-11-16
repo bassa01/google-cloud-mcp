@@ -309,6 +309,16 @@ Support tools integrate with the Cloud Support API so agents can triage customer
 - The billing project must align with the Support entitlement—`tools.ts` resolves it automatically, but keep credentials consistent.
 - Avoid leaking sensitive attachment data by redacting before uploading.
 
+### Documentation catalog & offline search
+
+- `google-cloud-docs-search` keeps doc lookups entirely offline by ranking entries from `docs/catalog/google-cloud-docs.json` (override via `GOOGLE_CLOUD_DOCS_CATALOG`). Queries must be at least two characters, and `DOCS_SEARCH_PREVIEW_LIMIT` (default 5, max 10) governs how many matches are returned when `maxResults` is omitted.
+- Catalog entries accept only Google-owned hostnames. When you ingest new docs, bump `lastReviewed` so the recency boost remains meaningful and restart the server (or clear the docs cache) afterward.
+- MCP resources expose the same catalog via `docs://google-cloud/...` URIs:
+  - `gcp-docs-catalog` (`docs://google-cloud/catalog`) summarises every product plus metadata such as validation dates.
+  - `gcp-docs-service` (`docs://google-cloud/{serviceId}`) lists a single product's curated documents; previews obey `DOCS_CATALOG_PREVIEW_LIMIT` (default 25, max 200).
+  - `gcp-docs-search` (`docs://google-cloud/search/{query}`) performs quick catalog searches bounded by `DOCS_CATALOG_SEARCH_LIMIT` (default 8).
+- Store alternative catalogs (for example region-specific or private doc sets) under `docs/catalog/*.json` and point `GOOGLE_CLOUD_DOCS_CATALOG` to the desired file per deployment.
+
 ## Prompt patterns and authoring
 
 ### General guidance
