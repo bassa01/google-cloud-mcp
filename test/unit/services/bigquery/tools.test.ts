@@ -3,7 +3,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../../mocks/google-cloud-mocks.js';
-import { mockBigQueryClient } from '../../../mocks/google-cloud-mocks.js';
+import {
+  mockBigQueryClient,
+  mockDatasetMetadata,
+  mockTableMetadata,
+} from '../../../mocks/google-cloud-mocks.js';
 import { createMockMcpServer } from '../../../utils/test-helpers.js';
 
 describe('BigQuery Tools', () => {
@@ -42,6 +46,15 @@ describe('BigQuery Tools', () => {
     mockBigQueryClient.createQueryJob.mockResolvedValue([mockJob]);
   });
 
+  function getToolHandler(name: string) {
+    const toolCall = mockServer.tool.mock.calls.find(
+      (call) => call[0] === name,
+    );
+
+    expect(toolCall).toBeDefined();
+    return toolCall![2];
+  }
+
   it('registers the BigQuery execute query tool', async () => {
     const { registerBigQueryTools } = await import('../../../../src/services/bigquery/tools.js');
 
@@ -74,6 +87,83 @@ describe('BigQuery Tools', () => {
     expect(response).toBeDefined();
     expect(response.content?.[0]?.text).toContain('BigQuery Query Results');
     expect(mockBigQueryClient.createQueryJob).toHaveBeenCalled();
+  });
+
+  it('registers dataset and schema helper tools', async () => {
+    const { registerBigQueryTools } = await import('../../../../src/services/bigquery/tools.js');
+
+    registerBigQueryTools(mockServer as any);
+
+    expect(mockServer.tool).toHaveBeenCalledWith(
+      'gcp-bigquery-list-datasets',
+      expect.any(Object),
+      expect.any(Function),
+    );
+    expect(mockServer.tool).toHaveBeenCalledWith(
+      'gcp-bigquery-list-tables',
+      expect.any(Object),
+      expect.any(Function),
+    );
+    expect(mockServer.tool).toHaveBeenCalledWith(
+      'gcp-bigquery-get-table-schema',
+      expect.any(Object),
+      expect.any(Function),
+    );
+  });
+
+  it('lists datasets for the active project', async () => {
+    const { registerBigQueryTools } = await import('../../../../src/services/bigquery/tools.js');
+
+    registerBigQueryTools(mockServer as any);
+
+    const handler = getToolHandler('gcp-bigquery-list-datasets');
+    const response = await handler({ projectId: 'test-project' });
+
+    expect(mockBigQueryClient.getDatasets).toHaveBeenCalled();
+    expect(response.content?.[0]?.text).toContain('BigQuery Datasets');
+    expect(response.content?.[0]?.text).toContain(
+      mockDatasetMetadata.datasetReference.datasetId,
+    );
+  });
+
+  it('lists tables within a dataset', async () => {
+    const { registerBigQueryTools } = await import('../../../../src/services/bigquery/tools.js');
+
+    registerBigQueryTools(mockServer as any);
+
+    const handler = getToolHandler('gcp-bigquery-list-tables');
+    const response = await handler({
+      dataset: { datasetId: 'sample_dataset' },
+      projectId: 'test-project',
+    });
+
+    expect(mockBigQueryClient.dataset).toHaveBeenCalledWith('sample_dataset', {
+      projectId: 'test-project',
+    });
+    expect(response.content?.[0]?.text).toContain('BigQuery Tables');
+    expect(response.content?.[0]?.text).toContain(
+      mockTableMetadata.tableReference.tableId,
+    );
+  });
+
+  it('returns the schema for a table', async () => {
+    const { registerBigQueryTools } = await import('../../../../src/services/bigquery/tools.js');
+
+    registerBigQueryTools(mockServer as any);
+
+    const handler = getToolHandler('gcp-bigquery-get-table-schema');
+    const response = await handler({
+      table: {
+        datasetId: 'sample_dataset',
+        tableId: 'sample_table',
+      },
+      projectId: 'test-project',
+    });
+
+    expect(mockBigQueryClient.dataset).toHaveBeenCalled();
+    expect(response.content?.[0]?.text).toContain('BigQuery Table Schema');
+    expect(response.content?.[0]?.text).toContain('event_date');
+    expect(response.content?.[0]?.text).toContain('Time partitioned by DAY');
   });
 
   it('blocks destructive queries before hitting BigQuery', async () => {

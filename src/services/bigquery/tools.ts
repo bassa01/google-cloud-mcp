@@ -1,7 +1,14 @@
 /**
  * Google Cloud BigQuery tools for MCP
  */
-import { type QueryResultsOptions } from "@google-cloud/bigquery";
+import {
+  type Dataset,
+  type DatasetMetadata,
+  type QueryResultsOptions,
+  type Table,
+  type TableField,
+  type TableMetadata,
+} from "@google-cloud/bigquery";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getProjectId } from "../../utils/auth.js";
@@ -19,6 +26,18 @@ const BIGQUERY_ROW_PREVIEW_LIMIT = resolveBoundedNumber(
   process.env.BIGQUERY_ROW_PREVIEW_LIMIT,
   50,
   { min: 5, max: 500 },
+);
+
+const BIGQUERY_DATASET_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.BIGQUERY_DATASET_PREVIEW_LIMIT,
+  25,
+  { min: 5, max: 100 },
+);
+
+const BIGQUERY_TABLE_PREVIEW_LIMIT = resolveBoundedNumber(
+  process.env.BIGQUERY_TABLE_PREVIEW_LIMIT,
+  25,
+  { min: 5, max: 100 },
 );
 
 function normalizeString(value?: string | string[] | null): string | undefined {
@@ -103,7 +122,482 @@ function coerceQueryResultsOptions(
   return sanitized;
 }
 
+async function getDatasetMetadata(
+  dataset: Dataset,
+): Promise<DatasetMetadata> {
+  if (dataset.metadata) {
+    return dataset.metadata;
+  }
+
+  const [metadata] = await dataset.getMetadata();
+  return metadata;
+}
+
+async function getTableMetadata(table: Table): Promise<TableMetadata> {
+  if (table.metadata) {
+    return table.metadata;
+  }
+
+  const [metadata] = await table.getMetadata();
+  return metadata;
+}
+
+function extractProjectIdFromResourceId(
+  resourceId?: string,
+): string | undefined {
+  if (!resourceId) {
+    return undefined;
+  }
+
+  const [project] = resourceId.split(":");
+  return project;
+}
+
+function buildDatasetSummary(
+  metadata: DatasetMetadata,
+): Record<string, unknown> {
+  const datasetReference = metadata.datasetReference ?? {};
+  const datasetId =
+    datasetReference.datasetId || metadata.id?.split(":")[1] || metadata.id;
+
+  return {
+    datasetId,
+    projectId:
+      datasetReference.projectId || extractProjectIdFromResourceId(metadata.id),
+    friendlyName: metadata.friendlyName,
+    description: metadata.description,
+    location: metadata.location,
+    labels: metadata.labels,
+    defaultTableExpirationMs: metadata.defaultTableExpirationMs,
+    defaultPartitionExpirationMs: metadata.defaultPartitionExpirationMs,
+    lastModifiedTime: metadata.lastModifiedTime,
+    access: metadata.access,
+  };
+}
+
+function buildTableSummary(metadata: TableMetadata): Record<string, unknown> {
+  const tableReference = metadata.tableReference ?? {};
+
+  return {
+    tableId: tableReference.tableId || metadata.id,
+    datasetId: tableReference.datasetId,
+    projectId:
+      tableReference.projectId || extractProjectIdFromResourceId(metadata.id),
+    type: metadata.type,
+    friendlyName: metadata.friendlyName,
+    description: metadata.description,
+    location: metadata.location,
+    numRows: metadata.numRows,
+    numBytes: metadata.numBytes,
+    timePartitioning: metadata.timePartitioning,
+    rangePartitioning: metadata.rangePartitioning,
+    clustering: metadata.clustering?.fields,
+    creationTime: metadata.creationTime,
+    expirationTime: metadata.expirationTime,
+    requirePartitionFilter: metadata.timePartitioning?.requirePartitionFilter,
+  };
+}
+
+function mapSchemaFields(fields?: TableField[]): Record<string, unknown>[] {
+  if (!fields || fields.length === 0) {
+    return [];
+  }
+
+  return fields.map((field) => ({
+    name: field.name,
+    type: field.type,
+    mode: field.mode,
+    description: field.description,
+    policyTags: field.policyTags?.names,
+    fields: mapSchemaFields(field.fields as TableField[] | undefined),
+  }));
+}
+
+function describePartitioning(metadata: TableMetadata): string | undefined {
+  const parts: string[] = [];
+
+  if (metadata.timePartitioning) {
+    const { type, field } = metadata.timePartitioning;
+    if (field) {
+      parts.push(`Time partitioned by ${type} on column ${field}.`);
+    } else {
+      parts.push(`Ingestion-time partitioned by ${type}.`);
+    }
+  }
+
+  if (metadata.rangePartitioning) {
+    const { field, range } = metadata.rangePartitioning;
+    const rangeDetail = range
+      ? ` between ${range.start || "start"} and ${range.end || "end"} (step ${range.interval || "?"})`
+      : "";
+    parts.push(`Range partitioned on ${field || "(unspecified field)"}${rangeDetail}.`);
+  }
+
+  if (metadata.clustering?.fields?.length) {
+    parts.push(
+      `Clustered by ${metadata.clustering.fields.join(", ")}.`,
+    );
+  }
+
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  return parts.join(" ");
+}
+
+function normalizeIdentifier(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function resolveDatasetReference(
+  dataset: { datasetId: string; projectId?: string | null } | undefined,
+  defaultProjectId: string,
+): { datasetId: string; projectId: string } {
+  if (!dataset) {
+    throw new GcpMcpError(
+      "Dataset reference is required (datasetId and optional projectId).",
+      "INVALID_ARGUMENT",
+      400,
+    );
+  }
+
+  const datasetId = normalizeIdentifier(dataset.datasetId);
+  if (!datasetId) {
+    throw new GcpMcpError(
+      "datasetId must be a non-empty string.",
+      "INVALID_ARGUMENT",
+      400,
+    );
+  }
+
+  const datasetProjectId =
+    normalizeString(dataset.projectId) || defaultProjectId;
+
+  return {
+    datasetId,
+    projectId: datasetProjectId,
+  };
+}
+
+function resolveTableReference(
+  table: {
+    datasetId: string;
+    tableId: string;
+    projectId?: string | null;
+  },
+  defaultProjectId: string,
+): { datasetId: string; tableId: string; projectId: string } {
+  const datasetId = normalizeIdentifier(table.datasetId);
+  const tableId = normalizeIdentifier(table.tableId);
+
+  if (!datasetId || !tableId) {
+    throw new GcpMcpError(
+      "table.datasetId and table.tableId must be provided.",
+      "INVALID_ARGUMENT",
+      400,
+    );
+  }
+
+  const projectId = normalizeString(table.projectId) || defaultProjectId;
+
+  return {
+    datasetId,
+    tableId,
+    projectId,
+  };
+}
+
 export function registerBigQueryTools(server: McpServer): void {
+  server.tool(
+    "gcp-bigquery-list-datasets",
+    {
+      projectId: z
+        .string()
+        .optional()
+        .describe(
+          "Overrides the Google Cloud project ID before listing datasets.",
+        ),
+    },
+    async ({ projectId }, _extra) => {
+      try {
+        const normalizedProjectId = normalizeString(projectId);
+        const resolvedProjectId =
+          normalizedProjectId || (await getProjectId());
+
+        if (!resolvedProjectId) {
+          throw new GcpMcpError(
+            "Project ID is required to list datasets.",
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        const bigquery = await getBigQueryClient(resolvedProjectId);
+        logger.debug(
+          `Using BigQuery client with project ID: ${resolvedProjectId} for gcp-bigquery-list-datasets`,
+        );
+
+        const [datasets] = await bigquery.getDatasets();
+        const datasetSummaries = await Promise.all(
+          (datasets ?? []).map(async (dataset) => {
+            const metadata = await getDatasetMetadata(dataset);
+            return buildDatasetSummary(metadata);
+          }),
+        );
+
+        const { displayed, omitted } = previewList(
+          datasetSummaries,
+          BIGQUERY_DATASET_PREVIEW_LIMIT,
+        );
+
+        const text = buildStructuredTextBlock({
+          title: "BigQuery Datasets",
+          metadata: {
+            projectId: resolvedProjectId,
+            totalDatasets: datasetSummaries.length,
+          },
+          dataLabel: "datasets",
+          data: displayed,
+          note:
+            datasetSummaries.length === 0
+              ? "No datasets found in this project."
+              : omitted > 0
+                ? `Showing ${displayed.length} of ${datasetSummaries.length} datasets (preview limit ${BIGQUERY_DATASET_PREVIEW_LIMIT}).`
+                : undefined,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text,
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error(
+          `Error listing BigQuery datasets: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        throw error;
+      }
+    },
+  );
+
+  server.tool(
+    "gcp-bigquery-list-tables",
+    {
+      dataset: z
+        .object({
+          datasetId: z
+            .string()
+            .min(1)
+            .describe("Dataset ID containing the tables to list."),
+          projectId: z
+            .string()
+            .optional()
+            .describe(
+              "Overrides the project where the dataset is located.",
+            ),
+        })
+        .describe("Dataset reference (ID plus optional project override)."),
+      projectId: z
+        .string()
+        .optional()
+        .describe(
+          "Default project ID when dataset.projectId is not provided.",
+        ),
+    },
+    async ({ dataset, projectId }, _extra) => {
+      try {
+        const normalizedProjectId = normalizeString(projectId);
+        const fallbackProjectId =
+          normalizedProjectId || (await getProjectId());
+
+        if (!fallbackProjectId) {
+          throw new GcpMcpError(
+            "Project ID is required to list tables.",
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        const datasetRef = resolveDatasetReference(dataset, fallbackProjectId);
+        const bigquery = await getBigQueryClient(datasetRef.projectId);
+        logger.debug(
+          `Using BigQuery client with project ID: ${datasetRef.projectId} for gcp-bigquery-list-tables`,
+        );
+
+        const datasetHandle = bigquery.dataset(datasetRef.datasetId, {
+          projectId: datasetRef.projectId,
+        });
+        const [tables] = await datasetHandle.getTables();
+        const tableSummaries = await Promise.all(
+          (tables ?? []).map(async (table) => {
+            const metadata = await getTableMetadata(table);
+            return buildTableSummary(metadata);
+          }),
+        );
+
+        const { displayed, omitted } = previewList(
+          tableSummaries,
+          BIGQUERY_TABLE_PREVIEW_LIMIT,
+        );
+
+        const text = buildStructuredTextBlock({
+          title: "BigQuery Tables",
+          metadata: {
+            projectId: datasetRef.projectId,
+            datasetId: datasetRef.datasetId,
+            totalTables: tableSummaries.length,
+          },
+          dataLabel: "tables",
+          data: displayed,
+          note:
+            tableSummaries.length === 0
+              ? "No tables or views found in this dataset."
+              : omitted > 0
+                ? `Showing ${displayed.length} of ${tableSummaries.length} tables (preview limit ${BIGQUERY_TABLE_PREVIEW_LIMIT}).`
+                : undefined,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text,
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error(
+          `Error listing BigQuery tables: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        throw error;
+      }
+    },
+  );
+
+  server.tool(
+    "gcp-bigquery-get-table-schema",
+    {
+      table: z.object({
+        datasetId: z
+          .string()
+          .min(1)
+          .describe("Dataset ID that contains the table."),
+        tableId: z
+          .string()
+          .min(1)
+          .describe("Table ID whose schema should be fetched."),
+        projectId: z
+          .string()
+          .optional()
+          .describe("Overrides the project where the table lives."),
+      }),
+      projectId: z
+        .string()
+        .optional()
+        .describe(
+          "Default project ID when table.projectId is not provided.",
+        ),
+    },
+    async ({ table, projectId }, _extra) => {
+      try {
+        const normalizedProjectId = normalizeString(projectId);
+        const fallbackProjectId =
+          normalizedProjectId || (await getProjectId());
+
+        if (!fallbackProjectId) {
+          throw new GcpMcpError(
+            "Project ID is required to retrieve a table schema.",
+            "INVALID_ARGUMENT",
+            400,
+          );
+        }
+
+        const tableRef = resolveTableReference(table, fallbackProjectId);
+        const bigquery = await getBigQueryClient(tableRef.projectId);
+        logger.debug(
+          `Using BigQuery client with project ID: ${tableRef.projectId} for gcp-bigquery-get-table-schema`,
+        );
+
+        const datasetHandle = bigquery.dataset(tableRef.datasetId, {
+          projectId: tableRef.projectId,
+        });
+        const tableHandle = datasetHandle.table(tableRef.tableId);
+        const metadata = await getTableMetadata(tableHandle);
+
+        const columns = mapSchemaFields(
+          metadata.schema?.fields as TableField[] | undefined,
+        );
+        const partitionNote = describePartitioning(metadata);
+        const noteParts = [] as string[];
+        if (partitionNote) {
+          noteParts.push(partitionNote);
+        }
+        if (columns.length === 0) {
+          noteParts.push(
+            "No schema fields reported; this may be a view or external table.",
+          );
+        }
+
+        const text = buildStructuredTextBlock({
+          title: "BigQuery Table Schema",
+          metadata: {
+            projectId: tableRef.projectId,
+            datasetId: tableRef.datasetId,
+            tableId: tableRef.tableId,
+            type: metadata.type,
+            location: metadata.location,
+          },
+          dataLabel: "schema",
+          data: {
+            table: {
+              type: metadata.type,
+              friendlyName: metadata.friendlyName,
+              description: metadata.description,
+              location: metadata.location,
+              numRows: metadata.numRows,
+              numBytes: metadata.numBytes,
+              creationTime: metadata.creationTime,
+              expirationTime: metadata.expirationTime,
+            },
+            columns,
+            partitioning: {
+              timePartitioning: metadata.timePartitioning,
+              rangePartitioning: metadata.rangePartitioning,
+              requirePartitionFilter:
+                metadata.timePartitioning?.requirePartitionFilter,
+            },
+            clustering: metadata.clustering?.fields,
+          },
+          note: noteParts.length ? noteParts.join(" ") : undefined,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text,
+            },
+          ],
+        };
+      } catch (error: any) {
+        logger.error(
+          `Error getting BigQuery table schema: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        throw error;
+      }
+    },
+  );
+
   server.tool(
     "gcp-bigquery-execute-query",
     {

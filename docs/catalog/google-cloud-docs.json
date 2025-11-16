@@ -1,130 +1,1717 @@
-[
-  {
-    "title": "Cloud Run service configuration overview",
-    "url": "https://cloud.google.com/run/docs/configuring/overview",
-    "summary": "Explains how to configure Cloud Run services, including revisions, deployment parameters, environment variables, and common rollout workflows.",
-    "tags": ["cloud run", "configuration", "revisions", "deployment"],
-    "product": "cloud-run",
-    "lastReviewed": "2025-09-12"
+{
+  "metadata": {
+    "generatedAt": "2025-11-15T00:00:00Z",
+    "description": "Catalog of official Google Cloud documentation referenced by this MCP server. Each entry maps a supported service to the public docs that operators rely on most so teams can quickly answer questions or deep-link the MCP responses.",
+    "servicesCovered": [
+      "Cloud Logging",
+      "Cloud Monitoring",
+      "Cloud Trace",
+      "Cloud Profiler",
+      "Error Reporting",
+      "Cloud Spanner",
+      "Cloud Customer Care"
+    ],
+    "docTypes": {
+      "overview": "High-level product introductions and landing pages.",
+      "quickstart": "Step-by-step tasks to enable APIs and run first workloads.",
+      "concept": "Conceptual explanations of data models, architecture, and behavior.",
+      "guide": "Procedural guides for accomplishing a scenario end-to-end.",
+      "how-to": "Focused instructions for a single configuration or operation.",
+      "architecture": "Reference architectures and topology guidance.",
+      "reference": "Non-API reference material such as SQL or configuration syntax.",
+      "api-reference": "Machine-level API documentation (REST, RPC, Admin).",
+      "cli-reference": "Command-line references for gcloud or other CLIs.",
+      "sdk": "Client library usage guides and supported languages.",
+      "best-practice": "Operational or design recommendations validated by Google.",
+      "iam": "Access control, IAM roles, and permissions guidance.",
+      "security": "Encryption, compliance, and data handling specifics.",
+      "quota": "Limits, quotas, and scaling considerations.",
+      "pricing": "Billing, pricing, and cost optimization references.",
+      "release-notes": "Release notes, changelog, and announcements.",
+      "sample": "Code samples and example repositories.",
+      "integration": "Docs covering integrations with other Google Cloud services.",
+      "migration": "Guidance for migrating or modernizing workloads.",
+      "operations": "Incident response, SLOs, runbooks, and day-2 operations."
+    }
   },
-  {
-    "title": "Cloud Run container concurrency",
-    "url": "https://cloud.google.com/run/docs/configuring/concurrency",
-    "summary": "Details how Cloud Run concurrency works, default values, and how to choose the right setting for latency vs. cost.",
-    "tags": ["cloud run", "concurrency", "scaling", "performance"],
-    "product": "cloud-run",
-    "lastReviewed": "2025-08-18"
-  },
-  {
-    "title": "Cloud Run resource limits",
-    "url": "https://cloud.google.com/run/docs/configuring/memory-limits",
-    "summary": "Lists CPU, memory, and request limits for Cloud Run services and jobs, plus guidance on tuning resources per revision.",
-    "tags": ["cloud run", "limits", "cpu", "memory"],
-    "product": "cloud-run",
-    "lastReviewed": "2025-06-30"
-  },
-  {
-    "title": "Create triggers from Cloud Storage events (Cloud Run)",
-    "url": "https://cloud.google.com/run/docs/triggering/storage-triggers",
-    "summary": "Shows how to connect Cloud Storage change notifications to Cloud Run services with Eventarc, including IAM and filtering setup.",
-    "tags": ["cloud run", "eventarc", "cloud storage", "triggers"],
-    "product": "cloud-run",
-    "lastReviewed": "2025-05-02"
-  },
-  {
-    "title": "Cloud Run release notes",
-    "url": "https://cloud.google.com/run/docs/release-notes",
-    "summary": "Chronological list of Cloud Run feature launches, region roll-outs, and behavior changes across revisions and jobs.",
-    "tags": ["cloud run", "release notes", "changelog"],
-    "product": "cloud-run",
-    "lastReviewed": "2025-11-04"
-  },
-  {
-    "title": "Cloud Spanner SQL reference",
-    "url": "https://cloud.google.com/spanner/docs/reference/standard-sql/query-syntax",
-    "summary": "Canonical reference for Cloud Spanner SQL syntax, supported functions, query hints, and deviations from ANSI SQL.",
-    "tags": ["spanner", "sql", "reference", "queries"],
-    "product": "cloud-spanner",
-    "lastReviewed": "2025-10-10"
-  },
-  {
-    "title": "Cloud Spanner DML statements",
-    "url": "https://cloud.google.com/spanner/docs/dml-sql",
-    "summary": "Describes how to run INSERT, UPDATE, DELETE, and aborted transaction retries while respecting Spanner read-write semantics.",
-    "tags": ["spanner", "dml", "transactions", "mutations"],
-    "product": "cloud-spanner",
-    "lastReviewed": "2025-07-22"
-  },
-  {
-    "title": "Cloud Spanner best practices for SQL",
-    "url": "https://cloud.google.com/spanner/docs/sql-best-practices",
-    "summary": "Guidance on query optimization, parameterization, interleaved tables, and execution plans to avoid common Spanner anti-patterns.",
-    "tags": ["spanner", "best practices", "performance", "query tuning"],
-    "product": "cloud-spanner",
-    "lastReviewed": "2025-09-01"
-  },
-  {
-    "title": "Cloud Spanner query execution plans",
-    "url": "https://cloud.google.com/spanner/docs/query-plan-details",
-    "summary": "Explains how to capture and interpret query plans, including distributed stages, to diagnose slow Spanner SQL statements.",
-    "tags": ["spanner", "query plan", "debugging", "explain"],
-    "product": "cloud-spanner",
-    "lastReviewed": "2025-08-05"
-  },
-  {
-    "title": "Cloud Spanner release notes",
-    "url": "https://cloud.google.com/spanner/docs/release-notes",
-    "summary": "Up-to-date changelog for Cloud Spanner features, query engine improvements, and regional availability changes.",
-    "tags": ["spanner", "release notes", "changelog"],
-    "product": "cloud-spanner",
-    "lastReviewed": "2025-11-07"
-  },
-  {
-    "title": "Cloud Logging overview",
-    "url": "https://cloud.google.com/logging/docs/overview",
-    "summary": "Explains Cloud Logging architecture, log buckets, routing, and ingestion limits with links to common configuration tasks.",
-    "tags": ["cloud logging", "overview", "log buckets", "routing"],
-    "product": "cloud-logging",
-    "lastReviewed": "2025-10-28"
-  },
-  {
-    "title": "Cloud Logging sinks and routing",
-    "url": "https://cloud.google.com/logging/docs/routing/overview",
-    "summary": "Describes how to create log sinks, choose destinations such as BigQuery, Cloud Storage, Pub/Sub, and manage exclusions.",
-    "tags": ["cloud logging", "sinks", "routing", "exports"],
-    "product": "cloud-logging",
-    "lastReviewed": "2025-09-19"
-  },
-  {
-    "title": "Cloud Logging pricing",
-    "url": "https://cloud.google.com/logging/pricing",
-    "summary": "Lists ingestion, storage, and regional pricing details for Cloud Logging plus retention controls to manage costs.",
-    "tags": ["cloud logging", "pricing", "retention", "cost"],
-    "product": "cloud-logging",
-    "lastReviewed": "2025-10-01"
-  },
-  {
-    "title": "BigQuery SQL reference",
-    "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax",
-    "summary": "Complete syntax reference for BigQuery Standard SQL including statements, operators, and data definition commands.",
-    "tags": ["bigquery", "sql", "reference", "queries"],
-    "product": "bigquery",
-    "lastReviewed": "2025-10-15"
-  },
-  {
-    "title": "BigQuery best practices",
-    "url": "https://cloud.google.com/bigquery/docs/best-practices-performance-overview",
-    "summary": "Recommendations for partitioning, clustering, caching, and query tuning to improve BigQuery performance and cost.",
-    "tags": ["bigquery", "best practices", "performance", "cost"],
-    "product": "bigquery",
-    "lastReviewed": "2025-08-30"
-  },
-  {
-    "title": "BigQuery storage and pricing",
-    "url": "https://cloud.google.com/bigquery/pricing",
-    "summary": "Pricing model for BigQuery storage and analysis, including edition comparisons, reservations, and free tiers.",
-    "tags": ["bigquery", "pricing", "storage", "reservations"],
-    "product": "bigquery",
-    "lastReviewed": "2025-11-02"
-  }
-]
+  "services": [
+    {
+      "id": "logging",
+      "productName": "Cloud Logging",
+      "productCategory": "Observability",
+      "officialDocsRoot": "https://cloud.google.com/logging/docs",
+      "summary": "Centralized, schema-aware log ingestion with analytics, routing, exports, alerting, and IAM-aware controls for every Google Cloud workload.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/logging/docs",
+          "description": "Explains Cloud Logging architecture, ingestion pipeline options, regional availability, and how it connects to the rest of Google Cloud Observability.",
+          "topics": [
+            "overview",
+            "architecture",
+            "observability"
+          ]
+        },
+        {
+          "title": "Quickstart: Console",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/logging/docs/quickstart-console",
+          "description": "Enables the API, creates a sample log entry, and walks through the Logs Explorer inside the Google Cloud console.",
+          "topics": [
+            "console",
+            "setup",
+            "logs-explorer"
+          ]
+        },
+        {
+          "title": "Quickstart: gcloud CLI",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/logging/docs/quickstart-cli",
+          "description": "Covers prerequisites, IAM roles, and `gcloud logging` commands required to write and read log entries from the terminal.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "ingestion"
+          ]
+        },
+        {
+          "title": "Log Explorer and Logging Query Language",
+          "docType": "concept",
+          "category": "Query & Analysis",
+          "url": "https://cloud.google.com/logging/docs/query/logging-query-language",
+          "description": "Documents filter expressions, functions, histogram visualizations, and saved query workflows for the Logs Explorer UI.",
+          "topics": [
+            "queries",
+            "filters",
+            "logs-explorer"
+          ]
+        },
+        {
+          "title": "Log Analytics workspace",
+          "docType": "concept",
+          "category": "Query & Analysis",
+          "url": "https://cloud.google.com/logging/docs/log-analytics",
+          "description": "Explains BigQuery-backed log views, SQL workspace usage, and how to manage analytics-enabled log buckets.",
+          "topics": [
+            "analytics",
+            "bigquery",
+            "sql"
+          ]
+        },
+        {
+          "title": "Log buckets and retention planning",
+          "docType": "concept",
+          "category": "Storage & Routing",
+          "url": "https://cloud.google.com/logging/docs/buckets",
+          "description": "Describes default, user-defined, and analytics buckets along with retention policies, locations, and lifecycle automation.",
+          "topics": [
+            "buckets",
+            "retention",
+            "storage"
+          ]
+        },
+        {
+          "title": "Log Router and sinks",
+          "docType": "concept",
+          "category": "Storage & Routing",
+          "url": "https://cloud.google.com/logging/docs/routing/overview",
+          "description": "Covers inclusion filters, exclusions, and sink destinations for routing logs to BigQuery, Pub/Sub, and Cloud Storage.",
+          "topics": [
+            "routing",
+            "sinks",
+            "exports"
+          ]
+        },
+        {
+          "title": "Log exports",
+          "docType": "guide",
+          "category": "Storage & Routing",
+          "url": "https://cloud.google.com/logging/docs/export",
+          "description": "Step-by-step instructions for exporting logs, wiring destinations, testing throughput, and validating delivery guarantees.",
+          "topics": [
+            "exports",
+            "destinations",
+            "integration"
+          ]
+        },
+        {
+          "title": "Log-based metrics",
+          "docType": "concept",
+          "category": "Metrics & Alerts",
+          "url": "https://cloud.google.com/logging/docs/logs-based-metrics",
+          "description": "Details counter and distribution metrics, aggregation windows, and how they surface to Cloud Monitoring alert policies.",
+          "topics": [
+            "metrics",
+            "aggregation",
+            "monitoring"
+          ]
+        },
+        {
+          "title": "Configure notifications and alerts",
+          "docType": "how-to",
+          "category": "Metrics & Alerts",
+          "url": "https://cloud.google.com/logging/docs/configure-notifications",
+          "description": "Explains notification channels, alert frequency, and best practices for routing log-based incidents.",
+          "topics": [
+            "alerting",
+            "notifications",
+            "incident-response"
+          ]
+        },
+        {
+          "title": "Ops Agent and Logging agents",
+          "docType": "guide",
+          "category": "Ingestion & Agents",
+          "url": "https://cloud.google.com/logging/docs/agent",
+          "description": "Lists installation flows, file tailing, structured logging, and legacy agent migration guidance.",
+          "topics": [
+            "ops-agent",
+            "agents",
+            "ingestion"
+          ]
+        },
+        {
+          "title": "Access control (IAM)",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/logging/docs/access-control",
+          "description": "Documents predefined roles, custom role scopes, and least-privilege planning for logging admins and viewers.",
+          "topics": [
+            "iam",
+            "roles",
+            "permissions"
+          ]
+        },
+        {
+          "title": "Customer-managed encryption keys",
+          "docType": "security",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/logging/docs/cmek",
+          "description": "Explains CMEK-eligible resources, key rotation, and failure handling for encrypted log storage.",
+          "topics": [
+            "cmek",
+            "encryption",
+            "compliance"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/logging/quotas",
+          "description": "Enumerates ingestion throughput, bucket, sink, and API quotas along with request limit increase steps.",
+          "topics": [
+            "quotas",
+            "limits",
+            "capacity-planning"
+          ]
+        },
+        {
+          "title": "Pricing and retention tiers",
+          "docType": "pricing",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/products/operations/pricing#cloud-logging",
+          "description": "Breaks down free allotments, storage classes, analytics surcharges, and committed use considerations.",
+          "topics": [
+            "pricing",
+            "retention",
+            "billing"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/logging/docs/reference/v2/rest",
+          "description": "Full REST surface for entries, sinks, metrics, buckets, exclusions, and operations.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "gcloud logging commands",
+          "docType": "cli-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/sdk/gcloud/reference/logging",
+          "description": "Command descriptions, flags, and examples for log entries, sinks, buckets, and exclusions.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "scripts"
+          ]
+        },
+        {
+          "title": "Client libraries",
+          "docType": "sdk",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/logging/docs/reference/libraries",
+          "description": "Lists supported languages, auth setup, batching, and region routing guidance for logging SDKs.",
+          "topics": [
+            "sdk",
+            "libraries",
+            "languages"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/logging/docs/release-notes",
+          "description": "Chronological release log covering API additions, region launches, and behavior changes.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        },
+        {
+          "title": "Code samples catalog",
+          "docType": "sample",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/logging/docs/samples",
+          "description": "Ready-to-run snippets for common ingestion, filtering, sink routing, and analytics workflows.",
+          "topics": [
+            "samples",
+            "automation",
+            "reference"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monitoring",
+      "productName": "Cloud Monitoring",
+      "productCategory": "Observability",
+      "officialDocsRoot": "https://cloud.google.com/monitoring/docs",
+      "summary": "Unified metric ingestion, dashboards, SLOs, and incident response across hybrid workloads powered by Google Cloud's operations suite.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/monitoring/docs",
+          "description": "Landing page outlining core Monitoring capabilities, agents, integrations, and console navigation.",
+          "topics": [
+            "overview",
+            "architecture",
+            "observability"
+          ]
+        },
+        {
+          "title": "Quickstart: Console",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/monitoring/quickstart-console",
+          "description": "Guides administrators through enabling the API, selecting a metrics scope, and viewing dashboards inside the console.",
+          "topics": [
+            "console",
+            "setup",
+            "dashboards"
+          ]
+        },
+        {
+          "title": "Quickstart: gcloud CLI",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/monitoring/quickstart-gcloud",
+          "description": "Shows how to configure Monitoring resources and view time series entirely with `gcloud monitoring` commands.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "setup"
+          ]
+        },
+        {
+          "title": "Metrics, resources, and time series",
+          "docType": "concept",
+          "category": "Metrics & Dashboards",
+          "url": "https://cloud.google.com/monitoring/api/v3/metrics",
+          "description": "Describes metric kinds, value types, MonitoredResource mappings, and aggregation windows.",
+          "topics": [
+            "metrics",
+            "timeseries",
+            "resources"
+          ]
+        },
+        {
+          "title": "Custom metrics guide",
+          "docType": "guide",
+          "category": "Metrics & Dashboards",
+          "url": "https://cloud.google.com/monitoring/custom-metrics/creating-metrics",
+          "description": "Explains how to create user-defined metrics via API, agents, or OpenTelemetry collectors.",
+          "topics": [
+            "custom-metrics",
+            "instrumentation",
+            "collection"
+          ]
+        },
+        {
+          "title": "Monitoring Query Language (MQL)",
+          "docType": "concept",
+          "category": "Metrics & Dashboards",
+          "url": "https://cloud.google.com/monitoring/mql",
+          "description": "Documents the functional query language for building advanced charts and SLO alert conditions.",
+          "topics": [
+            "mql",
+            "queries",
+            "dashboards"
+          ]
+        },
+        {
+          "title": "Dashboards and charts",
+          "docType": "guide",
+          "category": "Metrics & Dashboards",
+          "url": "https://cloud.google.com/monitoring/dashboards",
+          "description": "Shows how to design custom dashboards, share them, and embed dynamic filters.",
+          "topics": [
+            "dashboards",
+            "charts",
+            "visualizations"
+          ]
+        },
+        {
+          "title": "Alerting policies",
+          "docType": "guide",
+          "category": "Alerting & SLOs",
+          "url": "https://cloud.google.com/monitoring/alerts/using-alerting",
+          "description": "Covers notification channels, documentation templates, muting rules, and multi-condition policies.",
+          "topics": [
+            "alerting",
+            "notifications",
+            "channels"
+          ]
+        },
+        {
+          "title": "Notification channel options",
+          "docType": "how-to",
+          "category": "Alerting & SLOs",
+          "url": "https://cloud.google.com/monitoring/support/notification-options",
+          "description": "Catalogs supported channels (email, SMS, PagerDuty, Webhooks) and how to verify them.",
+          "topics": [
+            "notifications",
+            "channels",
+            "integrations"
+          ]
+        },
+        {
+          "title": "Uptime checks",
+          "docType": "guide",
+          "category": "Alerting & SLOs",
+          "url": "https://cloud.google.com/monitoring/uptime-checks",
+          "description": "Explains probe regions, managed SSL verification, content matching, and alert hookup.",
+          "topics": [
+            "uptime",
+            "availability",
+            "alerting"
+          ]
+        },
+        {
+          "title": "Service Level Objectives",
+          "docType": "guide",
+          "category": "Alerting & SLOs",
+          "url": "https://cloud.google.com/monitoring/service-level-objectives",
+          "description": "Defines SLO concepts, error budgets, burn-rate alerting, and service hierarchies.",
+          "topics": [
+            "slos",
+            "error-budgets",
+            "reliability"
+          ]
+        },
+        {
+          "title": "Incident management",
+          "docType": "operations",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/monitoring/incidents",
+          "description": "Shows how incidents are created from alerts, triaged, acknowledged, and resolved.",
+          "topics": [
+            "incidents",
+            "response",
+            "runbooks"
+          ]
+        },
+        {
+          "title": "Managed Service for Prometheus",
+          "docType": "integration",
+          "category": "Integrations",
+          "url": "https://cloud.google.com/monitoring/managed-prometheus",
+          "description": "Explains ingestion pipelines, scraping options, and compatibility with open-source Prometheus tooling.",
+          "topics": [
+            "prometheus",
+            "kubernetes",
+            "openmetrics"
+          ]
+        },
+        {
+          "title": "Cloud Monitoring agents",
+          "docType": "how-to",
+          "category": "Integrations",
+          "url": "https://cloud.google.com/monitoring/agent/install-agent",
+          "description": "Installation, upgrade, and configuration flows for the legacy monitoring agent and Ops Agent.",
+          "topics": [
+            "agents",
+            "ops-agent",
+            "installation"
+          ]
+        },
+        {
+          "title": "Access control and scoping",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/monitoring/access-control",
+          "description": "Lists Monitoring-specific IAM roles, metrics scopes, and organization-wide restrictions.",
+          "topics": [
+            "iam",
+            "roles",
+            "scope"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/monitoring/quotas",
+          "description": "Describes default write/read quotas, time-series caps, and throughput request workflows.",
+          "topics": [
+            "quotas",
+            "limits",
+            "capacity"
+          ]
+        },
+        {
+          "title": "Pricing",
+          "docType": "pricing",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/stackdriver/pricing#cloud-monitoring",
+          "description": "Breaks down free tier, data retention charges, and billing metrics per million samples.",
+          "topics": [
+            "pricing",
+            "billing",
+            "costs"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/monitoring/api/ref_v3/rest",
+          "description": "Lists REST endpoints for time series, alert policies, SLOs, channels, and dashboards.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "gcloud monitoring commands",
+          "docType": "cli-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/sdk/gcloud/reference/monitoring",
+          "description": "Reference for `gcloud monitoring` subcommands covering metrics scopes, alert policies, and channels.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "scripts"
+          ]
+        },
+        {
+          "title": "Client libraries",
+          "docType": "sdk",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/monitoring/docs/reference/libraries",
+          "description": "Shows language support, auto-instrumentation options, and code samples for reading/writing metrics.",
+          "topics": [
+            "sdk",
+            "libraries",
+            "languages"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/monitoring/docs/release-notes",
+          "description": "Historical log of Monitoring feature launches, region updates, and deprecations.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trace",
+      "productName": "Cloud Trace",
+      "productCategory": "Observability",
+      "officialDocsRoot": "https://cloud.google.com/trace/docs",
+      "summary": "Distributed tracing with automatic instrumentation, OpenTelemetry support, latency analytics, and export pipelines for Google Cloud workloads.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/trace/docs",
+          "description": "High-level summary of Trace use cases, instrumentation models, and UI surfaces.",
+          "topics": [
+            "overview",
+            "observability",
+            "traces"
+          ]
+        },
+        {
+          "title": "Quickstart",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/trace/docs/quickstart",
+          "description": "Enables the Trace API, configures IAM, and guides you through collecting the first spans.",
+          "topics": [
+            "quickstart",
+            "setup",
+            "iam"
+          ]
+        },
+        {
+          "title": "Instrumentation: Java",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/java",
+          "description": "Shows agent installation, exporters, and sampling strategies for Java applications.",
+          "topics": [
+            "java",
+            "instrumentation",
+            "sampling"
+          ]
+        },
+        {
+          "title": "Instrumentation: Go",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/go",
+          "description": "Explains Go agent setup, context propagation, and how to capture HTTP and gRPC spans.",
+          "topics": [
+            "go",
+            "instrumentation",
+            "propagation"
+          ]
+        },
+        {
+          "title": "Instrumentation: Node.js",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/nodejs",
+          "description": "Details npm packages, automatic framework hooks, and manual span creation for Node.js apps.",
+          "topics": [
+            "nodejs",
+            "agent",
+            "frameworks"
+          ]
+        },
+        {
+          "title": "Instrumentation: Python",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/python",
+          "description": "Walks through pip packages, exporter configuration, and instrumentation helpers for Python.",
+          "topics": [
+            "python",
+            "sdk",
+            "instrumentation"
+          ]
+        },
+        {
+          "title": "Instrumentation: .NET",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/dotnet",
+          "description": "Describes NuGet packages, ASP.NET auto-instrumentation, and manual spans.",
+          "topics": [
+            "dotnet",
+            "instrumentation",
+            "aspnet"
+          ]
+        },
+        {
+          "title": "Instrumentation: Ruby",
+          "docType": "guide",
+          "category": "Instrumentation",
+          "url": "https://cloud.google.com/trace/docs/setup/ruby",
+          "description": "Outlines gem configuration, Rack middleware hooks, and manual span reporting.",
+          "topics": [
+            "ruby",
+            "agent",
+            "instrumentation"
+          ]
+        },
+        {
+          "title": "Analyze traces",
+          "docType": "concept",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/trace/docs/analyze-traces",
+          "description": "Explains latency heatmaps, percentile charts, trace filtering, and span drill-downs.",
+          "topics": [
+            "analysis",
+            "latency",
+            "ui"
+          ]
+        },
+        {
+          "title": "Export traces to BigQuery",
+          "docType": "integration",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/trace/docs/export",
+          "description": "Configures sink connections so traces can be queried in BigQuery or visualized in Looker.",
+          "topics": [
+            "exports",
+            "bigquery",
+            "integration"
+          ]
+        },
+        {
+          "title": "Troubleshooting and sampling",
+          "docType": "operations",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/trace/docs/troubleshooting",
+          "description": "Covers missing spans, latency buckets, sampling rates, and validation tips.",
+          "topics": [
+            "troubleshooting",
+            "sampling",
+            "validation"
+          ]
+        },
+        {
+          "title": "Access control",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/trace/docs/access-control",
+          "description": "Lists roles for viewing, exporting, and administering Trace data.",
+          "topics": [
+            "iam",
+            "roles",
+            "permissions"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/trace/quotas",
+          "description": "Details ingestion rate, API usage caps, and span retention policies.",
+          "topics": [
+            "quotas",
+            "limits",
+            "retention"
+          ]
+        },
+        {
+          "title": "Pricing",
+          "docType": "pricing",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/stackdriver/pricing#cloud-trace",
+          "description": "Explains free tier sampling allotments and billed span volume.",
+          "topics": [
+            "pricing",
+            "billing",
+            "costs"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/trace/docs/reference/v2/rest",
+          "description": "Full REST surface for batch writing spans and reading trace data.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "gcloud trace commands",
+          "docType": "cli-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/sdk/gcloud/reference/trace",
+          "description": "Command reference for exporting, describing, and deleting traces via CLI.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "scripts"
+          ]
+        },
+        {
+          "title": "Client libraries",
+          "docType": "sdk",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/trace/docs/reference/libraries",
+          "description": "Language guides, dependency coordinates, and authentication examples.",
+          "topics": [
+            "sdk",
+            "libraries",
+            "languages"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/trace/docs/release-notes",
+          "description": "Timeline of Trace API, UI, and instrumentation feature changes.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        },
+        {
+          "title": "Best practices",
+          "docType": "best-practice",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/trace/docs/best-practices",
+          "description": "Guidance on span naming, sampling defaults, and cost-efficient trace collection.",
+          "topics": [
+            "best-practices",
+            "cost",
+            "design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profiler",
+      "productName": "Cloud Profiler",
+      "productCategory": "Observability",
+      "officialDocsRoot": "https://cloud.google.com/profiler/docs",
+      "summary": "Always-on statistical profiling for CPU and heap usage across Google Cloud compute platforms with minimal overhead.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/profiler/docs",
+          "description": "Outlines supported runtimes, sampling methodology, and visualization surfaces.",
+          "topics": [
+            "overview",
+            "profiling",
+            "observability"
+          ]
+        },
+        {
+          "title": "Quickstart: Go",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/profiler/docs/profiling-go",
+          "description": "Installs the Go agent, configures service name/version labels, and validates profile uploads.",
+          "topics": [
+            "go",
+            "agent",
+            "quickstart"
+          ]
+        },
+        {
+          "title": "Quickstart: Java",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/profiler/docs/profiling-java",
+          "description": "Shows how to install the Java agent, set system properties, and capture CPU/memory profiles.",
+          "topics": [
+            "java",
+            "agent",
+            "setup"
+          ]
+        },
+        {
+          "title": "Quickstart: Python",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/profiler/docs/profiling-python",
+          "description": "Covers pip packages, sampling configuration, and Cloud Run deployment tips for Python.",
+          "topics": [
+            "python",
+            "agent",
+            "sampling"
+          ]
+        },
+        {
+          "title": "Quickstart: Node.js",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/profiler/docs/profiling-nodejs",
+          "description": "Explains npm modules, auto-instrumentation, and CPU/heap profiling for Node.js apps.",
+          "topics": [
+            "nodejs",
+            "agent",
+            "profiling"
+          ]
+        },
+        {
+          "title": "Profile Compute Engine workloads",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/profiler/docs/profiling-compute-engine",
+          "description": "Describes metadata-based configuration, startup scripts, and scaling guidance on VM instances.",
+          "topics": [
+            "compute-engine",
+            "vm",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Profile GKE workloads",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/profiler/docs/profiling-gke",
+          "description": "Shows how to run the Profiler agent as a sidecar or daemonset in Kubernetes.",
+          "topics": [
+            "gke",
+            "kubernetes",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Profile Cloud Run services",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/profiler/docs/profiling-cloud-run",
+          "description": "Lists Cloud Run-specific environment variables, buildpacks, and container flags.",
+          "topics": [
+            "cloud-run",
+            "serverless",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Profiling concepts",
+          "docType": "concept",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/profiler/docs/concepts-profiling",
+          "description": "Defines sample rates, profile types, symbolization, and retention model.",
+          "topics": [
+            "concepts",
+            "profiling",
+            "sampling"
+          ]
+        },
+        {
+          "title": "Use the Profiler UI",
+          "docType": "guide",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/profiler/docs/using-profiler",
+          "description": "Walks through flame graphs, comparison mode, and sharing insights with teammates.",
+          "topics": [
+            "ui",
+            "analysis",
+            "flamegraph"
+          ]
+        },
+        {
+          "title": "Best practices",
+          "docType": "best-practice",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/profiler/docs/best-practices",
+          "description": "Covers label hygiene, sampling cadence, and safety guidelines for production profiling.",
+          "topics": [
+            "best-practices",
+            "operations",
+            "efficiency"
+          ]
+        },
+        {
+          "title": "Configure profiles",
+          "docType": "how-to",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/profiler/docs/configuring-profiles",
+          "description": "Documents environment variables, overrides, and advanced configuration options.",
+          "topics": [
+            "configuration",
+            "agents",
+            "tuning"
+          ]
+        },
+        {
+          "title": "Access control",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/profiler/docs/access-control",
+          "description": "Lists viewer, agent, and admin roles along with minimum IAM permissions.",
+          "topics": [
+            "iam",
+            "roles",
+            "permissions"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/profiler/quotas",
+          "description": "Details sampling caps, concurrent profile limits, and how to request increases.",
+          "topics": [
+            "quotas",
+            "limits",
+            "capacity"
+          ]
+        },
+        {
+          "title": "Pricing",
+          "docType": "pricing",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/stackdriver/pricing#cloud-profiler",
+          "description": "Describes free tiers and incremental charges for additional profiling hours.",
+          "topics": [
+            "pricing",
+            "billing",
+            "costs"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/profiler/docs/reference/rest",
+          "description": "Docs for profile creation, symbolization, and listing REST endpoints.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/profiler/docs/release-notes",
+          "description": "Tracks agent version releases, UI improvements, and region availability.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "error-reporting",
+      "productName": "Error Reporting",
+      "productCategory": "Observability",
+      "officialDocsRoot": "https://cloud.google.com/error-reporting/docs",
+      "summary": "Aggregated crash analytics, alerting, and triage for exceptions emitted by Google Cloud and hybrid workloads.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/error-reporting/docs",
+          "description": "Introduces Error Reporting concepts, ingestion paths, and supported runtimes.",
+          "topics": [
+            "overview",
+            "exceptions",
+            "observability"
+          ]
+        },
+        {
+          "title": "Quickstart",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/error-reporting/docs/quickstart",
+          "description": "Walks through enabling the API, creating IAM bindings, and triggering a sample exception.",
+          "topics": [
+            "quickstart",
+            "setup",
+            "iam"
+          ]
+        },
+        {
+          "title": "Setup on Compute Engine",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/compute-engine",
+          "description": "Covers agent installation, service account scoping, and troubleshooting on VM instances.",
+          "topics": [
+            "compute-engine",
+            "agent",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Setup on GKE",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/kubernetes-engine",
+          "description": "Explains sidecar configuration, workload identity, and pod-level exception capture.",
+          "topics": [
+            "gke",
+            "kubernetes",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Setup on Cloud Run",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/cloud-run",
+          "description": "Details environment variables, structured logging, and recommended base images for Cloud Run.",
+          "topics": [
+            "cloud-run",
+            "serverless",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Setup on Cloud Functions",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/functions",
+          "description": "Shows default logging-based ingestion and how to report custom exceptions from functions.",
+          "topics": [
+            "cloud-functions",
+            "serverless",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Setup on App Engine",
+          "docType": "guide",
+          "category": "Deployments",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/app-engine",
+          "description": "Documents automatic instrumentations and custom logging for App Engine standard and flexible.",
+          "topics": [
+            "app-engine",
+            "instrumentation",
+            "deployment"
+          ]
+        },
+        {
+          "title": "Setup: Java",
+          "docType": "guide",
+          "category": "Language SDKs",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/java",
+          "description": "Explains Maven/Gradle dependencies, exception handlers, and asynchronous reporting for Java.",
+          "topics": [
+            "java",
+            "sdk",
+            "instrumentation"
+          ]
+        },
+        {
+          "title": "Setup: Node.js",
+          "docType": "guide",
+          "category": "Language SDKs",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/nodejs",
+          "description": "Shows npm module configuration, Express middleware, and manual reporting helpers.",
+          "topics": [
+            "nodejs",
+            "sdk",
+            "instrumentation"
+          ]
+        },
+        {
+          "title": "Setup: Python",
+          "docType": "guide",
+          "category": "Language SDKs",
+          "url": "https://cloud.google.com/error-reporting/docs/setup/python",
+          "description": "Covers pip modules, Django/Flask integration, and synchronous vs async reporting.",
+          "topics": [
+            "python",
+            "sdk",
+            "instrumentation"
+          ]
+        },
+        {
+          "title": "View and triage errors",
+          "docType": "guide",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/error-reporting/docs/viewing-details",
+          "description": "Explains groupings, fingerprints, stack traces, and linking to source code.",
+          "topics": [
+            "triage",
+            "ui",
+            "stacktraces"
+          ]
+        },
+        {
+          "title": "Notifications and alerting",
+          "docType": "how-to",
+          "category": "Analysis & Operations",
+          "url": "https://cloud.google.com/error-reporting/docs/notifications",
+          "description": "Configures email, SMS, webhook, and Cloud Monitoring alert integrations.",
+          "topics": [
+            "alerting",
+            "notifications",
+            "integrations"
+          ]
+        },
+        {
+          "title": "Access control",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/error-reporting/docs/access-control",
+          "description": "Details viewer, reporter, and admin roles and the APIs they unlock.",
+          "topics": [
+            "iam",
+            "roles",
+            "permissions"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/error-reporting/reference/rest",
+          "description": "Reference for events, projects, and delete operations in the Error Reporting API.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "Client libraries",
+          "docType": "sdk",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/error-reporting/docs/reference/libraries",
+          "description": "Language support table, initialization examples, and transport details.",
+          "topics": [
+            "sdk",
+            "libraries",
+            "languages"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/error-reporting/quotas",
+          "description": "Lists default event ingestion quotas, rate limits, and retention policies.",
+          "topics": [
+            "quotas",
+            "limits",
+            "retention"
+          ]
+        },
+        {
+          "title": "Pricing",
+          "docType": "pricing",
+          "category": "Operations & Governance",
+          "url": "https://cloud.google.com/stackdriver/pricing#cloud-error-reporting",
+          "description": "Explains free tiers, included exceptions, and overage billing.",
+          "topics": [
+            "pricing",
+            "billing",
+            "costs"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/error-reporting/docs/release-notes",
+          "description": "Chronicles Error Reporting launches, behavior changes, and SDK updates.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        },
+        {
+          "title": "Data retention and privacy",
+          "docType": "security",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/error-reporting/docs/data-retention",
+          "description": "Documents data handling timelines, personally identifiable information controls, and export recommendations.",
+          "topics": [
+            "retention",
+            "privacy",
+            "compliance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spanner",
+      "productName": "Cloud Spanner",
+      "productCategory": "Database",
+      "officialDocsRoot": "https://cloud.google.com/spanner/docs",
+      "summary": "Horizontally scalable, strongly consistent relational database with SQL support, online schema changes, and multi-region availability.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Product overview",
+          "docType": "overview",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/spanner/docs",
+          "description": "Explains core Spanner concepts, regional options, and primary use cases.",
+          "topics": [
+            "overview",
+            "database",
+            "capabilities"
+          ]
+        },
+        {
+          "title": "Quickstart: Console",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/spanner/docs/quickstart-console",
+          "description": "Creates an instance, database, table, and sample data entirely via the console.",
+          "topics": [
+            "console",
+            "setup",
+            "instances"
+          ]
+        },
+        {
+          "title": "Quickstart: Command line",
+          "docType": "quickstart",
+          "category": "Overview & Quickstarts",
+          "url": "https://cloud.google.com/spanner/docs/quickstart-command-line",
+          "description": "Shows how to initialize Spanner resources with gcloud CLI and execute queries.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "setup"
+          ]
+        },
+        {
+          "title": "Architecture and internals",
+          "docType": "architecture",
+          "category": "Architecture & Design",
+          "url": "https://cloud.google.com/spanner/docs/architecture",
+          "description": "Describes TrueTime, sharding, replication, and failover characteristics.",
+          "topics": [
+            "architecture",
+            "truetime",
+            "replication"
+          ]
+        },
+        {
+          "title": "Schema design",
+          "docType": "best-practice",
+          "category": "Architecture & Design",
+          "url": "https://cloud.google.com/spanner/docs/schema-design",
+          "description": "Guidance for interleaving, key choice, secondary indexes, and data types.",
+          "topics": [
+            "schema",
+            "modeling",
+            "design"
+          ]
+        },
+        {
+          "title": "Transactions",
+          "docType": "concept",
+          "category": "Architecture & Design",
+          "url": "https://cloud.google.com/spanner/docs/transactions",
+          "description": "Explains read-write vs read-only transactions, locking, and retry handling.",
+          "topics": [
+            "transactions",
+            "locking",
+            "consistency"
+          ]
+        },
+        {
+          "title": "Standard SQL reference",
+          "docType": "reference",
+          "category": "Development",
+          "url": "https://cloud.google.com/spanner/docs/reference/standard-sql/overview",
+          "description": "Outlines SQL syntax, functions, data types, and dialect differences for Spanner.",
+          "topics": [
+            "sql",
+            "reference",
+            "language"
+          ]
+        },
+        {
+          "title": "Change streams",
+          "docType": "integration",
+          "category": "Development",
+          "url": "https://cloud.google.com/spanner/docs/change-streams",
+          "description": "Covers enabling change streams, consuming data, and integrating with Dataflow.",
+          "topics": [
+            "change-streams",
+            "cdc",
+            "dataflow"
+          ]
+        },
+        {
+          "title": "Backup and restore",
+          "docType": "guide",
+          "category": "Operations",
+          "url": "https://cloud.google.com/spanner/docs/backup",
+          "description": "Explains backup schedules, encryption, and restore workflows.",
+          "topics": [
+            "backup",
+            "restore",
+            "dr"
+          ]
+        },
+        {
+          "title": "Point-in-time recovery",
+          "docType": "guide",
+          "category": "Operations",
+          "url": "https://cloud.google.com/spanner/docs/point-in-time-recovery",
+          "description": "Shows how to enable PITR, select recovery timestamps, and manage storage.",
+          "topics": [
+            "pitr",
+            "recovery",
+            "operations"
+          ]
+        },
+        {
+          "title": "Instances and configurations",
+          "docType": "concept",
+          "category": "Operations",
+          "url": "https://cloud.google.com/spanner/docs/instances",
+          "description": "Details node sizing, regional vs multi-regional configs, and processing units.",
+          "topics": [
+            "instances",
+            "regions",
+            "sizing"
+          ]
+        },
+        {
+          "title": "Autoscaler",
+          "docType": "operations",
+          "category": "Operations",
+          "url": "https://cloud.google.com/spanner/docs/autoscaler",
+          "description": "Instructions for enabling the Spanner autoscaler, policies, and monitoring behavior.",
+          "topics": [
+            "autoscaler",
+            "capacity",
+            "operations"
+          ]
+        },
+        {
+          "title": "Spanner emulator",
+          "docType": "how-to",
+          "category": "Development",
+          "url": "https://cloud.google.com/spanner/docs/emulator",
+          "description": "Installs the emulator locally or via Docker and configures client libraries to target it.",
+          "topics": [
+            "emulator",
+            "testing",
+            "local"
+          ]
+        },
+        {
+          "title": "Migration guide",
+          "docType": "migration",
+          "category": "Development",
+          "url": "https://cloud.google.com/spanner/docs/migrate",
+          "description": "Assesses workloads, uses HarbourBridge/Dataflow, and tracks cutover steps.",
+          "topics": [
+            "migration",
+            "assessment",
+            "modernization"
+          ]
+        },
+        {
+          "title": "Client libraries",
+          "docType": "sdk",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/spanner/docs/reference/libraries",
+          "description": "Lists language support, session pooling tips, and retry helpers.",
+          "topics": [
+            "sdk",
+            "libraries",
+            "languages"
+          ]
+        },
+        {
+          "title": "REST API reference",
+          "docType": "api-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/spanner/docs/reference/rest",
+          "description": "Full REST API surface for admin, data, and operations methods.",
+          "topics": [
+            "api",
+            "rest",
+            "automation"
+          ]
+        },
+        {
+          "title": "gcloud spanner commands",
+          "docType": "cli-reference",
+          "category": "Interfaces & SDKs",
+          "url": "https://cloud.google.com/sdk/gcloud/reference/spanner",
+          "description": "Reference for provisioning instances, backups, and executing SQL via CLI.",
+          "topics": [
+            "gcloud",
+            "cli",
+            "operations"
+          ]
+        },
+        {
+          "title": "IAM roles and permissions",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/spanner/docs/iam",
+          "description": "Enumerates database, instance, and backup roles plus least-privilege guidance.",
+          "topics": [
+            "iam",
+            "roles",
+            "permissions"
+          ]
+        },
+        {
+          "title": "Customer-managed encryption keys",
+          "docType": "security",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/spanner/docs/cmek",
+          "description": "Details CMEK-eligible resources, failover planning, and audit logging.",
+          "topics": [
+            "cmek",
+            "encryption",
+            "security"
+          ]
+        },
+        {
+          "title": "Quotas and limits",
+          "docType": "quota",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/spanner/quotas",
+          "description": "Lists per-project resource caps, API quotas, and request increase process.",
+          "topics": [
+            "quotas",
+            "limits",
+            "capacity"
+          ]
+        },
+        {
+          "title": "Pricing",
+          "docType": "pricing",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/spanner/pricing",
+          "description": "Breaks down compute, storage, backup, and change stream pricing dimensions.",
+          "topics": [
+            "pricing",
+            "billing",
+            "costs"
+          ]
+        },
+        {
+          "title": "Release notes",
+          "docType": "release-notes",
+          "category": "Lifecycle",
+          "url": "https://cloud.google.com/spanner/docs/release-notes",
+          "description": "Change log for API, SQL, region, and feature launches.",
+          "topics": [
+            "releases",
+            "announcements",
+            "changelog"
+          ]
+        },
+        {
+          "title": "Code samples",
+          "docType": "sample",
+          "category": "Development",
+          "url": "https://cloud.google.com/spanner/docs/samples",
+          "description": "Multi-language samples for DDL, DML, batch reads, and partitioned queries.",
+          "topics": [
+            "samples",
+            "sdk",
+            "reference"
+          ]
+        },
+        {
+          "title": "Performance best practices",
+          "docType": "best-practice",
+          "category": "Architecture & Design",
+          "url": "https://cloud.google.com/spanner/docs/develop-best-practices",
+          "description": "Recommendations for hotspot avoidance, request sizing, and query tuning.",
+          "topics": [
+            "performance",
+            "tuning",
+            "best-practices"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "support",
+      "productName": "Cloud Customer Care",
+      "productCategory": "Support",
+      "officialDocsRoot": "https://cloud.google.com/support/docs",
+      "summary": "Google Cloud Support plans, case management, APIs, and operational practices that keep critical workloads healthy.",
+      "lastValidated": "2025-11-15",
+      "documents": [
+        {
+          "title": "Cloud Customer Care overview",
+          "docType": "overview",
+          "category": "Overview & Plans",
+          "url": "https://cloud.google.com/support/docs",
+          "description": "Explains support mission, customer responsibilities, and links to plan comparisons.",
+          "topics": [
+            "overview",
+            "support",
+            "plans"
+          ]
+        },
+        {
+          "title": "Getting support on Google Cloud",
+          "docType": "guide",
+          "category": "Overview & Plans",
+          "url": "https://cloud.google.com/docs/get-started/getting-support",
+          "description": "Walks new administrators through activating support, verifying billing, and accessing community resources.",
+          "topics": [
+            "onboarding",
+            "billing",
+            "support-access"
+          ]
+        },
+        {
+          "title": "Customer Care portfolio",
+          "docType": "concept",
+          "category": "Plans & Entitlements",
+          "url": "https://cloud.google.com/support/docs/customer-care-portfolio",
+          "description": "Summarizes Standard, Enhanced, Premium, and value-add services plus SLAs.",
+          "topics": [
+            "plans",
+            "sla",
+            "comparisons"
+          ]
+        },
+        {
+          "title": "Standard Support",
+          "docType": "concept",
+          "category": "Plans & Entitlements",
+          "url": "https://cloud.google.com/support/docs/standard",
+          "description": "Outlines eligibility, response targets, and scope of the Standard plan.",
+          "topics": [
+            "standard-support",
+            "response",
+            "scope"
+          ]
+        },
+        {
+          "title": "Enhanced Support",
+          "docType": "concept",
+          "category": "Plans & Entitlements",
+          "url": "https://cloud.google.com/support/docs/enhanced",
+          "description": "Details designated contacts, business support hours, and TAM-lite benefits.",
+          "topics": [
+            "enhanced-support",
+            "contacts",
+            "case-priority"
+          ]
+        },
+        {
+          "title": "Premium Support",
+          "docType": "concept",
+          "category": "Plans & Entitlements",
+          "url": "https://cloud.google.com/support/docs/premium",
+          "description": "Covers technical account management, SRE assistance, and mission critical workflows.",
+          "topics": [
+            "premium-support",
+            "tam",
+            "mission-critical"
+          ]
+        },
+        {
+          "title": "Create and manage support cases",
+          "docType": "how-to",
+          "category": "Case Operations",
+          "url": "https://cloud.google.com/support/docs/customer-care-procedures",
+          "description": "Documents case lifecycle, severities, troubleshooting expectations, and user access requirements.",
+          "topics": [
+            "cases",
+            "severity",
+            "workflow"
+          ]
+        },
+        {
+          "title": "Language support and working hours",
+          "docType": "concept",
+          "category": "Case Operations",
+          "url": "https://cloud.google.com/support/docs/language",
+          "description": "Lists supported languages, business hours, and chat availability for each plan.",
+          "topics": [
+            "languages",
+            "coverage",
+            "availability"
+          ]
+        },
+        {
+          "title": "Planned event support",
+          "docType": "how-to",
+          "category": "Case Operations",
+          "url": "https://cloud.google.com/support/docs/planned-event-support",
+          "description": "Explains how to request launch assistance, risk reviews, and success criteria for major events.",
+          "topics": [
+            "events",
+            "launch",
+            "readiness"
+          ]
+        },
+        {
+          "title": "Third-party technology support",
+          "docType": "integration",
+          "category": "Integrations",
+          "url": "https://cloud.google.com/support/docs/third-party",
+          "description": "Defines what Google covers for partner solutions and how to coordinate multivendor cases.",
+          "topics": [
+            "partners",
+            "responsibilities",
+            "escalations"
+          ]
+        },
+        {
+          "title": "Privacy best practices",
+          "docType": "security",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/support/docs/privacy-best-practices",
+          "description": "Guides teams on redacting data, encrypting attachments, and sharing only necessary logs.",
+          "topics": [
+            "privacy",
+            "data-handling",
+            "compliance"
+          ]
+        },
+        {
+          "title": "Access control and case sharing",
+          "docType": "iam",
+          "category": "Security & Compliance",
+          "url": "https://cloud.google.com/support/docs/access-control",
+          "description": "Explains support-specific IAM roles, user management, and auditability.",
+          "topics": [
+            "iam",
+            "roles",
+            "case-access"
+          ]
+        },
+        {
+          "title": "Resources for Customer Care",
+          "docType": "guide",
+          "category": "Operations",
+          "url": "https://cloud.google.com/support/docs/resources",
+          "description": "Lists curated runbooks, communities, and status dashboards recommended by Google.",
+          "topics": [
+            "resources",
+            "community",
+            "status"
+          ]
+        },
+        {
+          "title": "Cloud Support API reference",
+          "docType": "api-reference",
+          "category": "Automation",
+          "url": "https://cloud.google.com/support/docs/reference/rest",
+          "description": "REST documentation for listing cases, attachments, comments, and time entries.",
+          "topics": [
+            "api",
+            "automation",
+            "cases"
+          ]
+        }
+      ]
+    }
+  ]
+}

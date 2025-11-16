@@ -271,6 +271,147 @@ Showing 20 of 20 rows.
 }
 ```
 
+### gcp-bigquery-list-datasets — Discover datasets in a project
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| projectId | string | no | Active/authenticated project | Override the project whose datasets should be listed. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-bigquery-list-datasets",
+  "arguments": {
+    "projectId": "analytics-prod-123"
+  }
+}
+```
+
+**Response example**
+```text
+BigQuery Datasets
+projectId=analytics-prod-123 | totalDatasets=3
+```
+
+```json
+[
+  {
+    "datasetId": "analytics",
+    "projectId": "analytics-prod-123",
+    "friendlyName": "Analytics",
+    "location": "US",
+    "labels": { "env": "prod" }
+  },
+  {
+    "datasetId": "ml_features",
+    "projectId": "analytics-prod-123",
+    "friendlyName": "ML Features",
+    "location": "US"
+  }
+]
+```
+
+### gcp-bigquery-list-tables — Enumerate tables in a dataset
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| dataset | record | yes | `{ datasetId, projectId? }` | Dataset reference (ID + optional project override) to inspect. |
+| projectId | string | no | Active/authenticated project | Default project when `dataset.projectId` is omitted. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-bigquery-list-tables",
+  "arguments": {
+    "dataset": {
+      "projectId": "analytics-prod-123",
+      "datasetId": "analytics"
+    }
+  }
+}
+```
+
+**Response example**
+```text
+BigQuery Tables
+projectId=analytics-prod-123 | datasetId=analytics | totalTables=2
+```
+
+```json
+[
+  {
+    "tableId": "orders",
+    "type": "TABLE",
+    "timePartitioning": { "type": "DAY", "field": "order_date" },
+    "clustering": ["order_date", "region"],
+    "numRows": "125000000",
+    "numBytes": "987654321"
+  },
+  {
+    "tableId": "orders_mv",
+    "type": "VIEW",
+    "friendlyName": "Orders materialized view"
+  }
+]
+```
+
+### gcp-bigquery-get-table-schema — Inspect columns and partitioning
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| table | record | yes | `{ datasetId, tableId, projectId? }` | Table reference to describe. |
+| projectId | string | no | Active/authenticated project | Default project when `table.projectId` is omitted. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-bigquery-get-table-schema",
+  "arguments": {
+    "table": {
+      "projectId": "analytics-prod-123",
+      "datasetId": "analytics",
+      "tableId": "orders"
+    }
+  }
+}
+```
+
+**Response example**
+```text
+BigQuery Table Schema
+projectId=analytics-prod-123 | datasetId=analytics | tableId=orders | type=TABLE
+Time partitioned by DAY on column order_date. Clustered by order_date, region.
+```
+
+```json
+{
+  "table": {
+    "type": "TABLE",
+    "friendlyName": "Orders",
+    "numRows": "125000000",
+    "numBytes": "987654321"
+  },
+  "columns": [
+    { "name": "order_id", "type": "STRING", "mode": "REQUIRED" },
+    { "name": "order_date", "type": "DATE", "mode": "REQUIRED" },
+    {
+      "name": "items",
+      "type": "RECORD",
+      "mode": "REPEATED",
+      "fields": [
+        { "name": "sku", "type": "STRING", "mode": "REQUIRED" },
+        { "name": "qty", "type": "INT64", "mode": "REQUIRED" }
+      ]
+    }
+  ],
+  "partitioning": {
+    "timePartitioning": {
+      "type": "DAY",
+      "field": "order_date",
+      "requirePartitionFilter": true
+    }
+  },
+  "clustering": ["order_date", "region"]
+}
+```
+
 ## Spanner
 
 ### gcp-spanner-execute-query — Run SQL directly

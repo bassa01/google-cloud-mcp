@@ -246,10 +246,14 @@ BigQuery tools focus on conversational data analysis while keeping every query s
 
 #### Key tools
 
+- `gcp-bigquery-list-datasets` – Lists datasets in the active project, including friendly names, labels, and expiration defaults.
+- `gcp-bigquery-list-tables` – Enumerates tables and views in a dataset while surfacing partitioning, clustering, and size stats.
+- `gcp-bigquery-get-table-schema` – Returns column-level schema (name/type/mode + nested fields) plus partitioning requirements.
 - `gcp-bigquery-execute-query` – Executes read-only SQL (SELECT/WITH/EXPLAIN/SHOW/DESCRIBE) with optional dry-run, bound parameters, and dataset defaults. It blocks INSERT/UPDATE/DELETE/CREATE/EXPORT before the query reaches BigQuery.
 
 #### Operational tips
 
+- Use the discovery tools (`list-datasets`, `list-tables`, `get-table-schema`) to confirm naming and partitioning before writing SQL so large queries reference the right resources.
 - Set `BIGQUERY_LOCATION` (or pass `location`) to avoid cross-region errors, especially for EU-only datasets.
 - Provide `defaultDataset` when queries reference tables without fully qualified names.
 - Dry-run first when exploring new datasets to inspect bytes processed before incurring cost, then re-run without `dryRun` to fetch the actual rows.
@@ -480,6 +484,9 @@ Testing tips:
 | Logging | `gcp-logging-query-time-range` | Quick time-bounded search helper. |
 | Logging | `gcp-logging-search-comprehensive` | Multi-field search across payloads and metadata. |
 | Logging | `gcp-logging-log-analytics-query` | Run Cloud Logging Log Analytics SQL (entries:queryData / readQueryResults). |
+| BigQuery | `gcp-bigquery-list-datasets` | List dataset metadata (friendly name, location, labels, expirations). |
+| BigQuery | `gcp-bigquery-list-tables` | Enumerate tables/views with partitioning and clustering details. |
+| BigQuery | `gcp-bigquery-get-table-schema` | Return column/type/mode plus partitioning for a specific table. |
 | BigQuery | `gcp-bigquery-execute-query` | Run read-only SQL with optional dry-run, params, and dataset defaults. |
 | Monitoring | `gcp-monitoring-query-metrics` | Run metric filters and stage data for PromQL migrations. |
 | Monitoring | `gcp-monitoring-list-metric-types` | Enumerate available metric descriptors. |
@@ -510,6 +517,34 @@ Testing tips:
 - `gcloud auth application-default login` – Initialise local ADC credentials.
 - `gcloud projects list` – Discover accessible projects for the current identity.
 - `gcloud logging read` – Sanity-check log filters outside MCP when debugging queries.
+
+### Read-only gcloud tool inside MCP
+
+The `gcloud-run-read-command` tool mirrors the behaviour of [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) but adds even stricter guardrails so incidents remain impossible:
+
+1. Authenticate gcloud with a **service account** (activate it or set `auth/impersonate_service_account`). User accounts are rejected outright.
+2. Invoke the tool with the desired command expressed as an array of tokens: `["gcloud","projects","list","--format=json"]`.
+3. The server lints the command, verifies it only reads data, blocks sensitive surfaces (IAM, Secret Manager, KMS, Access Context Manager, SSH/interactive, API activation), and then streams STDOUT/STDERR back if everything passes.
+
+Guardrail summary:
+
+- **Read verbs only** – commands must end in verbs like `list`, `describe`, `get`, `read`, `tail`, `check`, or `status`.
+- **Mutation keywords denied** – any occurrence of `create`, `delete`, `update`, `set`, `enable`, `disable`, `import`, `export`, `attach`, `detach`, `deploy`, or similar fails fast.
+- **Sensitive APIs blocked** – IAM/Secret Manager/KMS/Access Context Manager calls never run, even if they look read-only.
+- **SSH/interactive disabled** – `ssh`, `interactive`, `connect-to-serial-port`, tunnels, and other remote-access helpers are denied forever.
+- **Service account required** – only principals ending in `.gserviceaccount.com` may execute commands (either active account or via `--impersonate-service-account=foo@project.iam.gserviceaccount.com`).
+
+*Example inputs:*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*Blocked inputs:*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager is forbidden regardless of verb.
+- `["gcloud","compute","instances","delete", ...]` – Contains the verb `delete`.
+- `["gcloud","compute","ssh", ...]` – SSH/interactive surfaces are disabled entirely.
 
 ### Additional resources
 

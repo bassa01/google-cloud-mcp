@@ -33,10 +33,12 @@ import {
 } from "./services/profiler/index.js";
 import { registerSupportTools } from "./services/support/index.js";
 import { registerDocsTools } from "./services/docs/index.js";
+import { registerGcloudTools } from "./services/gcloud/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { initGoogleAuth, authClient } from "./utils/auth.js";
 import { registerResourceDiscovery } from "./utils/resource-discovery.js";
 import { registerProjectTools } from "./utils/project-tools.js";
+import { registerDocsCatalogResources } from "./services/docs-catalog/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { logger } from "./utils/logger.js";
 import {
@@ -284,6 +286,13 @@ async function main(): Promise<void> {
           registerDocsTools(server);
         },
       },
+      {
+        name: "gcloud",
+        label: "gcloud CLI (read-only)",
+        register: async () => {
+          registerGcloudTools(server);
+        },
+      },
     ];
 
     for (const service of serviceRegistrations) {
@@ -321,6 +330,16 @@ async function main(): Promise<void> {
     } catch (error) {
       logger.warn(
         `Error registering prompts: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    try {
+      // Register documentation catalog resources
+      logger.info("Registering documentation catalog resources");
+      registerDocsCatalogResources(server);
+    } catch (error) {
+      logger.warn(
+        `Error registering documentation catalog resources: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 

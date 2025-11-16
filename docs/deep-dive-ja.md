@@ -247,10 +247,14 @@ BigQuery ツールは読み取り専用のガードレールを徹底しつつ�
 
 **主要ツール**
 
+- `gcp-bigquery-list-datasets` – プロジェクト内のデータセットを一覧し、フレンドリ名やラベル、期限を確認。
+- `gcp-bigquery-list-tables` – データセット内のテーブル/ビューを列挙し、パーティションやクラスタリング情報を付与。
+- `gcp-bigquery-get-table-schema` – テーブルのカラム名/型/モード（入れ子含む）やパーティション条件を取得。
 - `gcp-bigquery-execute-query` – SELECT/WITH/EXPLAIN/SHOW/DESCRIBE のみを許可し、INSERT/UPDATE/CREATE/EXPORT などは BigQuery に送る前に遮断。dryRun、パラメータ、`defaultDataset`、`BIGQUERY_LOCATION` などのオプションをサポートします。
 
 **運用ヒント**
 
+- SQL を書く前に `list-datasets` / `list-tables` / `get-table-schema` で正式名称とパーティション設計を把握すると、誤参照や非効率なスキャンを避けられます。
 - EU/US などリージョンが固定されているデータセットは `BIGQUERY_LOCATION` もしくは `location` 引数で合わせます。
 - テーブル参照を省略したい場合は `defaultDataset` を渡し、未修飾テーブルでも実行できるようにします。
 - 大規模テーブルや新規クエリは先に `dryRun: true` でバイト数を確認し、コストを把握してから本番実行します。
@@ -480,6 +484,9 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | Logging | `gcp-logging-query-time-range` | 時間範囲指定のクエリショートカット。 |
 | Logging | `gcp-logging-search-comprehensive` | 複数フィールド横断検索。 |
 | Logging | `gcp-logging-log-analytics-query` | Cloud Logging の Log Analytics SQL (`entries:queryData` / `readQueryResults`) を実行。 |
+| BigQuery | `gcp-bigquery-list-datasets` | データセットのメタデータ (名前/ラベル/期限/リージョン) を一覧。 |
+| BigQuery | `gcp-bigquery-list-tables` | データセット内のテーブル/ビューとパーティション/クラスタリングを可視化。 |
+| BigQuery | `gcp-bigquery-get-table-schema` | テーブルのカラム名・型・モードとパーティション設定を取得。 |
 | BigQuery | `gcp-bigquery-execute-query` | 読み取り専用 SQL を dry-run/パラメータ付きで実行。 |
 | Monitoring | `gcp-monitoring-query-metrics` | フィルター結果を取得し PromQL 移行を補助。 |
 | Monitoring | `gcp-monitoring-list-metric-types` | 利用可能なメトリクス記述子を列挙。 |
@@ -510,6 +517,34 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 - `gcloud auth application-default login` – ADC を初期化。
 - `gcloud projects list` – 現在のアイデンティティでアクセス可能なプロジェクトを確認。
 - `gcloud logging read` – MCP 外でフィルターを検証したいときの補助。
+
+### MCP 内での gcloud 読み取り専用ツール
+
+`gcloud-run-read-command` は [googleapis/gcloud-mcp](https://github.com/googleapis/gcloud-mcp) と同様に gcloud CLI をラップしつつ、さらに厳格なガードレールで「読むだけ」の操作に限定します。
+
+1. gcloud 側で **サービス アカウント** をアクティブ化するか、`gcloud config set auth/impersonate_service_account <sa>` のように代理実行を設定します。ユーザー アカウントは即拒否されます。
+2. ツール入力にはトークン配列（例: `["gcloud","projects","list","--format=json"]`）を渡します。先頭の `gcloud` は省略可能です。
+3. サーバーはコマンドを lint→ポリシー判定→実行の順に処理し、STDOUT/STDERR をそのまま返します。どこかで違反すると実行前にブロックされます。
+
+ガードレールの概要:
+
+- **読み取り動詞のみ** – `list`／`describe`／`get`／`read`／`tail`／`check`／`status` などで終わるコマンドだけ許可。
+- **変更操作のキーワードを拒否** – `create`／`delete`／`update`／`set`／`enable`／`disable`／`import`／`export`／`attach`／`detach`／`deploy` などが引数に含まれると即失敗。
+- **機密 API を遮断** – IAM・Secret Manager・KMS・Access Context Manager へのアクセスは読み取り目的でも拒否。
+- **SSH / interactive 無効化** – `ssh`／`interactive`／トンネル／シリアルポート接続などは常に不許可。
+- **サービス アカウント強制** – `.gserviceaccount.com` で終わるプリンシパルに限定。`--impersonate-service-account=` を利用する場合も同じ。
+
+*入力例*
+
+- `["gcloud","projects","list","--format=json"]`
+- `["gcloud","logging","sinks","list","--project=my-prod-project"]`
+- `["gcloud","monitoring","channels","describe","projects/my-proj/notificationChannels/123"]`
+
+*ブロック例*
+
+- `["gcloud","secret-manager","secrets","describe", ...]` – Secret Manager 系は常に拒否。
+- `["gcloud","compute","instances","delete", ...]` – `delete` などの動詞が含まれる。
+- `["gcloud","compute","ssh", ...]` – SSH/interactive 系コマンドは禁止。
 
 ### 参考リンク
 
