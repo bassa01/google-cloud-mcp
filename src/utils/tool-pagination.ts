@@ -6,6 +6,7 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type { z } from "zod";
 import { logger } from "./logger.js";
+import { resolveServiceName } from "./service-selector.js";
 
 const DEFAULT_PAGE_SIZE = Number(process.env.MCP_TOOL_PAGE_SIZE || "0");
 const DEFAULT_MAX_PAGE_SIZE = Number(
@@ -173,7 +174,7 @@ function buildToolIndex(
     .filter(([, tool]) => tool.enabled)
     .map(([name, tool]) => {
       const service =
-        (tool._meta?.service as string | undefined) ?? inferServiceName(name);
+        normalizeService(tool._meta?.service) ?? inferServiceName(name);
       const searchable = [
         name,
         service,
@@ -202,7 +203,7 @@ function filterTools(entries: ToolListEntry[], cursor: CursorState) {
   let filtered = entries;
 
   if (cursor.service) {
-    const service = cursor.service.toLowerCase();
+    const service = resolveServiceName(cursor.service) ?? cursor.service;
     filtered = filtered.filter((entry) => entry.service === service);
   }
 
@@ -251,13 +252,22 @@ function inferServiceName(name: string): string {
   }
 
   const sanitized = name.startsWith("gcp-") ? name.slice(4) : name;
-  const [service] = sanitized.split("-");
-  return service?.toLowerCase() || "misc";
+  const tokens = sanitized.split("-").filter(Boolean);
+
+  for (let i = tokens.length; i >= 1; i -= 1) {
+    const candidate = tokens.slice(0, i).join("-");
+    const resolved = resolveServiceName(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return tokens[0]?.toLowerCase() || "misc";
 }
 
 function tryDecodeBase64Cursor(value: string): Record<string, unknown> | null {
   try {
-    const decoded = Buffer.from(value, "base64").toString("utf8");
+    const decoded = Buffer.from(value, "base64url").toString("utf8");
     if (!decoded) {
       return null;
     }
@@ -281,7 +291,7 @@ function tryParseJsonObject(value: string): Record<string, unknown> | null {
 
 function normalizeCursor(input: Record<string, unknown>): CursorState {
   const offset = Number(input.offset);
-  const service = sanitizeString(input.service);
+  const service = normalizeService(input.service);
   const query = sanitizeString(input.query);
   const pageSize = Number(input.pageSize);
 
@@ -299,6 +309,19 @@ function sanitizeString(value: unknown): string | undefined {
   }
   const trimmed = value.trim();
   return trimmed ? trimmed.toLowerCase() : undefined;
+}
+
+function normalizeService(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const resolved = resolveServiceName(value);
+  if (resolved) {
+    return resolved;
+  }
+
+  return sanitizeString(value);
 }
 
 function clamp(value: number | undefined, min = 1, max = 100): number {

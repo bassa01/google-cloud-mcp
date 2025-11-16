@@ -28,8 +28,17 @@ interface LazyToolController {
 
 const inferServiceFromName = (name: string): string => {
   const stripped = name.startsWith("gcp-") ? name.slice(4) : name;
-  const [head] = stripped.split("-");
-  return head?.toLowerCase() || "misc";
+  const tokens = stripped.split("-").filter(Boolean);
+
+  for (let i = tokens.length; i >= 1; i -= 1) {
+    const candidate = tokens.slice(0, i).join("-");
+    const resolved = resolveServiceName(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return tokens[0]?.toLowerCase() || "misc";
 };
 
 export const setupLazyToolHost = (
@@ -246,13 +255,7 @@ export const setupLazyToolHost = (
         const handler = definition.callback;
         let result: CallToolResult;
         try {
-          result = await Promise.resolve(
-            definition.acceptsArgs
-              ? handler(parsedArgs, extra)
-              : (handler as (extraOnly: unknown) => CallToolResult | Promise<CallToolResult>)(
-                  extra,
-                ),
-          );
+          result = await Promise.resolve(handler(parsedArgs, extra));
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);

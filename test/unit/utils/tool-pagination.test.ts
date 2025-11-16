@@ -33,6 +33,9 @@ function createServerStub() {
       "gcp-logging-query-logs": createTool({ title: "Logging" }),
       "gcp-monitoring-query-metrics": createTool({ title: "Monitoring" }),
       "gcp-spanner-execute-query": createTool({ title: "Spanner" }),
+      "gcp-error-reporting-list-incidents": createTool({
+        title: "Error Reporting",
+      }),
     },
     server: {
       removeRequestHandler: vi.fn(),
@@ -81,6 +84,22 @@ describe("configureToolListPagination", () => {
     expect(filtered.tools).toHaveLength(1);
     expect(filtered.tools[0].name).toBe("gcp-logging-query-logs");
   });
+
+  it("filters by hyphenated service name", () => {
+    const { server, handlers } = createServerStub();
+
+    configureToolListPagination(server as unknown as any, {
+      pageSize: 5,
+    });
+
+    const list = handlers.list!;
+    const filtered = list({ params: { cursor: "service=error-reporting" } });
+
+    expect(filtered.tools).toHaveLength(1);
+    expect(filtered.tools[0].name).toBe(
+      "gcp-error-reporting-list-incidents",
+    );
+  });
 });
 
 describe("cursor helpers", () => {
@@ -97,5 +116,16 @@ describe("cursor helpers", () => {
     expect(decoded.service).toBe("monitoring");
     expect(decoded.offset).toBe(10);
     expect(decoded.pageSize).toBe(2);
+  });
+
+  it("decodes base64url-encoded cursors", () => {
+    const cursor = Buffer.from(
+      JSON.stringify({ offset: 3, service: "error-reporting" }),
+    ).toString("base64url");
+
+    const decoded = decodeToolCursor(cursor);
+
+    expect(decoded.service).toBe("error-reporting");
+    expect(decoded.offset).toBe(3);
   });
 });
