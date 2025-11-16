@@ -428,10 +428,16 @@ export async function runLogAnalyticsQuery(
 }
 
 function formatDuration(ms: number): string {
-  if (ms % 1000 === 0) {
-    return `${Math.floor(ms / 1000)}s`;
+  const seconds = ms / 1000;
+
+  if (Number.isInteger(seconds)) {
+    return `${seconds}s`;
   }
-  return `${ms}ms`;
+
+  return `${seconds
+    .toFixed(3)
+    .replace(/0+$/, "")
+    .replace(/\.$/, "")}s`;
 }
 
 export function buildRestrictionSummary(
