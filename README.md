@@ -205,6 +205,8 @@ Find the closest official Google Cloud documentation for natural-language prompt
 | --- | --- | --- |
 | `DOCS_SEARCH_PREVIEW_LIMIT` | `5` | Default number of results to return when `maxResults` is omitted. |
 | `GOOGLE_CLOUD_DOCS_CATALOG` | `docs/catalog/google-cloud-docs.json` | Override the local JSON catalog path if you maintain a custom index elsewhere. |
+| `DOCS_CATALOG_PREVIEW_LIMIT` | `25` | Max number of documents shown when browsing `docs://google-cloud/{serviceId}` resources. |
+| `DOCS_CATALOG_SEARCH_LIMIT` | `8` | Caps matches returned by `docs://google-cloud/search/{query}` resource lookups. |
 
 To extend the catalog, add entries shaped like:
 
@@ -218,6 +220,18 @@ To extend the catalog, add entries shaped like:
   "lastReviewed": "2025-06-30"
 }
 ```
+
+#### Docs catalog resources (`docs://`)
+
+MCP resources expose the same offline catalog so agents can browse and link docs without leaving the client:
+
+| Resource | URI | Description |
+| --- | --- | --- |
+| `gcp-docs-catalog` | `docs://google-cloud/catalog` | Summarises every catalogued Google Cloud product, including last validation timestamps and official docs roots. |
+| `gcp-docs-service` | `docs://google-cloud/{serviceId}` | Lists the curated documents for a given product slug, product name, or category. Output truncation obeys `DOCS_CATALOG_PREVIEW_LIMIT`. |
+| `gcp-docs-search` | `docs://google-cloud/search/{query}` | Performs a lightweight search over the catalog and previews the highest-scoring matches (bounded by `DOCS_CATALOG_SEARCH_LIMIT`). |
+
+Populate `docs/catalog/google-cloud-docs.json` (or your override path) to keep both the MCP tool and the resources current. Restart the server or clear the docs cache whenever you update the JSON so requests pick up the new entries.
 
 ### gcloud CLI (Read-only)
 
