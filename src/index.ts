@@ -47,6 +47,7 @@ import {
   parseServiceSelection,
   type ServiceName,
 } from "./utils/service-selector.js";
+import { configureToolListPagination } from "./utils/tool-pagination.js";
 
 type ServerMode = "daemon" | "standalone";
 
@@ -352,6 +353,8 @@ async function main(): Promise<void> {
         `Error registering resource discovery: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+
+    configureToolListPagination(server);
 
     // Initialize stdio transport for Claude Desktop compatibility
     logger.info("Initializing stdio transport for Claude Desktop");

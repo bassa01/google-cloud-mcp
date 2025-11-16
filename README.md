@@ -43,6 +43,19 @@ entries are ignored with a startup warning, and common aliases such as
 }
 ```
 
+### Paginating tool metadata
+
+Some MCP clients fetch every tool definition they discover, which can easily
+exceed context limits. Set `MCP_TOOL_PAGE_SIZE` (for example `20`) to enable
+server-side paging for `tools/list`. Each response supplies a `nextCursor` that
+you can feed back into `tools/list` to fetch subsequent pages only when needed.
+
+To jump straight to a subset, encode your desired filter inside the cursor
+parameter—either as base64 JSON (`eyJservice":"logging"...`), a simple query
+string (`service=logging&query=error`), or shorthand like `logging:40`. The
+server recognises `service`, `query`, and `offset` keys and clamps user-provided
+`pageSize` values against `MCP_TOOL_PAGE_MAX_SIZE` (defaults to `50`).
+
 ### Error Reporting
 
 Monitor and analyse application errors with automated investigation and remediation suggestions:
