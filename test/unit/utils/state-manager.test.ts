@@ -35,7 +35,7 @@ const waitForFile = async (filePath: string): Promise<void> => {
     try {
       const stats = fs.statSync(filePath);
       return stats.size > 0;
-    } catch {
+    } catch (error) {
       return false;
     }
   });

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SessionManager } from '../../../src/utils/session-manager.js';
+import {
+  SessionManager,
+  generateSecureRandomBytes,
+  generateSecureRandomString,
+} from '../../../src/utils/session-manager.js';
+import crypto from 'node:crypto';
 
 const ADVANCE_HOURS = (hours: number): number => hours * 60 * 60 * 1000;
 
@@ -78,5 +83,33 @@ describe('SessionManager', () => {
     expect(manager.cleanupExpiredSessions()).toBe(1);
     expect(manager.getSessionMetadata(expired)).toBeNull();
     expect(manager.getSessionMetadata(active)).not.toBeNull();
+  });
+
+  it('reports accurate session statistics as sessions are managed', () => {
+    const manager = new SessionManager({ autoCleanup: false });
+    const first = manager.createSession();
+    manager.createSession();
+
+    expect(manager.getSessionStats()).toEqual({ active: 2, total: 2, expired: 0 });
+
+    manager.invalidateSession(first);
+    expect(manager.getSessionStats()).toEqual({ active: 1, total: 1, expired: 0 });
+  });
+
+  it('exposes secure random helpers with deterministic sizing guarantees', () => {
+    const cryptoSpy = vi.spyOn(crypto, 'randomBytes');
+
+    const bytes = generateSecureRandomBytes(24);
+    expect(Buffer.isBuffer(bytes)).toBe(true);
+    expect(bytes).toHaveLength(24);
+    expect(cryptoSpy).toHaveBeenCalledWith(24);
+
+    cryptoSpy.mockClear();
+    const randomString = generateSecureRandomString(48);
+    expect(randomString).toHaveLength(48);
+    expect(randomString).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(cryptoSpy).toHaveBeenCalledWith(Math.ceil((48 * 3) / 4));
+
+    cryptoSpy.mockRestore();
   });
 });
