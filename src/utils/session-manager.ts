@@ -19,20 +19,42 @@ interface SessionInfo {
   metadata: Record<string, any>;
 }
 
+export interface SessionManagerOptions {
+  /**
+   * Whether to automatically schedule periodic cleanup via setInterval.
+   * Enabled by default for production usage but can be disabled for tests.
+   */
+  autoCleanup?: boolean;
+  /** Optional scheduler injection for deterministic testing. */
+  scheduleCleanup?: (
+    callback: () => void,
+    interval: number,
+  ) => ReturnType<typeof setInterval>;
+}
+
 /**
  * Session manager for MCP security compliance
  */
-class SessionManager implements ISessionManager {
+export class SessionManager implements ISessionManager {
   private sessions = new Map<string, SessionInfo>();
   private readonly SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000; // 24 hours
   private readonly MAX_ROTATION_COUNT = 10;
   private readonly CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+  private cleanupTimer?: ReturnType<typeof setInterval>;
+  private readonly scheduleCleanup: (
+    callback: () => void,
+    interval: number,
+  ) => ReturnType<typeof setInterval>;
 
-  constructor() {
-    // Periodically clean up expired sessions
-    setInterval(() => {
-      this.cleanupExpiredSessions();
-    }, this.CLEANUP_INTERVAL_MS);
+  constructor(options: SessionManagerOptions = {}) {
+    this.scheduleCleanup = options.scheduleCleanup ?? setInterval;
+
+    if (options.autoCleanup !== false) {
+      // Periodically clean up expired sessions
+      this.cleanupTimer = this.scheduleCleanup(() => {
+        this.cleanupExpiredSessions();
+      }, this.CLEANUP_INTERVAL_MS);
+    }
   }
 
   /**
