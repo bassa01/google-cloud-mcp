@@ -186,4 +186,167 @@ describe('TransportManager', () => {
       'medium',
     );
   });
+
+  it('throttles requests when the rate limiter rejects the client', async () => {
+    const deps = createDeps();
+    deps.securityValidator.checkRateLimit = vi.fn().mockReturnValue({
+      allowed: false,
+      retryAfter: 42,
+    });
+    const manager = new TransportManager(
+      deps.server,
+      deps.sessionManager,
+      deps.securityValidator,
+      deps.logger,
+      { supportStdio: false, supportHttp: true, supportSse: false, httpPort: 0, httpHost: '127.0.0.1', maxConnections: 5 },
+    );
+
+    const req = new MockRequest();
+    req.method = 'GET';
+    req.url = '/health';
+    req.headers = { origin: 'https://allowed', 'user-agent': 'vitest' } as http.IncomingHttpHeaders;
+    const res = new MockResponse();
+
+    await (manager as any).handleHttpRequest(req as any, res as any);
+
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toContain('Too Many Requests');
+    expect(deps.securityValidator.logSecurityEvent).toHaveBeenCalledWith(
+      'rate_limit_exceeded',
+      expect.objectContaining({ retryAfter: 42 }),
+      'medium',
+    );
+  });
+
+  it('rejects requests that fail the origin validator', async () => {
+    const deps = createDeps();
+    deps.securityValidator.validateOriginHeader = vi.fn().mockReturnValue(false);
+    const manager = new TransportManager(
+      deps.server,
+      deps.sessionManager,
+      deps.securityValidator,
+      deps.logger,
+      { supportStdio: false, supportHttp: true, supportSse: false, httpPort: 0, httpHost: '127.0.0.1', maxConnections: 5 },
+    );
+
+    const req = new MockRequest();
+    req.method = 'GET';
+    req.url = '/health';
+    req.headers = { origin: 'https://evil', 'user-agent': 'bad' } as http.IncomingHttpHeaders;
+    const res = new MockResponse();
+
+    await (manager as any).handleHttpRequest(req as any, res as any);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toContain('Forbidden: Invalid origin');
+    expect(deps.securityValidator.logSecurityEvent).toHaveBeenCalledWith(
+      'invalid_origin',
+      expect.objectContaining({ origin: 'https://evil' }),
+      'high',
+    );
+  });
+
+  it('enforces the active connection limit before routing', async () => {
+    const deps = createDeps();
+    const manager = new TransportManager(
+      deps.server,
+      deps.sessionManager,
+      deps.securityValidator,
+      deps.logger,
+      { supportStdio: false, supportHttp: true, supportSse: false, httpPort: 0, httpHost: '127.0.0.1', maxConnections: 1 },
+    );
+
+    (manager as any).activeConnections.add(new MockResponse() as any);
+
+    const req = new MockRequest();
+    req.method = 'GET';
+    req.url = '/health';
+    req.headers = { origin: 'https://allowed', 'user-agent': 'vitest' } as http.IncomingHttpHeaders;
+    const res = new MockResponse();
+
+    await (manager as any).handleHttpRequest(req as any, res as any);
+
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toContain('Too many connections');
+    expect(deps.securityValidator.logSecurityEvent).toHaveBeenCalledWith(
+      'connection_limit_exceeded',
+      expect.objectContaining({ maxConnections: 1 }),
+      'medium',
+    );
+  });
+
+  it('maintains SSE connections with heartbeats and cleanup', async () => {
+    vi.useFakeTimers();
+    try {
+      const deps = createDeps();
+      const manager = new TransportManager(
+        deps.server,
+        deps.sessionManager,
+        deps.securityValidator,
+        deps.logger,
+        { supportStdio: false, supportHttp: false, supportSse: true, httpPort: 0, httpHost: '127.0.0.1', maxConnections: 5 },
+      );
+
+      const req = new MockRequest();
+      req.headers = { host: 'localhost:3000', 'user-agent': 'vitest' } as http.IncomingHttpHeaders;
+      const res = new MockResponse();
+
+      await (manager as any).handleSseConnection(req as any, res as any);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toContain('event: connected');
+      expect((manager as any).activeConnections.size).toBe(1);
+
+      vi.advanceTimersByTime(30000);
+      expect(res.body).toContain('event: heartbeat');
+
+      req.emit('close');
+      expect(deps.sessionManager.invalidateSession).toHaveBeenCalledWith('session-1');
+      expect((manager as any).activeConnections.size).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('responds to OPTIONS preflight requests with the documented headers', () => {
+    const deps = createDeps();
+    const manager = new TransportManager(
+      deps.server,
+      deps.sessionManager,
+      deps.securityValidator,
+      deps.logger,
+      { supportStdio: false },
+    );
+
+    const res = new MockResponse();
+    (manager as any).handleOptionsRequest(res as any);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Access-Control-Allow-Methods']).toContain('GET');
+    expect(res.headers['Access-Control-Allow-Headers']).toContain('Content-Type');
+  });
+
+  it('exposes transport and session stats through the health endpoint', () => {
+    const deps = createDeps();
+    deps.sessionManager.getSessionStats = vi
+      .fn()
+      .mockReturnValue({ active: 3, total: 5, expired: 0 });
+    const manager = new TransportManager(
+      deps.server,
+      deps.sessionManager,
+      deps.securityValidator,
+      deps.logger,
+      { supportStdio: false, supportHttp: true, supportSse: true, httpPort: 0, httpHost: '127.0.0.1', maxConnections: 5 },
+    );
+
+    (manager as any).activeConnections.add(new MockResponse() as any);
+    const res = new MockResponse();
+    (manager as any).handleHealthCheck(res as any);
+
+    expect(res.statusCode).toBe(200);
+    const payload = JSON.parse(res.body);
+    expect(payload.activeConnections).toBe(1);
+    expect(payload.activeSessions).toBe(3);
+    expect(payload.transport).toEqual({ stdio: false, http: true, sse: true });
+  });
 });
