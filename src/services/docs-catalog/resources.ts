@@ -67,7 +67,7 @@ export function registerDocsCatalogResources(server: McpServer): void {
   server.resource(
     "gcp-docs-service",
     new ResourceTemplate("docs://google-cloud/{serviceId}", { list: undefined }),
-    async (uri, params) => {
+    async (uri, params: Record<string, string | string[]> = {}) => {
       const serviceId = Array.isArray(params.serviceId)
         ? params.serviceId[0]
         : params.serviceId;
@@ -125,7 +125,7 @@ export function registerDocsCatalogResources(server: McpServer): void {
     new ResourceTemplate("docs://google-cloud/search/{query}", {
       list: undefined,
     }),
-    async (uri, params) => {
+    async (uri, params: Record<string, string | string[]> = {}) => {
       const query = Array.isArray(params.query) ? params.query[0] : params.query;
       if (!query || !query.trim()) {
         throw new GcpMcpError(
