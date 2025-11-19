@@ -23,7 +23,7 @@
 - **Node.js 24.11+** – matches the `engines.node` constraint in `package.json`.
 - **pnpm 10.21+** – enable via `corepack enable && corepack use pnpm@10.21.0` to stay aligned with the repo’s `packageManager` metadata.
 - **Google Cloud CLI** – manages credentials and sets the active project (`gcloud init`).
-- **Google Cloud project & entitlements** – access to Logging, BigQuery, Monitoring, Spanner, Trace, Profiler, Error Reporting, and (optionally) Support APIs.
+- **Google Cloud project & entitlements** – access to Logging, BigQuery, Monitoring, Spanner, Cloud Storage, Trace, Profiler, Error Reporting, and (optionally) Support APIs.
 
 Sanity-check versions:
 
@@ -90,7 +90,7 @@ npx -y @modelcontextprotocol/inspector node dist/index.js
 | Path | Purpose |
 | --- | --- |
 | `src/index.ts` | Entry point wiring logging, auth, prompts, resource discovery, and every service registrar. |
-| `src/services/<service>/tools.ts` | Tool registrations plus Zod schemas for Logging, BigQuery, Monitoring, Profiler, Error Reporting, Spanner, Trace, and Support. |
+| `src/services/<service>/tools.ts` | Tool registrations plus Zod schemas for Logging, BigQuery, Monitoring, Profiler, Error Reporting, Spanner, Cloud Storage, Trace, and Support. |
 | `src/services/<service>/resources.ts` | Resource registrations that expose browseable data (logs, metrics, traces, etc.). |
 | `src/services/<service>/types.ts` | DTOs, transformers, and formatter helpers that keep tool outputs consistent. |
 | `src/services/support/client.ts` | Lightweight REST client for the Google Cloud Support API. |
@@ -125,7 +125,7 @@ The Google Cloud MCP server exposes Google Cloud Platform (GCP) operations throu
 
 ### Core capabilities
 
-- Unifies access to Error Reporting, Logging, BigQuery, Monitoring, Profiler, Spanner, Support, and Trace through a single MCP endpoint.
+- Unifies access to Error Reporting, Logging, BigQuery, Monitoring, Profiler, Spanner, Cloud Storage, Support, and Trace through a single MCP endpoint.
 - Normalises authentication across service account credentials and direct environment variable secrets.
 - Provides curated prompts, filters, and result formatting that are optimised for conversational agents.
 - Ships with guard rails such as project scoping, time-range defaults, and pagination helpers to keep responses reliable.
@@ -275,6 +275,27 @@ Spanner tools assist with schema discovery and SQL execution across distributed 
 - Always scope to production vs. staging instances to avoid cross-environment confusion.
 - Sketch queries in your MCP client or editor first, then paste explicit SQL into `execute-query` for validation.
 - Ensure Cloud Spanner Query Insights is enabled and grant the MCP service account `roles/spanner.databaseReader` so the query-stats resource can pull from the SPANNER_SYS views; if any interval is missing the markdown will note it.
+
+### Cloud Storage
+
+Cloud Storage tools provide bucket inventories, metadata, IAM visibility, and safe content previews without invoking `gcloud` or issuing any write calls. Everything is read-only, making it ideal for investigations inside production environments.
+
+#### Key tools
+
+- `gcp-storage-list-buckets` – Previews buckets in the active/billed project, returning location, storage class, labels, and lifecycle hints with pagination tokens.
+- `gcp-storage-get-bucket` – Fetches a single bucket’s metadata including retention policies, uniform bucket-level access, default holds, and encryption defaults.
+- `gcp-storage-view-bucket-iam` – Reads IAM bindings (policy version 3 when available) so you can audit principals and conditions.
+- `gcp-storage-test-bucket-permissions` – Calls `buckets.testIamPermissions` to confirm whether specific permissions (for example `storage.objects.delete`) are granted.
+- `gcp-storage-list-objects` – Lists objects within a bucket, supporting prefix/delimiter filters, version history, and pagination for large directories.
+- `gcp-storage-read-object-metadata` – Returns object size, checksums, holds, KMS keys, and custom metadata without fetching the payload.
+- `gcp-storage-read-object-content` – Downloads a capped preview (text or base64) so agents can inspect file headers or log snippets without moving entire blobs.
+
+#### Operational tips
+
+- Always pass `projectId` when you need to bill a different project (for example requester-pays buckets); otherwise `GOOGLE_CLOUD_PROJECT` or the state manager value is used.
+- Preview limits are adjustable via `STORAGE_BUCKET_PREVIEW_LIMIT`, `STORAGE_OBJECT_PREVIEW_LIMIT`, `STORAGE_LABEL_PREVIEW_LIMIT`, `STORAGE_METADATA_PREVIEW_LIMIT`, and `STORAGE_OBJECT_CONTENT_PREVIEW_BYTES`. Tune them per deployment if agents consistently need larger windows.
+- `gcp-storage-read-object-content` only fetches the first _N_ bytes (default 8 KB); increase the optional `bytes` argument sparingly to avoid large transfers.
+- Listing and IAM helpers automatically normalise bucket names (no `gs://` prefix) and bubble up Google API errors with actionable text, so lean on them instead of shelling out to ad‑hoc scripts.
 
 ### Trace
 

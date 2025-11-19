@@ -23,6 +23,7 @@ Supported Google Cloud services:
 - [x] [Profiler](https://cloud.google.com/profiler)
 - [x] [BigQuery](https://cloud.google.com/bigquery)
 - [x] [Spanner](https://cloud.google.com/spanner)
+- [x] [Cloud Storage](https://cloud.google.com/storage)
 - [x] [Trace](https://cloud.google.com/trace)
 - [x] [Support](https://cloud.google.com/support/docs/reference/rest)
 - [x] [Documentation Search](https://cloud.google.com/docs)
@@ -143,6 +144,34 @@ Interact with Google Cloud Spanner databases:
 - "List all databases in Spanner instance my-instance in project ecommerce-prod-123"
 - "Execute SQL: SELECT COUNT(*) FROM users in database user-db in project my-app-456"
 - "Show me table structure for orders in database inventory-db in project retail-789"
+
+### Cloud Storage
+
+Explore Cloud Storage buckets and objects directly via the JSON APIs—no gcloud CLI required and every tool is read-only for safe investigations.
+
+**Tools:** `gcp-storage-list-buckets`, `gcp-storage-get-bucket`, `gcp-storage-view-bucket-iam`, `gcp-storage-test-bucket-permissions`, `gcp-storage-list-objects`, `gcp-storage-read-object-metadata`, `gcp-storage-read-object-content`
+
+- `gcp-storage-list-buckets` previews bucket metadata (location, storage class, labels) for a project. Provide `projectId` explicitly when querying multiple tenants.
+- `gcp-storage-get-bucket` surfaces retention policies, lifecycle rules, encryption defaults, and label previews for a specific bucket.
+- `gcp-storage-view-bucket-iam` + `gcp-storage-test-bucket-permissions` let you audit IAM bindings and verify whether a role grants specific permissions.
+- `gcp-storage-list-objects` previews objects with optional prefix/delimiter filters and pagination tokens.
+- `gcp-storage-read-object-metadata` + `gcp-storage-read-object-content` fetch object metadata and a truncated content preview (text or base64, depending on the payload). These helpers never write or delete data.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `STORAGE_BUCKET_PREVIEW_LIMIT` | `20` | Buckets returned (before pagination) by `gcp-storage-list-buckets`. |
+| `STORAGE_OBJECT_PREVIEW_LIMIT` | `50` | Objects returned by `gcp-storage-list-objects`. |
+| `STORAGE_LABEL_PREVIEW_LIMIT` | `10` | Bucket label entries shown in metadata responses. |
+| `STORAGE_METADATA_PREVIEW_LIMIT` | `12` | Custom object metadata entries returned by metadata/content tools. |
+| `STORAGE_OBJECT_CONTENT_PREVIEW_BYTES` | `8192` | Bytes downloaded per `gcp-storage-read-object-content` call (hard cap for safety). |
+| `STORAGE_TEXT_PREVIEW_CHAR_LIMIT` | `4000` | Maximum characters included in UTF-8 previews before truncation. |
+
+*Example prompts:*
+- "List requester-pays buckets in project analytics-prod-123"
+- "Show IAM bindings for bucket gs://compliance-logs"
+- "Check whether bucket gs://prod-artifacts lets me use storage.objects.delete"
+- "Preview the first 8 KB of object logs/2025-11-01.json.gz"
+- "List objects under gs://prod-videos/2025/11/ with their storage classes"
 
 ### Monitoring
 
