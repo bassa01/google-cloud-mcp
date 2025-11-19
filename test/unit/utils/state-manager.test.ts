@@ -28,7 +28,17 @@ const waitForCondition = async (
 };
 
 const waitForFile = async (filePath: string): Promise<void> => {
-  await waitForCondition(() => fs.existsSync(filePath));
+  await waitForCondition(() => {
+    if (!fs.existsSync(filePath)) {
+      return false;
+    }
+    try {
+      const stats = fs.statSync(filePath);
+      return stats.size > 0;
+    } catch {
+      return false;
+    }
+  });
 };
 
 describe('State Manager', () => {
