@@ -51,7 +51,7 @@ export function registerBucketTools(server: McpServer): void {
       title: "List Cloud Storage buckets",
       description:
         "Lists Cloud Storage buckets visible to the configured project.",
-      inputSchema: listBucketsSchema,
+      inputSchema: listBucketsSchema.shape,
     },
     async (input) => {
       try {
@@ -102,7 +102,7 @@ export function registerBucketTools(server: McpServer): void {
       title: "Describe a Cloud Storage bucket",
       description:
         "Retrieves metadata for a Cloud Storage bucket, including location, retention policy, and labels.",
-      inputSchema: getBucketSchema,
+      inputSchema: getBucketSchema.shape,
     },
     async ({ bucket, projectId }) => {
       try {
@@ -142,7 +142,7 @@ export function registerBucketTools(server: McpServer): void {
       title: "View bucket IAM policy",
       description:
         "Reads the IAM policy for a Cloud Storage bucket (requesting version 3 policies when available).",
-      inputSchema: iamSchema,
+      inputSchema: iamSchema.shape,
     },
     async ({ bucket, projectId }) => {
       try {
@@ -190,7 +190,7 @@ export function registerBucketTools(server: McpServer): void {
       title: "Check bucket IAM permissions",
       description:
         "Uses storage.buckets.testIamPermissions to verify which permissions are granted on a bucket.",
-      inputSchema: permissionsSchema,
+      inputSchema: permissionsSchema.shape,
     },
     async ({ bucket, permissions, projectId }) => {
       try {
@@ -205,7 +205,7 @@ export function registerBucketTools(server: McpServer): void {
           permissions,
           { userProject },
         );
-        const summary = permissions.map((permission) => ({
+        const summary = permissions.map((permission: string) => ({
           permission,
           allowed: Boolean(result[0][permission]),
         }));

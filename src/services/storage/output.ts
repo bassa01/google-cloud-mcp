@@ -270,8 +270,9 @@ export const buildBucketSummary = (
   fallbackName?: string,
 ): BucketSummary => {
   const name = metadata?.name ?? fallbackName ?? "unknown-bucket";
+  const normalizedLabels = sanitizeStringRecord(metadata?.labels);
   const { displayed: labels, omitted: omittedLabelCount } = previewRecordEntries(
-    metadata?.labels,
+    normalizedLabels,
     LABEL_PREVIEW_LIMIT,
   );
 
@@ -308,25 +309,35 @@ export const buildObjectSummary = (file: File): ObjectSummary => {
 export const buildObjectMetadata = (
   metadata: FileMetadata,
 ): ObjectSummary => {
+  const name = metadata.name ?? "unknown-object";
   const {
     displayed: customMetadata,
     omitted: omittedMetadataCount,
-  } = previewRecordEntries(metadata.metadata, METADATA_PREVIEW_LIMIT);
+  } = previewRecordEntries(
+    sanitizeStringRecord(metadata.metadata),
+    METADATA_PREVIEW_LIMIT,
+  );
 
   return compact({
-    name: metadata.name,
+    name,
     sizeBytes: metadata.size ? Number(metadata.size) : undefined,
     storageClass: metadata.storageClass,
-    generation: metadata.generation,
-    metageneration: metadata.metageneration,
+    generation: metadata.generation
+      ? String(metadata.generation)
+      : undefined,
+    metageneration: metadata.metageneration
+      ? String(metadata.metageneration)
+      : undefined,
     contentType: metadata.contentType,
     crc32c: metadata.crc32c,
     md5Hash: metadata.md5Hash,
     updated: metadata.updated,
     timeCreated: metadata.timeCreated,
     timeDeleted: metadata.timeDeleted,
-    eventBasedHold: metadata.eventBasedHold,
-    temporaryHold: metadata.temporaryHold,
+    eventBasedHold:
+      metadata.eventBasedHold === null ? undefined : metadata.eventBasedHold,
+    temporaryHold:
+      metadata.temporaryHold === null ? undefined : metadata.temporaryHold,
     kmsKeyName: metadata.kmsKeyName,
     customTime: metadata.customTime,
     metadata: Object.keys(customMetadata).length ? customMetadata : undefined,
@@ -364,6 +375,26 @@ export const buildObjectContentPreview = (
     totalBytes,
   };
 };
+
+type StringConvertible = string | number | boolean | null | undefined;
+
+function sanitizeStringRecord(
+  record: Record<string, StringConvertible> | undefined,
+): Record<string, string> | undefined {
+  if (!record) {
+    return undefined;
+  }
+
+  const normalizedEntries: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+    normalizedEntries[key] = typeof value === "string" ? value : String(value);
+  }
+
+  return Object.keys(normalizedEntries).length ? normalizedEntries : undefined;
+}
 
 function compact<T extends BaseSummary>(value: T): T {
   const entries = Object.entries(value).filter(([, val]) => {

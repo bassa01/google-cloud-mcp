@@ -72,7 +72,7 @@ export function registerObjectTools(server: McpServer): void {
       title: "List objects in a bucket",
       description:
         "Lists objects within a Cloud Storage bucket with optional prefix filtering.",
-      inputSchema: listObjectsSchema,
+      inputSchema: listObjectsSchema.shape,
     },
     async ({ bucket, projectId, prefix, delimiter, versions, limit, pageToken }) => {
       try {
@@ -131,7 +131,7 @@ export function registerObjectTools(server: McpServer): void {
       title: "Read object metadata",
       description:
         "Retrieves metadata for a Cloud Storage object, including size, checksums, custom metadata, and encryption info.",
-      inputSchema: objectMetadataSchema,
+      inputSchema: objectMetadataSchema.shape,
     },
     async ({ bucket, object, generation, projectId }) => {
       try {
@@ -189,7 +189,7 @@ export function registerObjectTools(server: McpServer): void {
       title: "Preview object content",
       description:
         "Downloads a limited preview of an object's contents. Large payloads are truncated automatically.",
-      inputSchema: objectContentSchema,
+      inputSchema: objectContentSchema.shape,
     },
     async ({ bucket, object, generation, projectId, bytes }) => {
       try {

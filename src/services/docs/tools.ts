@@ -30,7 +30,7 @@ export function registerDocsTools(server: McpServer): void {
       title: "Google Cloud Docs Search",
       description:
         "Searches the local Google Cloud docs catalog and returns summarized matches.",
-      inputSchema: docsSearchSchema,
+      inputSchema: docsSearchSchema.shape,
     },
     async (args) => {
       const { query, maxResults } = args as z.infer<typeof docsSearchSchema>;
