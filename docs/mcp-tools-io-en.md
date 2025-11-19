@@ -1626,6 +1626,55 @@ Current project ID: `my-sre-prod`
 
 ## Documentation Search
 
+### gcp-tools-directory — Lightweight tool metadata
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| service | string | no |  | Filter by service alias (`logging`, `metrics`, `trace`, etc.). |
+| query | string | no |  | Case-insensitive substring filter across names and descriptions. |
+| limit | number | no | 50 (1-200) | Maximum number of entries to return. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-tools-directory",
+  "arguments": { "service": "logging", "limit": 20 }
+}
+```
+
+**Response example**
+```text
+Tools directory | service=logging | query= | returned=4 | total=63
+```
+
+```json
+[
+  { "name": "gcp-logging-query-logs", "title": "Query Logs", "service": "logging" },
+  { "name": "gcp-logging-query-time-range", "title": "Query Logs by Time Range", "service": "logging" }
+]
+```
+
+### gcp-tool-exec — Execute any Google Cloud tool by name
+| Field | Type | Required | Default / Constraints | Description |
+| --- | --- | --- | --- | --- |
+| tool | string | yes |  | Exact tool name (e.g., `gcp-logging-query-logs`). |
+| arguments | record | no | `{}` | Arguments passed to the tool; validated lazily. |
+
+**Call example**
+```jsonc
+{
+  "name": "gcp-tool-exec",
+  "arguments": {
+    "tool": "gcp-logging-query-logs",
+    "arguments": { "filter": "severity>=ERROR", "limit": 5 }
+  }
+}
+```
+
+`gcp-tool-exec` validates the payload using the original tool schema and then
+invokes the stored handler, so responses are identical to calling the tool
+directly. Pair this with `MCP_LAZY_TOOLS=true` to keep the initial `tools/list`
+payload tiny.
+
 ### google-cloud-docs-search — Offline catalog lookup
 | Field | Type | Required | Default / Constraints | Description |
 | --- | --- | --- | --- | --- |

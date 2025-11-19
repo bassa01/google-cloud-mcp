@@ -465,6 +465,9 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
 | `LAZY_AUTH` | `true` (デフォルト) で初回リクエストまで認証を遅延。`false` で即座に初期化。 |
 | `MCP_SERVER_PORT` | プロキシ/コンテナ配下でホストする際のポート指定。 |
 | `MCP_ENABLED_SERVICES` | 有効化したいサービスをカンマ区切りで指定（例: `spanner,trace`）。未設定や `all` / `*` の場合は全サービス。 |
+| `MCP_LAZY_TOOLS` | `true` で起動すると `gcp-tools-directory` / `gcp-tool-exec` だけを公開し、実行時に必要なツールだけをロードできます。 |
+| `MCP_TOOL_PAGE_SIZE` | `tools/list` のレスポンスをページングしたいときに設定（例: `20`）。必要なツールだけを段階的に取得できます。 |
+| `MCP_TOOL_PAGE_MAX_SIZE` | カーソル指定で `pageSize` を上書きする際の上限（デフォルト `50`）。 |
 | `MCP_SERVER_MODE` | デフォルトの `daemon` はプロセスを常駐、`standalone` でクライアント切断時に終了。 |
 
 ### クライアント設定例
@@ -487,6 +490,78 @@ Cloud Support API と連携し、MCP 上からサポートケースの管理・�
   }
 }
 ```
+
+### コンテキスト圧縮を意識したツール利用
+
+Google Cloud の全ツール定義をそのまま会話に流すと、LLM クライアントのトークン枠が一瞬で足りなくなります。`MCP_LAZY_TOOLS=true` にすると、`gcp-tools-directory`（名前一覧）と `gcp-tool-exec`（実行ルーター）だけが `tools/list` に現れ、必要なツール名だけを調べてから `gcp-tool-exec` で実行できます。必要に応じて `MCP_TOOL_PAGE_SIZE=20` などを併用しつつ、このサーバーを通常の依存モジュールとして扱い、薄いラッパーを作って必要なときだけ読み込み、`call_tool` を直接書く代わりに通常のコードで処理を組み立てるのが最も効率的です。
+
+1. **モジュール化されたツール定義** – エージェント側のワークスペースに `./agents/google-cloud/logging/query-logs.ts` のようなサービス別ディレクトリを用意し、各ファイルで個別ツールをエクスポートします。ラッパーはローカルの `callGoogleCloudTool`（`@modelcontextprotocol/sdk/client` の `client.callTool` を包んだヘルパー）を呼び出すだけなので、簡単にツリーシェイクできます。
+
+   ```ts
+   // ./agents/google-cloud/logging/query-logs.ts
+   import { callGoogleCloudTool } from "../../client.js";
+
+   export interface QueryLogsInput {
+     filter: string;
+     limit?: number;
+   }
+
+   export async function queryLogs(input: QueryLogsInput) {
+     return callGoogleCloudTool("gcp-logging-query-logs", input);
+   }
+   ```
+
+2. **オンデマンド探索** – すべてのラッパーを一括 import するのではなく、ファイルシステムを列挙したり、MCP の `search_tools` / `list_tools` を叩いたりして、直近で必要なモジュールだけを読み込みます。小さなヘルパーを 1 つ置くだけで manifest とディレクトリ構成の差分を吸収できます。
+
+   ```ts
+   import { readdir } from "node:fs/promises";
+   import path from "node:path";
+
+   export async function listGoogleCloudWrappers(root = "agents/google-cloud") {
+     const abs = path.resolve(root);
+     const entries = await readdir(abs, { withFileTypes: true });
+     const modules: Array<{ service: string; module: string }> = [];
+
+     for (const entry of entries) {
+       if (!entry.isDirectory()) continue;
+       const serviceFiles = await readdir(path.join(abs, entry.name));
+       for (const file of serviceFiles) {
+         if (file.endsWith(".ts")) {
+           modules.push({
+             service: entry.name,
+             module: path.join(abs, entry.name, file),
+           });
+         }
+       }
+     }
+
+     return modules;
+   }
+   ```
+
+   追加機能が必要になった時点で該当モジュール（または `import()` で遅延ロードした成果物）だけを読み込めばよく、約 150k トークンの JSON スキーマを常に持ち歩く必要はありません。`search_tools` に `{ "query": "logging" }` のような特定クエリを投げれば、ラッパー名とサーバーの公式ツール ID を簡単に突き合わせられます。
+
+3. **raw tool call ではなくコードで実行** – ラッパーを読み込んだあとは通常の TypeScript/JavaScript と同じ感覚でワークフローを記述します。プロンプト生成・分岐・リトライが 1 か所にまとまるため、再利用やテストも容易です。
+
+   ```ts
+   import { queryLogs } from "../agents/google-cloud/logging/query-logs.js";
+   import { createCase } from "../agents/google-cloud/support/create-case.js";
+
+   const incidents = await queryLogs({
+     filter: 'severity>=ERROR AND resource.type="cloud_run_revision"',
+     limit: 3,
+   });
+
+   await createCase({
+     displayName: "Checkout errors",
+     description: incidents.content.at(-1)?.text ?? "See attached logs.",
+     classificationId: "100152",
+     priority: "P1",
+     contactEmail: "oncall@example.com",
+   });
+   ```
+
+このパターンを用いると、全ツールのスキーマと説明を載せた ~150k トークンのペイロードが、実際に使う 2 つのラッパー分（2k トークン未満）にまで収まり、約 98% の削減を達成できます。
 
 ### デプロイのヒント
 

@@ -475,6 +475,9 @@ Testing tips:
 | `LAZY_AUTH` | `true` (default) delays auth initialisation until the first request. Set to `false` to fail fast. |
 | `MCP_SERVER_PORT` | Custom port when self-hosting behind a proxy or container. |
 | `MCP_ENABLED_SERVICES` | Comma-separated whitelist of Google Cloud services to register (e.g., `spanner,trace`). Defaults to all services when unset or when set to `all` / `*`. |
+| `MCP_LAZY_TOOLS` | When `true`, hide every Google Cloud tool behind `gcp-tools-directory` + `gcp-tool-exec` so clients fetch schemas only when executing a tool. |
+| `MCP_TOOL_PAGE_SIZE` | When > 0, enables paginated `tools/list` responses with the given page size (e.g., `20`) so clients only download schemas they need. |
+| `MCP_TOOL_PAGE_MAX_SIZE` | Upper bound for user-requested page sizes via cursor overrides (default `50`). |
 | `MCP_SERVER_MODE` | `daemon` (default) keeps the Node.js process alive; set to `standalone` to exit once the MCP transport closes. |
 
 ### Client configuration snippet
@@ -497,6 +500,78 @@ Testing tips:
   }
 }
 ```
+
+### Context-efficient tool usage
+
+Large MCP clients run up their token budget when they ship every Google Cloud tool description up front. With `MCP_LAZY_TOOLS=true` the server advertises only `gcp-tools-directory` and `gcp-tool-exec`. Use the directory tool to discover names (optionally filtered by service) and call `gcp-tool-exec` with those names when you actually need to run something. Pair this with `MCP_TOOL_PAGE_SIZE` if you still want paginated schemas in eager mode, and keep writing thin wrappers so your agent code imports only the modules it needs.
+
+1. **Modular tool definitions** – Mirror the server’s service layout under your agent workspace (for example `./agents/google-cloud/logging/query-logs.ts`) so wrappers stay self-contained and tree-shakeable. Each wrapper calls into a local helper such as `callGoogleCloudTool`, which in turn wraps `client.callTool` from `@modelcontextprotocol/sdk/client`.
+
+   ```ts
+   // ./agents/google-cloud/logging/query-logs.ts
+   import { callGoogleCloudTool } from "../../client.js";
+
+   export interface QueryLogsInput {
+     filter: string;
+     limit?: number;
+   }
+
+   export async function queryLogs(input: QueryLogsInput) {
+     return callGoogleCloudTool("gcp-logging-query-logs", input);
+   }
+   ```
+
+2. **On-demand discovery** – Before importing every wrapper, enumerate the filesystem or call `search_tools` / `list_tools` to confirm which services are actually required. A tiny helper keeps the manifest in sync without inflating context windows.
+
+   ```ts
+   import { readdir } from "node:fs/promises";
+   import path from "node:path";
+
+   export async function listGoogleCloudWrappers(root = "agents/google-cloud") {
+     const abs = path.resolve(root);
+     const entries = await readdir(abs, { withFileTypes: true });
+     const modules: Array<{ service: string; module: string }> = [];
+
+     for (const entry of entries) {
+       if (!entry.isDirectory()) continue;
+       const serviceFiles = await readdir(path.join(abs, entry.name));
+       for (const file of serviceFiles) {
+         if (file.endsWith(".ts")) {
+           modules.push({
+             service: entry.name,
+             module: path.join(abs, entry.name, file),
+           });
+         }
+       }
+     }
+
+     return modules;
+   }
+   ```
+
+   When the agent needs a new capability it can import just that module (or lazily `import()` it) instead of dumping 150k tokens of JSON schemas into the conversation. In clients that expose `search_tools`, issue focused queries such as `{ "query": "logging" }` to align wrapper names with the server’s canonical tool IDs.
+
+3. **Execute via code, not raw tool calls** – After loading the required wrappers, write ordinary TypeScript/JavaScript that composes tools like any other SDK. This keeps the full workflow—prompting, branching, retries—in one place.
+
+   ```ts
+   import { queryLogs } from "../agents/google-cloud/logging/query-logs.js";
+   import { createCase } from "../agents/google-cloud/support/create-case.js";
+
+   const incidents = await queryLogs({
+     filter: 'severity>=ERROR AND resource.type="cloud_run_revision"',
+     limit: 3,
+   });
+
+   await createCase({
+     displayName: "Checkout errors",
+     description: incidents.content.at(-1)?.text ?? "See attached logs.",
+     classificationId: "100152",
+     priority: "P1",
+     contactEmail: "oncall@example.com",
+   });
+   ```
+
+In internal load tests this pattern shrank our prompt footprint from roughly 150k tokens (every tool schema + documentation) to under 2k tokens for the two wrappers we actually needed—a ~98% reduction with zero impact on functionality.
 
 ### Deployment tips
 

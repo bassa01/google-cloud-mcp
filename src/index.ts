@@ -48,6 +48,8 @@ import {
   parseServiceSelection,
   type ServiceName,
 } from "./utils/service-selector.js";
+import { setupLazyToolHost } from "./utils/lazy-tools.js";
+import { configureToolListPagination } from "./utils/tool-pagination.js";
 
 type ServerMode = "daemon" | "standalone";
 
@@ -164,6 +166,9 @@ async function main(): Promise<void> {
         },
       },
     );
+    const lazyServiceMode =
+      process.env.MCP_LAZY_TOOLS?.toLowerCase() === "true";
+    const lazyToolHost = setupLazyToolHost(server, lazyServiceMode);
 
     // Initialize Google Cloud authentication in non-blocking mode
     // This allows the server to start even if credentials aren't available yet
@@ -226,22 +231,22 @@ async function main(): Promise<void> {
           registerLoggingTools(server);
         },
       },
-    {
-      name: "spanner",
-      label: "Google Cloud Spanner",
-      register: async () => {
-        registerSpannerResources(server);
-        registerSpannerTools(server);
-        registerSpannerQueryCountTool(server);
+      {
+        name: "spanner",
+        label: "Google Cloud Spanner",
+        register: async () => {
+          registerSpannerResources(server);
+          registerSpannerTools(server);
+          registerSpannerQueryCountTool(server);
+        },
       },
-    },
-    {
-      name: "bigquery",
-      label: "Google Cloud BigQuery",
-      register: async () => {
-        registerBigQueryTools(server);
+      {
+        name: "bigquery",
+        label: "Google Cloud BigQuery",
+        register: async () => {
+          registerBigQueryTools(server);
+        },
       },
-    },
       {
         name: "storage",
         label: "Google Cloud Storage",
@@ -302,7 +307,6 @@ async function main(): Promise<void> {
         },
       },
     ];
-
     for (const service of serviceRegistrations) {
       if (!isServiceEnabled(serviceSelection, service.name)) {
         logger.info(
@@ -359,6 +363,12 @@ async function main(): Promise<void> {
       logger.warn(
         `Error registering resource discovery: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+
+    if (lazyToolHost.isEnabled) {
+      lazyToolHost.finalize();
+    } else {
+      configureToolListPagination(server);
     }
 
     // Initialize stdio transport for Claude Desktop compatibility
