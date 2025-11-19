@@ -307,6 +307,25 @@ describe("docs catalog resources", () => {
     );
   });
 
+  it("annotates search responses when no documentation entries match", async () => {
+    mockSearchDocsCatalog.mockResolvedValue([]);
+    const { registerDocsCatalogResources } = await importResourcesModule();
+
+    registerDocsCatalogResources(mockServer as any);
+
+    const searchHandler = getResourceHandler("gcp-docs-search");
+    await searchHandler(new URL("docs://google-cloud/search/run"), {
+      query: "run",
+    });
+
+    expect(buildStructuredResponseMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ matches: 0 }),
+        note: "No documentation entries matched the search terms.",
+      }),
+    );
+  });
+
   it("rejects blank search queries", async () => {
     const { registerDocsCatalogResources } = await importResourcesModule();
     registerDocsCatalogResources(mockServer as any);
