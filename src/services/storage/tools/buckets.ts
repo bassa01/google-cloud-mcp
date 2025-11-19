@@ -154,7 +154,6 @@ export function registerBucketTools(server: McpServer): void {
         );
         const [policy] = await bucketHandle.iam.getPolicy({
           requestedPolicyVersion: 3,
-          userProject,
         });
 
         const text = formatBucketIamResponse(policy, {
