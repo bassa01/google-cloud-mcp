@@ -803,7 +803,7 @@ export async function registerTraceTools(server: McpServer): Promise<void> {
  * @param endTime The end time
  * @returns Formatted duration string
  */
-function calculateDuration(startTime: string, endTime: string): string {
+export function calculateDuration(startTime: string, endTime: string): string {
   const start = new Date(startTime).getTime();
   const end = new Date(endTime).getTime();
   const durationMs = end - start;
@@ -829,7 +829,7 @@ function calculateDuration(startTime: string, endTime: string): string {
  * @param filter The filter used in the query
  * @returns Formatted response
  */
-function formatTracesResponse(
+export function formatTracesResponse(
   tracesData: any,
   projectId: string,
   startTime: Date,
@@ -887,7 +887,7 @@ interface TraceSpanSummaryPayload {
   attributesOmitted?: number;
 }
 
-function summarizeSpan(span: TraceSpan): TraceSpanSummaryPayload {
+export function summarizeSpan(span: TraceSpan): TraceSpanSummaryPayload {
   const { displayed, omitted } = previewRecordEntries(
     span.attributes,
     TRACE_ATTRIBUTE_PREVIEW_LIMIT,
@@ -927,7 +927,7 @@ interface TraceListItemPayload {
   statusCode?: number;
 }
 
-function summarizeTraceListItem(
+export function summarizeTraceListItem(
   trace: any,
   projectId: string,
 ): TraceListItemPayload {

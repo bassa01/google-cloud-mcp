@@ -31,6 +31,22 @@ const waitForFile = async (filePath: string): Promise<void> => {
   await waitForCondition(() => fs.existsSync(filePath));
 };
 
+const waitForJsonFile = async (filePath: string): Promise<any> => {
+  await waitForCondition(() => {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      if (!raw.trim()) {
+        return false;
+      }
+      JSON.parse(raw);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+};
+
 describe('State Manager', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -217,8 +233,7 @@ describe('State Manager', () => {
       expect(stateManager.getCurrentProjectId()).toBe('config-project');
       expect(process.env.GOOGLE_CLOUD_PROJECT).toBe('config-project');
       expect(configMock.setDefaultProjectId).toHaveBeenCalledWith('config-project');
-      await waitForFile(stateFile);
-      const savedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+      const savedState = await waitForJsonFile(stateFile);
       expect(savedState.currentProjectId).toBe('config-project');
     });
 
@@ -232,8 +247,7 @@ describe('State Manager', () => {
       );
       expect(stateManager.getCurrentProjectId()).toBe('env-project');
       expect(configMock.setDefaultProjectId).toHaveBeenCalledWith('env-project');
-      await waitForFile(stateFile);
-      const savedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+      const savedState = await waitForJsonFile(stateFile);
       expect(savedState.currentProjectId).toBe('env-project');
     });
 
@@ -251,7 +265,7 @@ describe('State Manager', () => {
         .toBeUndefined();
       await changePromise;
 
-      const savedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+      const savedState = await waitForJsonFile(stateFile);
       expect(savedState.currentProjectId).toBe('runtime-project');
       expect(typeof savedState.lastUpdated).toBe('number');
     });
