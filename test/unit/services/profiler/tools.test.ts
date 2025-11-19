@@ -144,7 +144,7 @@ describe('Profiler Tools', () => {
         
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].text).toContain('Profiler Analysis');
+        expect(result.content[0].text).toContain('Profiler Profiles');
         expect(result.content[0].text).toContain('test-service');
         expect(result.content[0].text).toContain('CPU Time');
         
@@ -269,7 +269,7 @@ describe('Profiler Tools', () => {
         expect(result.content[0].text).toContain('Profile Performance Analysis');
         expect(result.content[0].text).toContain('CPU Time - Shows where your application spends CPU time');
         expect(result.content[0].text).toContain('Performance Insights');
-        expect(result.content[0].text).toContain('Actionable Recommendations');
+        expect(result.content[0].text).toContain('**Immediate Actions:**');
         
         // Verify correct API call
         const fetchCall = mockFetch.mock.calls[0];
@@ -303,7 +303,7 @@ describe('Profiler Tools', () => {
           profileType: 'HEAP'
         });
         
-        expect(result.content[0].text).toContain('No profiles found for analysis');
+        expect(result.content[0].text).toContain('No profiles available for performance analysis.');
       });
     });
 
@@ -329,7 +329,7 @@ describe('Profiler Tools', () => {
         });
         
         expect(result.content[0].text).toContain('Profile Trend Analysis');
-        expect(result.content[0].text).toContain('Analysed: 1 profiles'); // After filtering for test-service
+        expect(result.content[0].text).toContain('"analysedProfiles": 1'); // After filtering for test-service
         
         // Verify correct API call with larger page size for trends
         const fetchCall = mockFetch.mock.calls[0];
@@ -363,7 +363,7 @@ describe('Profiler Tools', () => {
           profileType: 'CPU'
         });
         
-        expect(result.content[0].text).toContain('No profiles found for trend analysis');
+        expect(result.content[0].text).toContain('No profiles available for trend analysis.');
       });
     });
 
