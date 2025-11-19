@@ -30,6 +30,15 @@ const AUTH_LIST_SCHEMA = z.array(
   }),
 );
 
+function isErrnoException(error: unknown): error is { code?: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string"
+  );
+}
+
 function spawnGcloud(args: string[]): Promise<SpawnResult> {
   return new Promise((resolve, reject) => {
     const child = spawn("gcloud", args, {
@@ -62,12 +71,7 @@ export async function invokeGcloud(
   try {
     return await spawnGcloud(args);
   } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
       throw new GcpMcpError(
         "The gcloud CLI is not available on this host. Install the Google Cloud CLI or make sure it is on the PATH before invoking this tool.",
         "GCLOUD_NOT_FOUND",

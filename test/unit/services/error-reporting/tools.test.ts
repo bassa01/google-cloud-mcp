@@ -185,7 +185,7 @@ describe('Error Reporting Tools', () => {
         
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].text).toContain('Error Groups Analysis');
+        expect(result.content[0].text).toContain('Error Groups');
         expect(result.content[0].text).toContain('test-service');
         expect(result.content[0].text).toContain('Test error message');
         
@@ -322,7 +322,7 @@ describe('Error Reporting Tools', () => {
         
         expect(result.content[0].text).toContain('Error Group Details');
         expect(result.content[0].text).toContain('test-group-1');
-        expect(result.content[0].text).toContain('Recent Error Events');
+        expect(result.content[0].text).toContain('"events": [');
         expect(result.content[0].text).toContain('Test error event message');
         
         // Verify both API calls were made
@@ -418,9 +418,9 @@ describe('Error Reporting Tools', () => {
         });
         
         expect(result.content[0].text).toContain('Error Trends Analysis');
-        expect(result.content[0].text).toContain('**Total Error Groups:** 1');
-        expect(result.content[0].text).toContain('**Total Errors:**');
-        expect(result.content[0].text).toContain('Top Contributing Error Groups');
+        expect(result.content[0].text).toContain('"totalGroups": 1');
+        expect(result.content[0].text).toContain('"totalErrors":');
+        expect(result.content[0].text).toContain('"topContributors":');
         
         // Verify timedCountDuration parameter
         const fetchCall = mockFetch.mock.calls[0];

@@ -35,12 +35,6 @@ const TRACE_TRACE_PREVIEW_LIMIT = resolveBoundedNumber(
   { min: 5, max: 100 },
 );
 
-const TRACE_LOG_PREVIEW_LIMIT = resolveBoundedNumber(
-  process.env.TRACE_LOG_PREVIEW_LIMIT,
-  20,
-  { min: 5, max: 100 },
-);
-
 const TRACE_ATTRIBUTE_PREVIEW_LIMIT = resolveBoundedNumber(
   process.env.TRACE_ATTRIBUTE_PREVIEW_LIMIT,
   15,
