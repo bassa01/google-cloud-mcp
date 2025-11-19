@@ -3,7 +3,8 @@
  */
 import {
   type Dataset,
-  type DatasetMetadata,
+  type DatasetResponse,
+  type Query,
   type QueryResultsOptions,
   type Table,
   type TableField,
@@ -99,8 +100,14 @@ function buildRowsResponse<T>({
   });
 }
 
+type QueryResultOptionsInput = {
+  maxResults?: number;
+  timeoutMs?: number;
+  startIndex?: number;
+};
+
 function coerceQueryResultsOptions(
-  options?: QueryResultsOptions,
+  options?: QueryResultOptionsInput,
 ): QueryResultsOptions | undefined {
   if (!options) {
     return undefined;
@@ -116,7 +123,7 @@ function coerceQueryResultsOptions(
   }
 
   if (options.startIndex !== undefined) {
-    sanitized.startIndex = options.startIndex;
+    sanitized.startIndex = options.startIndex.toString();
   }
 
   return sanitized;
@@ -124,7 +131,7 @@ function coerceQueryResultsOptions(
 
 async function getDatasetMetadata(
   dataset: Dataset,
-): Promise<DatasetMetadata> {
+): Promise<DatasetResponse[1]> {
   if (dataset.metadata) {
     return dataset.metadata;
   }
@@ -154,7 +161,7 @@ function extractProjectIdFromResourceId(
 }
 
 function buildDatasetSummary(
-  metadata: DatasetMetadata,
+  metadata: DatasetResponse[1],
 ): Record<string, unknown> {
   const datasetReference = metadata.datasetReference ?? {};
   const datasetId =
@@ -699,7 +706,7 @@ export function registerBigQueryTools(server: McpServer): void {
           `Using BigQuery client with project ID: ${resolvedProjectId} for gcp-bigquery-execute-query`,
         );
 
-        const queryOptions = {
+        const queryOptions: Query = {
           query: sql,
           params: params || {},
           location: normalizedLocation,
@@ -709,7 +716,10 @@ export function registerBigQueryTools(server: McpServer): void {
                 projectId: defaultDataset.projectId || resolvedProjectId,
               }
             : undefined,
-          maximumBytesBilled,
+          maximumBytesBilled:
+            maximumBytesBilled !== undefined
+              ? maximumBytesBilled.toString()
+              : undefined,
           dryRun: dryRun ?? false,
           useLegacySql: useLegacySql ?? false,
         };
@@ -721,7 +731,7 @@ export function registerBigQueryTools(server: McpServer): void {
         if (jobErrors.length > 0) {
           throw new GcpMcpError(
             `BigQuery job failed: ${jobErrors
-              .map((error) => error.message)
+              .map((error: { message?: string }) => error.message ?? "Unknown error")
               .join("; ")}`,
             "FAILED_PRECONDITION",
             400,

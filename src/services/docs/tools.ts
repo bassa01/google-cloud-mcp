@@ -24,10 +24,16 @@ const docsSearchSchema = z.object({
 });
 
 export function registerDocsTools(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     "google-cloud-docs-search",
-    docsSearchSchema,
-    async ({ query, maxResults }) => {
+    {
+      title: "Google Cloud Docs Search",
+      description:
+        "Searches the local Google Cloud docs catalog and returns summarized matches.",
+      inputSchema: docsSearchSchema,
+    },
+    async (args) => {
+      const { query, maxResults } = args as z.infer<typeof docsSearchSchema>;
       const resolvedLimit = maxResults ?? DOCS_TOOL_DEFAULT_LIMIT;
 
       try {
